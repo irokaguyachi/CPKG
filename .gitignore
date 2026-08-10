@@ -1,6 +1,3 @@
-# Ignore Photo Assets (Keep local, do not push to GitHub)
-사진/
-
 # Secrets & Local Configurations
 .mcp.json
 
@@ -21,3 +18,7 @@ scratch/
 !.agent/rules
 .agent/rules/*
 !.agent/rules/tag.md
+
+
+# Src File
+src/assets

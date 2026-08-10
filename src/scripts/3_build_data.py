@@ -24,6 +24,15 @@ series_out = [
 bundle = {"posts": posts, "series": series_out}
 out_path = os.path.join(HERE, "..", "data.json")
 with open(out_path, "w", encoding="utf-8") as f:
-    json.dump(bundle, f, ensure_ascii=False, separators=(",", ":"))
+    json.dump(bundle, f, ensure_ascii=False, indent=2)
 size = os.path.getsize(out_path)
 print("posts:", len(posts), "series:", len(series_out), "bytes:", size)
+
+# ---- loading screen icon manifest ----
+icon_dir = os.path.join(HERE, "..", "assets", "Image", "LoadingIcon")
+icon_exts = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+icons = sorted(f for f in os.listdir(icon_dir) if f.lower().endswith(icon_exts)) if os.path.isdir(icon_dir) else []
+icons_out = os.path.join(HERE, "..", "data", "LoadingIcons.json")
+with open(icons_out, "w", encoding="utf-8") as f:
+    json.dump(icons, f, ensure_ascii=False, indent=2)
+print("loading icons:", len(icons))
