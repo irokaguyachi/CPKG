@@ -1,2 +1,2 @@
-# CPK_Gallery_Notion
-카갤 문학 노션
+# CPK_Literature_Site
+카갤 문학 사이트
