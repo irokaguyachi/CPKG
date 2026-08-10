@@ -23,6 +23,6 @@
 ### 시리즈 2: [197288] Astronauts 2
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=197288](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=197288)
 - **작성자**: 탄트리스(floor2460)
-- **태그**: [일상]
+- **태그**: [짧문, 일상]
 - **글자 수**: 640자
 - **첨부 사진**: 사진/20/197288_1.jpg

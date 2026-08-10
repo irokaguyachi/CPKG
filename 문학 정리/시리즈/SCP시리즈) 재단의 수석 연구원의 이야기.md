@@ -17,7 +17,7 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=65640](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=65640)
 - **작성자**: 분탕치는카구야(floor3542)
-- **태그**: [일상]
+- **태그**: [소설, 일상]
 - **글자 수**: 3,800자
 - **첨부 사진**: 사진/시리즈/SCP/65640_1.png, 사진/시리즈/SCP/65640_2.png, 사진/시리즈/SCP/65640_3.png
 
@@ -25,7 +25,7 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=65695](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=65695)
 - **작성자**: 분탕치는카구야(floor3542)
-- **태그**: [감동]
+- **태그**: [소설, 감동]
 - **글자 수**: 6,980자
 - **첨부 사진**: 없음
 
@@ -33,7 +33,7 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=67381](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=67381)
 - **작성자**: 분탕치는카구야(floor3542)
-- **태그**: [감동]
+- **태그**: [소설, 감동]
 - **글자 수**: 6,145자
 - **첨부 사진**: 없음
 
@@ -41,13 +41,13 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=70919](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=70919)
 - **작성자**: 분탕치는카구야(floor3542)
-- **태그**: [슬픔]
+- **태그**: [소설, 슬픔]
 - **글자 수**: 5,494자
 - **첨부 사진**: 없음
 
 ### 시리즈 5: [90800] SCP시리즈) 재단의 수석 연구원의 이야기 4
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=90800](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=90800)
-- **태그**: [감동]
+- **태그**: [소설, 감동]
 - **글자 수**: 7,810자
 - **첨부 사진**: 없음

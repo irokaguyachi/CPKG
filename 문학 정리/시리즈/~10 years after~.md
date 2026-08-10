@@ -19,7 +19,7 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=30385](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=30385)
 - **작성자**: ラキア(lakiachoi)
-- **태그**: [슬픔, 로맨스, 코미디]
+- **태그**: [소설, 슬픔, 로맨스, 코미디]
 - **글자 수**: 6,443자
 - **첨부 사진**: 사진/4/30385_1.png
 
@@ -27,6 +27,6 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=39550](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=39550)
 - **작성자**: ラキア(lakiachoi)
-- **태그**: [슬픔]
+- **태그**: [소설, 슬픔]
 - **글자 수**: 7,075자
 - **첨부 사진**: 사진/4/39550_1.png
