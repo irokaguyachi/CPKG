@@ -3,7 +3,7 @@
   var iconEl = document.getElementById('loader-icon');
 
   if (tipEl) {
-    fetch('../data/Tip.json')
+    fetch('../data/Tip.json', { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (tips) {
         if (!Array.isArray(tips) || !tips.length) return;
@@ -23,17 +23,20 @@
   }
 
   if (iconEl) {
-    fetch('../data/LoadingIcons.json')
+    fetch('../data/LoadingIcons.json', { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (files) {
         if (!Array.isArray(files) || !files.length) return;
-        var idx = 0;
-        function showNext() {
-          iconEl.style.backgroundImage = 'url(../assets/Image/LoadingIcon/' + files[idx % files.length] + ')';
-          idx++;
-        }
-        showNext();
-        setInterval(showNext, 1200);
+        // shows one icon per loading occurrence (not a timed cycle); the
+        // index is persisted so a real page navigation later also advances
+        // it instead of always starting back at the first icon.
+        window.__loaderShowIcon = function () {
+          var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10);
+          var idx = ((counter % files.length) + files.length) % files.length;
+          var src = '../assets/Image/LoadingIcon/' + encodeURIComponent(files[idx]);
+          iconEl.style.backgroundImage = 'url("' + src + '")';
+        };
+        window.__loaderShowIcon();
       })
       .catch(function () {});
   }
@@ -66,20 +69,29 @@
   var loaderEl = document.getElementById('loader');
   if (!wipeEl || !loaderEl) return;
 
+  var INTRO_MS = 1300;
+  var OUTRO_MS = 2200;
+
   // intro: white circle covers the screen, then shrinks away to nothing
   // while the content fades in at the same time, so the two blend together
   // instead of one waiting for the other to finish.
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () {
-      wipeEl.classList.remove('is-covering');
-      if (contentEl) contentEl.classList.add('is-visible');
-    });
-  });
+  function playIntro() {
+    var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10) + 1;
+    localStorage.setItem('loaderIconCounter', counter);
+    if (window.__loaderShowIcon) window.__loaderShowIcon();
 
-  // outro: call window.finishLoading() once the real page content is ready.
-  // the circle grows back to cover the screen while the content fades out,
-  // then once the circle fully covers everything the whole loader hides.
-  var OUTRO_MS = 2200;
+    wipeEl.style.transitionDuration = INTRO_MS + 'ms, ' + INTRO_MS + 'ms, ' + INTRO_MS + 'ms';
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        wipeEl.classList.remove('is-covering');
+        if (contentEl) contentEl.classList.add('is-visible');
+      });
+    });
+  }
+
+  // outro: the circle grows back to cover the screen while the content
+  // fades out, then once the circle fully covers everything the whole
+  // loader hides, revealing the real page underneath.
   window.finishLoading = function () {
     if (contentEl) contentEl.classList.remove('is-visible');
     wipeEl.style.transitionDuration = OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms';
@@ -89,8 +101,39 @@
     }, OUTRO_MS);
   };
 
-  // DEMO ONLY: no real page content to wait on yet, so trigger the outro
-  // automatically. Replace this with a real call to window.finishLoading()
-  // once this loading screen is wired up to actual content loading.
-  setTimeout(function () { window.finishLoading(); }, 6500);
+  playIntro();
+
+  // hold the loader for at least MIN_VISIBLE_MS so it doesn't just flash,
+  // but finish as soon as the real page has actually loaded.
+  var MIN_VISIBLE_MS = 1500;
+  var startedAt = Date.now();
+  function ready() {
+    var wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
+    setTimeout(window.finishLoading, wait);
+  }
+  if (document.readyState === 'complete') {
+    ready();
+  } else {
+    window.addEventListener('load', ready);
+  }
+
+  // demo: nav links have no real destination pages yet, so clicking one
+  // just replays the loading transition to preview how a page change
+  // will feel once real navigation is wired up.
+  var DEMO_HOLD_MS = 1600;
+  var navLinks = document.querySelectorAll('.header-nav a');
+  var demoRunning = false;
+  for (var i = 0; i < navLinks.length; i++) {
+    navLinks[i].addEventListener('click', function (e) {
+      e.preventDefault();
+      if (demoRunning) return;
+      demoRunning = true;
+      loaderEl.classList.remove('is-hidden');
+      playIntro();
+      setTimeout(function () {
+        window.finishLoading();
+        setTimeout(function () { demoRunning = false; }, OUTRO_MS);
+      }, INTRO_MS + DEMO_HOLD_MS);
+    });
+  }
 })();
