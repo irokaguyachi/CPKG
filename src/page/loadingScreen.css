@@ -68,10 +68,9 @@ body {
 .loader-icon {
   width: 139px;
   height: 139px;
-  border-radius: 50%;
-  background: #ffffff;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 .loader-loading-text {

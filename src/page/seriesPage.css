@@ -1,0 +1,730 @@
+@font-face {
+  font-family: "Pretendard";
+  src: url("../fonts/Pretendard-1.3.9/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CCElephantmen";
+  src: url("../fonts/CCElephantmen Italic/CCElephantmen Italic.woff2") format("woff2"),
+       url("../fonts/CCElephantmen Italic/CCElephantmen Italic.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: #ffffff;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+}
+
+/* custom scrollbar — thin, rounded, matches the site's existing rgba(0,0,0,.25) border tone */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Figma 기준 1920px 캔버스 → vw 단위로 환산해 창 크기에 비례해 스케일 */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 5vw;
+  padding: 0 2.6042vw;
+  background: #ffffff;
+}
+
+.header-logo {
+  position: fixed;
+  top: 2.5vw;
+  left: 2.6042vw;
+  transform: translateY(-50%);
+  width: 14.6354vw;
+  height: 2.9167vw;
+  object-fit: cover;
+  z-index: 21;
+  cursor: pointer;
+  transition: top 0.5s cubic-bezier(0.22, 1, 0.36, 1), left 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* decorative hero state — not a nav target, so clicks pass through until it
+   shrinks back into its normal clickable header spot */
+body.is-top .header-logo {
+  top: 13vw;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34vw;
+  height: 6.8vw;
+  pointer-events: none;
+  cursor: default;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5.2083vw;
+  height: 100%;
+  padding: 0 0.5208vw;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.35s ease 0.15s, transform 0.35s ease 0.15s;
+}
+
+body.is-top .header-nav {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.header-nav a {
+  display: inline-block;
+  font-size: 1.3021vw;
+  font-weight: normal;
+  color: #000000;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease;
+}
+.header-nav a:hover {
+  transform: translateY(-0.15vw);
+}
+.header-nav a:nth-child(1):hover { color: #ff6a63; }
+.header-nav a:nth-child(2):hover { color: #ffc1a3; }
+.header-nav a:nth-child(3):hover { color: #ffe58d; }
+.header-nav a:nth-child(4):hover { color: #a6e674; }
+.header-nav a:nth-child(5):hover { color: #00bfc2; }
+.header-nav a.header-nav-strong {
+  font-weight: 800;
+}
+
+.site-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5208vw;
+  padding-block: 6.0938vw;
+  text-align: center;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s;
+}
+
+body.is-top .site-info {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.site-info-title {
+  margin: 0;
+  font-size: 2.6042vw;
+  line-height: 3.125vw;
+  font-weight: 800;
+  color: #000000;
+}
+
+.site-info-sub {
+  margin: 0;
+  font-size: 1.3021vw;
+  line-height: 1.5625vw;
+  font-weight: 500;
+  color: #000000;
+}
+
+.site-info-stat {
+  margin: 0;
+  font-size: 2.0833vw;
+  line-height: 2.5vw;
+  font-weight: 800;
+  color: #000000;
+}
+
+/* sticky search + tag filter bar — a detached floating pill (not a full-bleed
+   bar) that stays pinned with a gap below the header as the user scrolls,
+   so page content is visible sliding underneath it on either side */
+.series-toolbar {
+  position: sticky;
+  top: 6.25vw;
+  z-index: 15;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.series-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5208vw;
+  padding: 0.7292vw 1.0417vw;
+  background: #ffffff;
+  border-radius: 999px;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+}
+
+.series-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5208vw;
+  width: 100%;
+  max-width: 39.0625vw;
+  padding: 0.5729vw 1.0417vw;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+.series-search svg {
+  width: 0.8333vw;
+  height: 0.8333vw;
+  flex-shrink: 0;
+}
+.series-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8333vw;
+  color: #000000;
+}
+.series-search input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* tag filter — a funnel-icon trigger that opens a Notion-style dark
+   dropdown of checkbox options; the trigger turns blue while any tag
+   filter is active so it stays legible at a glance even when closed */
+.series-filter {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.series-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1875vw;
+  height: 2.1875vw;
+  padding: 0;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  color: #000000;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.series-filter-btn svg {
+  width: 0.9375vw;
+  height: 0.9375vw;
+}
+.series-filter-btn.is-active {
+  color: #2f6fed;
+  border-color: #2f6fed;
+  background: #eaf1ff;
+}
+
+.series-filter-panel {
+  position: absolute;
+  top: calc(100% + 0.5208vw);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 15.625vw;
+  padding: 0.5729vw;
+  background: #252525;
+  border-radius: 0.4688vw;
+  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.35);
+}
+.series-filter-panel[hidden] { display: none; }
+
+.sfp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.2604vw 0.4167vw 0.4688vw;
+  font-size: 0.6771vw;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+.sfp-more {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.sfp-search {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.4167vw;
+  padding: 0.4167vw 0.5729vw;
+  background: #1b1b1b;
+  border: 1px solid #3d7fff;
+  border-radius: 0.3125vw;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.7292vw;
+  color: #ffffff;
+}
+.sfp-search::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.sfp-options {
+  display: flex;
+  flex-direction: column;
+  max-height: 15.625vw;
+  overflow-y: auto;
+}
+
+.sfp-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4688vw;
+  padding: 0.3646vw 0.4167vw;
+  border-radius: 0.3125vw;
+  cursor: pointer;
+}
+.sfp-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sfp-checkbox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.8333vw;
+  height: 0.8333vw;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.2083vw;
+}
+.sfp-option.is-checked .sfp-checkbox {
+  background: #2f6fed;
+  border-color: #2f6fed;
+}
+.sfp-checkbox svg {
+  width: 0.625vw;
+  height: 0.625vw;
+  opacity: 0;
+}
+.sfp-option.is-checked .sfp-checkbox svg { opacity: 1; }
+
+.sfp-emoji {
+  flex-shrink: 0;
+  font-size: 0.7813vw;
+  line-height: 1;
+}
+
+.sfp-label {
+  font-size: 0.7292vw;
+  font-weight: 600;
+}
+
+.sfp-empty {
+  padding: 0.5208vw 0.4167vw;
+  font-size: 0.7292vw;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.series-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.0417vw;
+  padding: 1.5625vw 2.6042vw 3.125vw;
+  min-height: 20vw;
+}
+
+/* card layout mirrors Figma's PostContent (#2120:96): a PostImage block on
+   top — left empty (#d9d9d9 placeholder) when a series has no image, filled
+   in as cover art once one is set on the data — with the info block below */
+.series-card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 0.7813vw;
+  box-shadow: 0 0.2083vw 0.2083vw rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+.series-card:hover {
+  transform: translateY(-0.4167vw);
+  box-shadow: 0 0.625vw 1.0417vw rgba(0, 0, 0, 0.18);
+}
+
+.series-card-image {
+  width: 100%;
+  aspect-ratio: 470 / 187;
+  flex-shrink: 0;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.series-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5208vw;
+  padding: 0.8333vw 1.0938vw;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.3);
+}
+
+.series-card-title {
+  margin: 0;
+  font-size: 1.0417vw;
+  font-weight: 700;
+  color: #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.series-card-count {
+  margin: 0;
+  font-size: 0.7813vw;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.series-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3646vw;
+}
+
+.series-card-tag {
+  display: inline-block;
+  padding: 0.2083vw 0.625vw;
+  font-size: 0.625vw;
+  font-weight: 600;
+  color: #000000;
+  border-radius: 999px;
+}
+
+.series-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3.125vw 0;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 1.0417vw;
+}
+
+.site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5208vw;
+  padding: 1.5625vw 0.5208vw;
+  background: #d2d2d2;
+  text-align: center;
+}
+
+.site-footer-line {
+  margin: 0;
+  font-size: 0.7813vw;
+  color: #000000;
+}
+
+.site-footer-contact {
+  margin-top: 0.5208vw;
+}
+
+/* Post_Detail_Series modal — Figma node #2160:2, same 1920px-canvas vw scale */
+.pds-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.pds-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.post-detail-series {
+  --pds-scale: 0.62;
+  position: relative;
+  display: flex;
+  width: 80.8333vw;
+  height: 55.4167vw;
+  background: #ffffff;
+  border-radius: 0.7813vw;
+  overflow: hidden;
+  transform: scale(calc(var(--pds-scale) * 0.96));
+  transition: transform 0.3s ease;
+}
+.pds-overlay.is-open .post-detail-series {
+  transform: scale(var(--pds-scale));
+}
+
+.pds-close {
+  position: absolute;
+  top: 1.0417vw;
+  right: 1.0417vw;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6667vw;
+  height: 1.6667vw;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.pds-close svg { width: 0.8333vw; height: 0.8333vw; }
+
+.pds-image {
+  position: relative;
+  flex-shrink: 0;
+  width: 39.4792vw;
+  height: 55.4167vw;
+  background: #d9d9d9 center / cover no-repeat;
+}
+
+.pds-image-effect {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.pds-gradient {
+  position: absolute;
+  top: 0;
+  left: 30.1563vw;
+  width: 13.3854vw;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 45%);
+}
+
+.pds-series-info {
+  position: absolute;
+  inset: 0;
+}
+
+.pds-series-name {
+  position: absolute;
+  left: 2.8646vw;
+  top: 4.375vw;
+  width: 14.2708vw;
+  margin: 0;
+  font-size: 3.125vw;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.pds-series-episode-count {
+  display: block;
+  margin-top: 0.5vw;
+  font-size: 1.5625vw;
+  font-weight: 400;
+}
+
+.pds-stats {
+  position: absolute;
+  left: 2.8646vw;
+  top: 50.9896vw;
+  display: flex;
+  align-items: center;
+  gap: 1.0417vw;
+}
+
+.pds-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4167vw;
+  font-size: 0.8333vw;
+  color: #ffffff;
+}
+
+.pds-stat-icon {
+  width: 0.7813vw;
+  height: 0.7813vw;
+  flex-shrink: 0;
+}
+.pds-stat-icon path, .pds-stat-icon circle { stroke: #ffffff; }
+
+.pds-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5208vw;
+  padding: 4.375vw 0.8854vw 4.375vw;
+  overflow-y: auto;
+}
+
+.pds-episode-item {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+  width: 34.9479vw;
+  height: 6.0417vw;
+  background: #ffffff;
+  border: 0.1042vw solid rgba(0, 0, 0, 0.25);
+  border-radius: 0.7813vw;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.pds-episode-item:hover {
+  transform: translateY(-0.2vw);
+  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.15);
+}
+
+.pds-episode-title {
+  position: absolute;
+  left: 1.1979vw;
+  top: 1.3021vw;
+  margin: 0;
+  font-size: 1.3021vw;
+  font-weight: 400;
+  color: #000000;
+}
+.pds-episode-id {
+  font-size: 0.7813vw;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.pds-episode-link {
+  position: absolute;
+  left: 1.1979vw;
+  top: 3.3854vw;
+  right: 6vw;
+  margin: 0;
+  font-size: 0.7813vw;
+  color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pds-episode-badge {
+  position: absolute;
+  right: 1.1979vw;
+  top: 2.3958vw;
+  font-size: 1.0417vw;
+  font-weight: 600;
+  color: #000000;
+}
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #17324a;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+.loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.loader-wipe {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: 0.75;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  transition: width 1.3s cubic-bezier(0.22, 1, 0.36, 1), height 1.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.3s ease;
+}
+.loader-wipe.is-covering { width: 300vmax; height: 300vmax; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .loader-wipe { transition: none; }
+}
+
+.loader-content {
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+.loader-content.is-visible { opacity: 1; }
+
+.loader-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.loader-icon {
+  width: 139px;
+  height: 139px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.loader-loading-text {
+  font-family: "CCElephantmen", "Pretendard", sans-serif;
+  font-size: 30px;
+  font-weight: normal;
+  color: #06b3ba;
+  letter-spacing: 0.01em;
+}
+
+.loader-tip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #06b3ba;
+  letter-spacing: 0.01em;
+}
+.loader-tip-tag { font-weight: 600; }
+.loader-caret {
+  display: inline-block;
+  width: 2px;
+  height: 0.9em;
+  margin-left: 3px;
+  vertical-align: -0.15em;
+  background: #06b3ba;
+  animation: loader-caret-blink 0.9s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-caret { animation: none; }
+}
+@keyframes loader-caret-blink {
+  50% { opacity: 0; }
+}

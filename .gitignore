@@ -13,6 +13,9 @@ scratch/
 *.tmp
 *.log
 
+# Python virtual environment
+.venv/
+
 # Agent internal files — only rules/tag.md should be published
 .agent/*
 !.agent/rules
@@ -22,3 +25,9 @@ scratch/
 
 # Src File
 src/assets
+
+# Data Folder
+src/data/번역 정리
+
+# etc
+requirements.txt

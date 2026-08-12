@@ -117,14 +117,16 @@
     window.addEventListener('load', ready);
   }
 
-  // demo: nav links have no real destination pages yet, so clicking one
-  // just replays the loading transition to preview how a page change
-  // will feel once real navigation is wired up.
+  // demo: nav links without a real destination yet just replay the loading
+  // transition to preview how a page change will feel. links that do have a
+  // real href (e.g. 시리즈 → seriesPage.html) are left alone to navigate
+  // normally — the loader replays anyway on the destination page's own load.
   var DEMO_HOLD_MS = 1600;
   var navLinks = document.querySelectorAll('.header-nav a');
   var demoRunning = false;
   for (var i = 0; i < navLinks.length; i++) {
     navLinks[i].addEventListener('click', function (e) {
+      if (this.getAttribute('href') !== '#') return;
       e.preventDefault();
       if (demoRunning) return;
       demoRunning = true;

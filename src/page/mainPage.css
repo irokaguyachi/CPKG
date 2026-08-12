@@ -21,6 +21,26 @@ body {
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
 }
 
+/* custom scrollbar — thin, rounded, matches the site's existing rgba(0,0,0,.25) border tone */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
 /* Figma 기준 1920px 캔버스 → vw 단위로 환산해 창 크기에 비례해 스케일 */
 .header {
   position: sticky;
@@ -31,27 +51,38 @@ body {
   background: #ffffff;
 }
 
-/* logo is taken out of flow so it can slide/scale between the hero
-   (top-of-page) spot and its normal left-aligned spot via left+transform,
-   instead of snapping instantly when the header's flex layout changes */
+/* logo is fixed to the viewport (not clipped to the header's own thin box) so
+   it can grow past the header at the top of the page and read as the page's
+   hero visual, then slide/scale back down into its normal header spot on
+   scroll instead of snapping instantly when the header's flex layout changes */
 .header-logo {
-  position: absolute;
-  top: 50%;
+  position: fixed;
+  top: 2.5vw;
   left: 2.6042vw;
   transform: translateY(-50%);
   width: 14.6354vw;
   height: 2.9167vw;
   object-fit: cover;
-  transition: left 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.5s cubic-bezier(0.22, 1, 0.36, 1), height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 21;
+  cursor: pointer;
+  transition: top 0.5s cubic-bezier(0.22, 1, 0.36, 1), left 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* top-of-page state: logo enlarged and centered, nav hidden */
+/* top-of-page state: logo breaks out of the header and blows up into a big
+   centered hero mark filling the space the fading site-info leaves behind;
+   nav hides at the same time so the header itself reads as just a backdrop.
+   it's decorative here, not a nav target, so clicks pass straight through to
+   whatever's underneath until it's shrunk back into its normal header spot */
 body.is-top .header-logo {
+  top: 13vw;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 18vw;
-  height: 3.6vw;
+  width: 34vw;
+  height: 6.8vw;
+  pointer-events: none;
+  cursor: default;
 }
 
 .header-nav {
@@ -281,6 +312,193 @@ body.is-top .site-info {
   margin-top: 0.5208vw;
 }
 
+/* Post_Detail_Series modal — Figma node #2160:2, same 1920px-canvas vw scale */
+.pds-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.pds-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.post-detail-series {
+  --pds-scale: 0.62;
+  position: relative;
+  display: flex;
+  width: 80.8333vw;
+  height: 55.4167vw;
+  background: #ffffff;
+  border-radius: 0.7813vw;
+  overflow: hidden;
+  transform: scale(calc(var(--pds-scale) * 0.96));
+  transition: transform 0.3s ease;
+}
+.pds-overlay.is-open .post-detail-series {
+  transform: scale(var(--pds-scale));
+}
+
+.pds-close {
+  position: absolute;
+  top: 1.0417vw;
+  right: 1.0417vw;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6667vw;
+  height: 1.6667vw;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.pds-close svg { width: 0.8333vw; height: 0.8333vw; }
+
+.pds-image {
+  position: relative;
+  flex-shrink: 0;
+  width: 39.4792vw;
+  height: 55.4167vw;
+  background: #d9d9d9 center / cover no-repeat;
+}
+
+.pds-image-effect {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.pds-gradient {
+  position: absolute;
+  top: 0;
+  left: 30.1563vw;
+  width: 13.3854vw;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 45%);
+}
+
+.pds-series-info {
+  position: absolute;
+  inset: 0;
+}
+
+.pds-series-name {
+  position: absolute;
+  left: 2.8646vw;
+  top: 4.375vw;
+  width: 14.2708vw;
+  margin: 0;
+  font-size: 3.125vw;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.pds-series-episode-count {
+  display: block;
+  margin-top: 0.5vw;
+  font-size: 1.5625vw;
+  font-weight: 400;
+}
+
+.pds-stats {
+  position: absolute;
+  left: 2.8646vw;
+  top: 50.9896vw;
+  display: flex;
+  align-items: center;
+  gap: 1.0417vw;
+}
+
+.pds-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4167vw;
+  font-size: 0.8333vw;
+  color: #ffffff;
+}
+
+.pds-stat-icon {
+  width: 0.7813vw;
+  height: 0.7813vw;
+  flex-shrink: 0;
+}
+.pds-stat-icon path, .pds-stat-icon circle { stroke: #ffffff; }
+
+.pds-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5208vw;
+  padding: 4.375vw 0.8854vw 4.375vw;
+  overflow-y: auto;
+}
+
+.pds-episode-item {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+  width: 34.9479vw;
+  height: 6.0417vw;
+  background: #ffffff;
+  border: 0.1042vw solid rgba(0, 0, 0, 0.25);
+  border-radius: 0.7813vw;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.pds-episode-item:hover {
+  transform: translateY(-0.2vw);
+  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.15);
+}
+
+.pds-episode-title {
+  position: absolute;
+  left: 1.1979vw;
+  top: 1.3021vw;
+  margin: 0;
+  font-size: 1.3021vw;
+  font-weight: 400;
+  color: #000000;
+}
+.pds-episode-id {
+  font-size: 0.7813vw;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.pds-episode-link {
+  position: absolute;
+  left: 1.1979vw;
+  top: 3.3854vw;
+  right: 6vw;
+  margin: 0;
+  font-size: 0.7813vw;
+  color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pds-episode-badge {
+  position: absolute;
+  right: 1.1979vw;
+  top: 2.3958vw;
+  font-size: 1.0417vw;
+  font-weight: 600;
+  color: #000000;
+}
+
 .loader {
   position: fixed;
   inset: 0;
@@ -328,10 +546,9 @@ body.is-top .site-info {
 .loader-icon {
   width: 139px;
   height: 139px;
-  border-radius: 50%;
-  background: #ffffff;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 .loader-loading-text {
