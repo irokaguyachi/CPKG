@@ -90,31 +90,52 @@
   }
 
   // outro: the circle grows back to cover the screen while the content
-  // fades out, then once the circle fully covers everything the whole
-  // loader hides, revealing the real page underneath.
+  // fades out. The circle keeps growing at the same OUTRO_MS pace (it's
+  // sized to 300vmax so it stays big enough to cover any screen for a
+  // while yet), but visually it's already covering the viewport well
+  // before that full duration elapses — so the real page underneath is
+  // revealed as soon as it looks fully covered instead of waiting out
+  // the rest of the oversized transition.
+  var OUTRO_REVEAL_MS = 700;
   window.finishLoading = function () {
     if (contentEl) contentEl.classList.remove('is-visible');
     wipeEl.style.transitionDuration = OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms';
     wipeEl.classList.add('is-covering');
     setTimeout(function () {
       loaderEl.classList.add('is-hidden');
-    }, OUTRO_MS);
+    }, OUTRO_REVEAL_MS);
   };
 
-  playIntro();
-
-  // hold the loader for at least MIN_VISIBLE_MS so it doesn't just flash,
-  // but finish as soon as the real page has actually loaded.
-  var MIN_VISIBLE_MS = 1500;
-  var startedAt = Date.now();
-  function ready() {
-    var wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
-    setTimeout(window.finishLoading, wait);
+  // the wipe only plays on a genuine fresh entry into the page (e.g.
+  // clicking a nav link in from another page). A refresh or a browser
+  // back/forward return skips straight to the page — no wipe, no flash.
+  function isFreshEntry() {
+    try {
+      var nav = performance.getEntriesByType('navigation')[0];
+      if (nav) return nav.type === 'navigate';
+      if (performance.navigation) return performance.navigation.type === 0;
+    } catch (e) {}
+    return true;
   }
-  if (document.readyState === 'complete') {
-    ready();
+
+  if (!isFreshEntry()) {
+    loaderEl.style.display = 'none';
   } else {
-    window.addEventListener('load', ready);
+    playIntro();
+
+    // hold the loader for at least MIN_VISIBLE_MS so it doesn't just flash,
+    // but finish as soon as the real page has actually loaded.
+    var MIN_VISIBLE_MS = 1500;
+    var startedAt = Date.now();
+    function ready() {
+      var wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
+      setTimeout(window.finishLoading, wait);
+    }
+    if (document.readyState === 'complete') {
+      ready();
+    } else {
+      window.addEventListener('load', ready);
+    }
   }
 
   // demo: nav links without a real destination yet just replay the loading
