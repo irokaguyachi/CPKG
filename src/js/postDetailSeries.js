@@ -96,9 +96,30 @@
     card.appendChild(list);
 
     overlay.appendChild(card);
+    applyTitleMarquee(card);
     requestAnimationFrame(function () {
       overlay.classList.add('is-open');
     });
+  }
+
+  // titles longer than the clipped box get a ping-pong scroll instead of
+  // being cut off under the episode badge — only overflowing ones animate
+  function applyTitleMarquee(root) {
+    var titles = root.querySelectorAll('.pds-episode-title');
+    for (var i = 0; i < titles.length; i++) {
+      var titleEl = titles[i];
+      var inner = titleEl.querySelector('.pds-episode-title-inner');
+      if (!inner) continue;
+      var overflow = inner.scrollWidth - titleEl.clientWidth;
+      if (overflow > 0) {
+        // scroll past the overflow by the fade's own width too, so the
+        // trailing text (e.g. the episode ID) ends up fully clear of the
+        // gradient instead of sitting permanently faded under it
+        var fadeWidth = parseFloat(getComputedStyle(titleEl, '::after').width) || 0;
+        titleEl.style.setProperty('--marquee-distance', (-(overflow + fadeWidth)) + 'px');
+        titleEl.classList.add('is-marquee');
+      }
+    }
   }
 
   function createEpisodeItem(ep) {
@@ -111,11 +132,14 @@
 
     var title = document.createElement('p');
     title.className = 'pds-episode-title';
-    title.textContent = (ep.title || '게시물 이름') + ' ';
+    var titleInner = document.createElement('span');
+    titleInner.className = 'pds-episode-title-inner';
+    titleInner.appendChild(document.createTextNode((ep.title || '게시물 이름') + ' '));
     var idSpan = document.createElement('span');
     idSpan.className = 'pds-episode-id';
     idSpan.textContent = '| ' + (ep.id != null ? ep.id : '게시물 ID');
-    title.appendChild(idSpan);
+    titleInner.appendChild(idSpan);
+    title.appendChild(titleInner);
     item.appendChild(title);
 
     var link = document.createElement('p');

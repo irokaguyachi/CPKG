@@ -125,6 +125,26 @@ body.is-top .header-nav {
   font-weight: 800;
 }
 
+/* locked nav link (번역) — shakes in place instead of navigating, to read
+   as "not open yet" rather than a dead link */
+.header-nav a[data-locked] {
+  cursor: not-allowed;
+}
+.header-nav a.is-nav-shake {
+  animation: nav-locked-shake 0.4s ease;
+}
+@keyframes nav-locked-shake {
+  0% { opacity: 1; }
+  10%, 90% { transform: translateX(-1px); opacity: 0.5; }
+  20%, 80% { transform: translateX(2px); opacity: 0.5; }
+  30%, 50%, 70% { transform: translateX(-4px); opacity: 0.4; }
+  40%, 60% { transform: translateX(4px); opacity: 0.4; }
+  100% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-nav a.is-nav-shake { animation: none; }
+}
+
 .site-info {
   display: flex;
   flex-direction: column;
@@ -467,10 +487,39 @@ body.is-top .site-info {
   position: absolute;
   left: 1.1979vw;
   top: 1.3021vw;
+  right: 3.75vw;
   margin: 0;
   font-size: 1.3021vw;
   font-weight: 400;
   color: #000000;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pds-episode-title-inner {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+.pds-episode-title.is-marquee .pds-episode-title-inner {
+  animation: pds-title-marquee 7s ease-in-out infinite;
+}
+.pds-episode-title.is-marquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1.0417vw;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), #ffffff);
+  pointer-events: none;
+}
+@keyframes pds-title-marquee {
+  0%, 10% { transform: translateX(0); }
+  45%, 55% { transform: translateX(var(--marquee-distance)); }
+  90%, 100% { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pds-episode-title.is-marquee .pds-episode-title-inner { animation: none; }
 }
 .pds-episode-id {
   font-size: 0.7813vw;

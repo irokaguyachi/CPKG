@@ -126,7 +126,7 @@
   var demoRunning = false;
   for (var i = 0; i < navLinks.length; i++) {
     navLinks[i].addEventListener('click', function (e) {
-      if (this.getAttribute('href') !== '#') return;
+      if (this.getAttribute('href') !== '#' || this.hasAttribute('data-locked')) return;
       e.preventDefault();
       if (demoRunning) return;
       demoRunning = true;
@@ -136,6 +136,20 @@
         window.finishLoading();
         setTimeout(function () { demoRunning = false; }, OUTRO_MS);
       }, INTRO_MS + DEMO_HOLD_MS);
+    });
+  }
+
+  // locked nav links (e.g. 번역) have no destination yet — instead of the
+  // loading-replay demo, they shake in place to read as a deliberate
+  // "not open yet" rejection rather than a dead/broken link
+  var lockedLinks = document.querySelectorAll('.header-nav a[data-locked]');
+  for (var k = 0; k < lockedLinks.length; k++) {
+    lockedLinks[k].addEventListener('click', function (e) {
+      e.preventDefault();
+      var el = this;
+      el.classList.remove('is-nav-shake');
+      void el.offsetWidth;
+      el.classList.add('is-nav-shake');
     });
   }
 })();

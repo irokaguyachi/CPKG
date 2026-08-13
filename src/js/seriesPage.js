@@ -56,10 +56,47 @@
   var DEFAULT_TAG_COLOR = '#efefef';
   var DEFAULT_EMOJI = '🏷️';
 
+  // matches the classification order in .agent/rules/tag.md (분량 태그 →
+  // 명예관/대회 → 장르 태그 순) so the filter list and card pills read in a
+  // consistent, intentional order instead of alphabetically
+  var TAG_ORDER = [
+    '짧문', '장문', '장편', '단편', '소설',
+    '명예관', '대회',
+    '피폐', '슬픔', '감동', '로맨스', '후방주의', '코미디', '일상', '미스테리', 'SF',
+    '글카스', '이모티콘', 'IF 스토리',
+    '분류 안함', 'AI', '로카'
+  ];
+  function tagOrderIndex(t) {
+    var i = TAG_ORDER.indexOf(t);
+    return i === -1 ? TAG_ORDER.length : i;
+  }
+  function sortTags(tags) {
+    return tags.slice().sort(function (a, b) {
+      var d = tagOrderIndex(a) - tagOrderIndex(b);
+      return d !== 0 ? d : a.localeCompare(b);
+    });
+  }
+
   var allSeries = [];
   var activeTags = {};
   var searchTerm = '';
   var filterSearchTerm = '';
+
+  var PAGE_SIZE = 50;
+  var currentFiltered = [];
+  var renderedCount = 0;
+  var isLoadingMore = false;
+  var loadMoreObserver = null;
+  var sentinelEl = null;
+
+  // MiniLoading (Figma #2183:2) reuses the same mascot gifs as the full-page
+  // loader — pick a random one per sentinel instead of the counter-based
+  // rotation loading.js uses for the intro screen
+  var miniLoadingIcons = [];
+  fetch('../data/LoadingIcons.json', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })
+    .catch(function () {});
 
   fetch('../data/PageData/Series.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
@@ -71,15 +108,82 @@
       if (countEl) countEl.textContent = allSeries.length + '개의 시리즈가 있습니다!';
       renderFilterOptions();
       renderGrid();
+      startSearchPlaceholderCycle();
     })
     .catch(function () {});
+
+  // rotates the (empty) search input's placeholder through real series
+  // names, typed out like loading.js's tip text, so the dim placeholder
+  // itself hints at what you can type
+  function startSearchPlaceholderCycle() {
+    if (!searchInput || !allSeries.length) return;
+    var names = allSeries.map(function (s) { return s.name; });
+    var order = shuffle(names.slice());
+    var idx = 0;
+    function cycle() {
+      if (idx >= order.length) { order = shuffle(names.slice()); idx = 0; }
+      var name = order[idx];
+      idx++;
+      typePlaceholder(searchInput, name, 70, function () {
+        setTimeout(cycle, 5000);
+      });
+    }
+    cycle();
+  }
+
+  function typePlaceholder(el, text, speed, done) {
+    el.placeholder = '';
+    var i = 0;
+    var timer = setInterval(function () {
+      el.placeholder += text.charAt(i);
+      i++;
+      if (i >= text.length) {
+        clearInterval(timer);
+        if (done) done();
+      }
+    }, speed);
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  // 초성 검색: "ㅅㅋㅇㄹ ㅇㄹㅎ" 같은 자음만으로도 "사카요리 이로하"를 찾을 수
+  // 있도록, 검색어가 자음으로만 이루어져 있으면 이름을 초성으로 변환해 비교함
+  var CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+  function toChosung(str) {
+    var result = '';
+    for (var i = 0; i < str.length; i++) {
+      var code = str.charCodeAt(i) - 0xac00;
+      if (code >= 0 && code <= 11171) {
+        result += CHOSUNG_LIST[Math.floor(code / 588)];
+      } else {
+        result += str[i];
+      }
+    }
+    return result;
+  }
+  var CHOSUNG_ONLY_RE = /^[ㄱ-ㅎ\s]+$/;
+  function matchesSearch(name, term) {
+    if (!term) return true;
+    var lowerName = name.toLowerCase();
+    if (lowerName.indexOf(term) !== -1) return true;
+    if (CHOSUNG_ONLY_RE.test(term)) {
+      return toChosung(name).indexOf(term) !== -1;
+    }
+    return false;
+  }
 
   function allTags() {
     var tagSet = {};
     allSeries.forEach(function (s) {
       s.tags.forEach(function (t) { tagSet[t] = true; });
     });
-    return Object.keys(tagSet).sort();
+    return sortTags(Object.keys(tagSet));
   }
 
   function renderFilterOptions() {
@@ -136,22 +240,22 @@
 
   function openFilterPanel() {
     if (!filterPanel) return;
-    filterPanel.hidden = false;
+    filterPanel.classList.add('is-open');
     filterBtn.setAttribute('aria-expanded', 'true');
     if (filterSearch) filterSearch.focus();
   }
 
   function closeFilterPanel() {
     if (!filterPanel) return;
-    filterPanel.hidden = true;
+    filterPanel.classList.remove('is-open');
     filterBtn.setAttribute('aria-expanded', 'false');
   }
 
   if (filterBtn) {
     filterBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      if (filterPanel.hidden) openFilterPanel();
-      else closeFilterPanel();
+      if (filterPanel.classList.contains('is-open')) closeFilterPanel();
+      else openFilterPanel();
     });
   }
   if (filterPanel) {
@@ -174,12 +278,18 @@
     var term = searchTerm.trim().toLowerCase();
     var activeList = Object.keys(activeTags);
     var filtered = allSeries.filter(function (s) {
-      if (term && s.name.toLowerCase().indexOf(term) === -1) return false;
+      if (!matchesSearch(s.name, term)) return false;
       if (activeList.length && !activeList.some(function (t) { return s.tags.indexOf(t) !== -1; })) return false;
       return true;
     });
 
+    currentFiltered = filtered;
+    renderedCount = 0;
+    isLoadingMore = false;
+    if (loadMoreObserver) loadMoreObserver.disconnect();
+    sentinelEl = null;
     gridEl.innerHTML = '';
+
     if (!filtered.length) {
       var empty = document.createElement('p');
       empty.className = 'series-empty';
@@ -188,9 +298,63 @@
       return;
     }
 
-    filtered.forEach(function (s) {
+    appendNextPage();
+  }
+
+  // renders the next PAGE_SIZE cards and (re)places the loading sentinel
+  // after them so infinite scroll always resumes from the grid's true end
+  function appendNextPage() {
+    var next = currentFiltered.slice(renderedCount, renderedCount + PAGE_SIZE);
+    next.forEach(function (s) {
       gridEl.appendChild(createSeriesCard(s));
     });
+    renderedCount += next.length;
+    updateSentinel();
+  }
+
+  function updateSentinel() {
+    if (sentinelEl) {
+      if (loadMoreObserver) loadMoreObserver.unobserve(sentinelEl);
+      if (sentinelEl.parentNode) sentinelEl.parentNode.removeChild(sentinelEl);
+      sentinelEl = null;
+    }
+    if (renderedCount >= currentFiltered.length) return;
+
+    sentinelEl = document.createElement('div');
+    sentinelEl.className = 'series-loading-more';
+
+    var icon = document.createElement('div');
+    icon.className = 'series-loading-icon';
+    if (miniLoadingIcons.length) {
+      var pick = miniLoadingIcons[Math.floor(Math.random() * miniLoadingIcons.length)];
+      icon.style.backgroundImage = 'url("../assets/Image/LoadingIcon/' + encodeURIComponent(pick) + '")';
+    }
+    sentinelEl.appendChild(icon);
+
+    var label = document.createElement('p');
+    label.className = 'series-loading-text';
+    label.textContent = 'Loading';
+    sentinelEl.appendChild(label);
+
+    gridEl.appendChild(sentinelEl);
+
+    if (!loadMoreObserver) {
+      loadMoreObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) handleSentinelVisible();
+        });
+      }, { rootMargin: '200px 0px' });
+    }
+    loadMoreObserver.observe(sentinelEl);
+  }
+
+  function handleSentinelVisible() {
+    if (isLoadingMore || renderedCount >= currentFiltered.length) return;
+    isLoadingMore = true;
+    setTimeout(function () {
+      appendNextPage();
+      isLoadingMore = false;
+    }, 500);
   }
 
   function createSeriesCard(s) {
@@ -219,10 +383,10 @@
 
     var tagsWrap = document.createElement('div');
     tagsWrap.className = 'series-card-tags';
-    s.tags.forEach(function (tag) {
+    sortTags(s.tags).forEach(function (tag) {
       var pill = document.createElement('span');
       pill.className = 'series-card-tag';
-      pill.textContent = tag;
+      pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
       pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
       tagsWrap.appendChild(pill);
     });
