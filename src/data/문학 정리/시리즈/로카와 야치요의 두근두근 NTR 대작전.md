@@ -23,6 +23,6 @@
 ### 시리즈 2: [58961] ** R18) 로카와 이로하의 두근두근 엄마분양
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=58961](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=58961)
 - **작성자**: Marrio(skinny9946)
-- **태그**: [장문, 소설, 후방주의, 로맨스, 로카]
+- **태그**: [소설, 후방주의, 로맨스, 로카]
 - **글자 수**: 9,035자
 - **첨부 사진**: 없음

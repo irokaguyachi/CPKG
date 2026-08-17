@@ -22,7 +22,7 @@ series_out = [
 ]
 
 bundle = {"posts": posts, "series": series_out}
-out_path = os.path.join(HERE, "..", "data.json")
+out_path = os.path.join(HERE, "..", "data", "MoonHakdata.json")
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(bundle, f, ensure_ascii=False, indent=2)
 size = os.path.getsize(out_path)

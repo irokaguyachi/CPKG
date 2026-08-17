@@ -75,11 +75,13 @@
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
 
+    /* 추후 조회수 / 북마크(좋아요) 기능 활성화 시 주석 해제
     var stats = document.createElement('div');
     stats.className = 'pds-stats';
     stats.appendChild(createStat(ICON_VIEW, data.views));
     stats.appendChild(createStat(ICON_LIKE, data.likes));
     seriesInfo.appendChild(stats);
+    */
 
     image.appendChild(seriesInfo);
     card.appendChild(image);
@@ -88,12 +90,105 @@
     gradient.className = 'pds-gradient';
     card.appendChild(gradient);
 
+    // Right side container holding toolbar & episode list
+    var rightPanel = document.createElement('div');
+    rightPanel.className = 'pds-right-panel';
+
+    var episodes = (data.episodes || []).map(function (ep, idx) {
+      ep._idx = idx;
+      return ep;
+    });
+
+    var currentSortOrder = 'asc'; // 'asc' = 1화부터, 'desc' = 최신화부터
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'pds-toolbar';
+
+    var sortBtn = document.createElement('button');
+    sortBtn.type = 'button';
+    sortBtn.className = 'pds-sort-btn';
+    sortBtn.setAttribute('aria-label', '화 정렬 순서 변경');
+
+    function updateSortButtonUI() {
+      if (currentSortOrder === 'asc') {
+        sortBtn.innerHTML = '<svg class="pds-sort-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M2.5 8h4M2.5 11.5h2"/><path d="M10.5 11.5l2.5-3 2.5 3"/><path d="M13 8.5v5"/></svg><span class="pds-sort-text">1화부터 (오름차순)</span>';
+        sortBtn.setAttribute('title', '현재: 1화부터 순서대로 (클릭 시 최신화부터 역순)');
+      } else {
+        sortBtn.innerHTML = '<svg class="pds-sort-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M2.5 8h4M2.5 11.5h2"/><path d="M10.5 8.5l2.5 3 2.5-3"/><path d="M13 11.5v-5"/></svg><span class="pds-sort-text">최신화부터 (내림차순)</span>';
+        sortBtn.setAttribute('title', '현재: 최신화부터 역순으로 (클릭 시 1화부터 순서대로)');
+      }
+    }
+
     var list = document.createElement('div');
     list.className = 'pds-list';
-    (data.episodes || []).forEach(function (ep) {
-      list.appendChild(createEpisodeItem(ep));
+
+    function getEpisodeSortKey(ep, fallbackIndex) {
+      if (!ep) return fallbackIndex;
+      if (ep.episodeLabel) {
+        var m = String(ep.episodeLabel).match(/(\d+(?:\.\d+)?)/);
+        if (m) return parseFloat(m[1]);
+      }
+      if (ep.title) {
+        var tm = String(ep.title).match(/(?:第|\b|\[|\()?\s*(\d+(?:\.\d+)?)\s*(?:화|편|話|\))/);
+        if (tm) return parseFloat(tm[1]);
+      }
+      return fallbackIndex;
+    }
+
+    function renderEpisodes() {
+      list.innerHTML = '';
+      var sorted = episodes.slice().sort(function (a, b) {
+        var valA = getEpisodeSortKey(a, a._idx);
+        var valB = getEpisodeSortKey(b, b._idx);
+        if (valA !== valB) {
+          return currentSortOrder === 'asc' ? (valA - valB) : (valB - valA);
+        }
+        return currentSortOrder === 'asc' ? (a._idx - b._idx) : (b._idx - a._idx);
+      });
+
+      sorted.forEach(function (ep) {
+        list.appendChild(createEpisodeItem(ep));
+      });
+
+      list.scrollTop = 0;
+      applyTitleMarquee(card);
+    }
+
+    var isSorting = false;
+    sortBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (isSorting) return;
+      isSorting = true;
+
+      currentSortOrder = (currentSortOrder === 'asc' ? 'desc' : 'asc');
+      updateSortButtonUI();
+
+      // Slide out effect
+      list.classList.remove('pds-list-anim-in', 'pds-list-anim-prep');
+      list.classList.add('pds-list-anim-out');
+
+      setTimeout(function () {
+        renderEpisodes();
+        list.classList.remove('pds-list-anim-out');
+        list.classList.add('pds-list-anim-prep');
+        void list.offsetWidth; // force reflow
+        list.classList.remove('pds-list-anim-prep');
+        list.classList.add('pds-list-anim-in');
+
+        setTimeout(function () {
+          list.classList.remove('pds-list-anim-in');
+          isSorting = false;
+        }, 240);
+      }, 140);
     });
-    card.appendChild(list);
+
+    updateSortButtonUI();
+    renderEpisodes();
+
+    toolbar.appendChild(sortBtn);
+    rightPanel.appendChild(toolbar);
+    rightPanel.appendChild(list);
+    card.appendChild(rightPanel);
 
     overlay.appendChild(card);
     applyTitleMarquee(card);

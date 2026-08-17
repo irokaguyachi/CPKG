@@ -104,6 +104,12 @@ body.is-top .header-nav {
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
+body.is-top .header-nav a,
+body.is-top .header-nav a[data-locked] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .header-nav a {
   display: inline-block;
   font-size: 1.3021vw;
@@ -125,21 +131,25 @@ body.is-top .header-nav {
   font-weight: 800;
 }
 
-/* locked nav link (번역) — shakes in place instead of navigating, to read
-   as "not open yet" rather than a dead link */
+/* locked nav link (번역) — permanently semi-transparent (disabled look) */
 .header-nav a[data-locked] {
+  opacity: 0.35;
   cursor: not-allowed;
 }
-.header-nav a.is-nav-shake {
+.header-nav a[data-locked]:hover {
+  opacity: 0.35 !important;
+  color: inherit !important;
+}
+.header-nav a[data-locked].is-nav-shake {
   animation: nav-locked-shake 0.4s ease;
 }
 @keyframes nav-locked-shake {
-  0% { opacity: 1; }
-  10%, 90% { transform: translateX(-1px); opacity: 0.5; }
-  20%, 80% { transform: translateX(2px); opacity: 0.5; }
-  30%, 50%, 70% { transform: translateX(-4px); opacity: 0.4; }
-  40%, 60% { transform: translateX(4px); opacity: 0.4; }
-  100% { opacity: 1; }
+  0% { opacity: 0.35; }
+  10%, 90% { transform: translateX(-1px); opacity: 0.2; }
+  20%, 80% { transform: translateX(2px); opacity: 0.2; }
+  30%, 50%, 70% { transform: translateX(-4px); opacity: 0.15; }
+  40%, 60% { transform: translateX(4px); opacity: 0.15; }
+  100% { opacity: 0.35; }
 }
 @media (prefers-reduced-motion: reduce) {
   .header-nav a.is-nav-shake { animation: none; }
@@ -288,7 +298,7 @@ body.is-top .site-info {
   display: inline-block;
   width: 3.9063vw;
   height: 1.4583vw;
-  background: #86fff9;
+  background: #daf5f3;
   border-radius: 1.25vw;
 }
 
@@ -414,21 +424,26 @@ body.is-top .site-info {
 
 .pds-series-name {
   position: absolute;
-  left: 2.8646vw;
-  top: 4.375vw;
-  width: 14.2708vw;
+  left: 2.6042vw;
+  top: 3.8vw;
+  width: 34.5vw;
+  max-width: calc(100% - 3.5vw);
   margin: 0;
-  font-size: 3.125vw;
-  line-height: 1.15;
+  font-size: 2.85vw;
+  line-height: 1.2;
   font-weight: 700;
   color: #ffffff;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-shadow: 0 0.1042vw 0.4167vw rgba(0, 0, 0, 0.65);
 }
 
 .pds-series-episode-count {
   display: block;
-  margin-top: 0.5vw;
-  font-size: 1.5625vw;
+  margin-top: 0.6vw;
+  font-size: 1.45vw;
   font-weight: 400;
+  text-shadow: 0 0.1042vw 0.3125vw rgba(0, 0, 0, 0.65);
 }
 
 .pds-stats {
@@ -455,14 +470,83 @@ body.is-top .site-info {
 }
 .pds-stat-icon path, .pds-stat-icon circle { stroke: #ffffff; }
 
+.pds-right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.pds-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 1.25vw 3.5vw 0.8vw 1.2vw;
+  flex-shrink: 0;
+}
+
+.pds-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3646vw;
+  padding: 0.3646vw 0.7813vw;
+  font-size: 0.7813vw;
+  font-weight: 600;
+  color: #222222;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.pds-sort-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.25);
+  transform: translateY(-0.1vw);
+}
+.pds-sort-btn:active {
+  transform: scale(0.96);
+}
+
+.pds-sort-icon {
+  width: 0.8333vw;
+  height: 0.8333vw;
+  flex-shrink: 0;
+}
+
 .pds-list {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5208vw;
-  padding: 4.375vw 0.8854vw 4.375vw;
+  padding: 0.2vw 0.8854vw 2.5vw;
   overflow-y: auto;
+  transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.4, 0, 1, 1), filter 0.14s ease;
+  will-change: transform, opacity;
+}
+
+.pds-list.pds-list-anim-out {
+  opacity: 0;
+  transform: translateX(1.5vw);
+  filter: blur(1.5px);
+}
+
+.pds-list.pds-list-anim-prep {
+  opacity: 0;
+  transform: translateX(-1.5vw);
+  filter: blur(1.5px);
+  transition: none !important;
+}
+
+.pds-list.pds-list-anim-in {
+  opacity: 1;
+  transform: translateX(0);
+  filter: blur(0);
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1), transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), filter 0.24s ease;
 }
 
 .pds-episode-item {

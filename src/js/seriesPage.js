@@ -1,21 +1,25 @@
 (function () {
   var TOP_THRESHOLD = 10;
-  function update() {
-    if (window.scrollY <= TOP_THRESHOLD) {
-      document.body.classList.add('is-top');
-    } else {
+
+  function onScroll() {
+    if (window.scrollY > TOP_THRESHOLD) {
       document.body.classList.remove('is-top');
+      window.removeEventListener('scroll', onScroll);
     }
   }
-  update();
-  window.addEventListener('scroll', update, { passive: true });
+
+  if (window.scrollY <= TOP_THRESHOLD) {
+    document.body.classList.add('is-top');
+    window.addEventListener('scroll', onScroll, { passive: true });
+  } else {
+    document.body.classList.remove('is-top');
+  }
 })();
 
 (function () {
   var searchInput = document.getElementById('series-search-input');
   var filterBtn = document.getElementById('series-filter-btn');
   var filterPanel = document.getElementById('series-filter-panel');
-  var filterSearch = document.getElementById('series-filter-search');
   var optionsEl = document.getElementById('series-filter-options');
   var gridEl = document.getElementById('series-grid');
   var countEl = document.getElementById('series-count');
@@ -24,29 +28,32 @@
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   var TAG_COLORS = {
-    '일상': '#86fff9',
-    '장편': '#a6e674',
-    '로맨스': '#ffc1a3',
-    '슬픔': '#b3b3ff',
-    '코미디': '#ffe58d',
-    '피폐': '#ff8a8a',
-    '후방주의': '#ffb3b3',
-    '장문': '#9fd8ff',
-    '짧문': '#ffd1ec',
-    '단편': '#d1b3ff',
-    '감동': '#ffdca8',
-    '글카스': '#d4d4d4',
-    '명예관': '#ffb347'
+    '일상': '#e2f4f2',
+    '소설': '#f3ebe4',
+    '장편': '#e6f4df',
+    '로맨스': '#fae4ec',
+    '슬픔': '#e8ecf8',
+    '코미디': '#faf1d2',
+    '피폐': '#fae4e4',
+    '후방주의': '#fae4e4',
+    '짧문': '#f5e4f2',
+    '단편': '#eee4fb',
+    '감동': '#fbf0df',
+    '명예관': '#faeed4',
+    '대회': '#e4eefb',
+    '미스테리': '#ece8f7',
+    'SF': '#e0f1f6',
+    '글카스': '#ebecee'
   };
   var TAG_EMOJI = {
     '일상': '☕',
+    '소설': '📕',
     '장편': '📖',
     '로맨스': '❤️',
     '슬픔': '💧',
     '코미디': '🎭',
     '피폐': '🥀',
     '후방주의': '🔞',
-    '장문': '📜',
     '짧문': '✏️',
     '단편': '📄',
     '감동': '✨',
@@ -60,7 +67,7 @@
   // 명예관/대회 → 장르 태그 순) so the filter list and card pills read in a
   // consistent, intentional order instead of alphabetically
   var TAG_ORDER = [
-    '짧문', '장문', '장편', '단편', '소설',
+    '짧문', '소설', '장편', '단편',
     '명예관', '대회',
     '피폐', '슬픔', '감동', '로맨스', '후방주의', '코미디', '일상', '미스테리', 'SF',
     '글카스', '이모티콘', 'IF 스토리',
@@ -80,7 +87,6 @@
   var allSeries = [];
   var activeTags = {};
   var searchTerm = '';
-  var filterSearchTerm = '';
 
   var PAGE_SIZE = 50;
   var currentFiltered = [];
@@ -188,8 +194,7 @@
 
   function renderFilterOptions() {
     if (!optionsEl) return;
-    var term = filterSearchTerm.trim().toLowerCase();
-    var tags = allTags().filter(function (t) { return !term || t.toLowerCase().indexOf(term) !== -1; });
+    var tags = allTags();
 
     optionsEl.innerHTML = '';
     if (!tags.length) {
@@ -217,8 +222,12 @@
 
       var label = document.createElement('span');
       label.className = 'sfp-label';
+      label.dataset.tag = tag;
       label.textContent = tag;
-      label.style.color = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
+      label.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
+      label.style.color = '#000000';
+      label.style.padding = '0.1042vw 0.4167vw';
+      label.style.borderRadius = '999px';
       row.appendChild(label);
 
       row.addEventListener('click', function () {
@@ -242,7 +251,6 @@
     if (!filterPanel) return;
     filterPanel.classList.add('is-open');
     filterBtn.setAttribute('aria-expanded', 'true');
-    if (filterSearch) filterSearch.focus();
   }
 
   function closeFilterPanel() {
@@ -267,12 +275,6 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeFilterPanel();
   });
-  if (filterSearch) {
-    filterSearch.addEventListener('input', function () {
-      filterSearchTerm = filterSearch.value;
-      renderFilterOptions();
-    });
-  }
 
   function renderGrid() {
     var term = searchTerm.trim().toLowerCase();
@@ -386,6 +388,7 @@
     sortTags(s.tags).forEach(function (tag) {
       var pill = document.createElement('span');
       pill.className = 'series-card-tag';
+      pill.dataset.tag = tag;
       pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
       pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
       tagsWrap.appendChild(pill);

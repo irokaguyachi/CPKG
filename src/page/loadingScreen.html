@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title></title>
 <link rel="stylesheet" href="loadingScreen.css" />
+<link rel="stylesheet" href="theme.css" />
+<script>
+  (function () {
+    var s = localStorage.getItem('chokaguya_theme');
+    var d = s || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', d);
+  })();
+</script>
 </head>
 <body>
 
@@ -20,5 +28,6 @@
 </div>
 
 <script src="../js/loading.js"></script>
+<script src="../js/theme.js"></script>
 </body>
 </html>

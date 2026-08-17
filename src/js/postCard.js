@@ -39,11 +39,13 @@
     tagWrap.appendChild(pill);
     info.appendChild(tagWrap);
 
+    /* 추후 조회수 / 북마크(좋아요) 기능 활성화 시 주석 해제
     var stats = document.createElement('div');
     stats.className = 'post-stats';
     stats.appendChild(createStat(ICON_VIEW, data.views));
     stats.appendChild(createStat(ICON_LIKE, data.likes));
     info.appendChild(stats);
+    */
 
     card.appendChild(info);
 

@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title></title>
 <link rel="stylesheet" href="seriesPage.css" />
+<link rel="stylesheet" href="theme.css" />
+<script>
+  (function () {
+    var s = localStorage.getItem('chokaguya_theme');
+    var d = s || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', d);
+  })();
+</script>
 </head>
 <body>
 
@@ -50,10 +58,8 @@
       </button>
       <div class="series-filter-panel" id="series-filter-panel">
         <div class="sfp-header">
-          <span>태그 값을 포함하는 데이터</span>
-          <span class="sfp-more" aria-hidden="true">&#8230;</span>
+          <span>원하는 태그를 고르세요!</span>
         </div>
-        <input type="text" class="sfp-search" id="series-filter-search" placeholder="하나 이상의 옵션을 선택하세요" autocomplete="off" />
         <div class="sfp-options" id="series-filter-options"></div>
       </div>
     </div>
@@ -69,6 +75,7 @@
 </footer>
 
 <script src="../js/loading.js"></script>
+<script src="../js/theme.js"></script>
 <script src="../js/postDetailSeries.js"></script>
 <script src="../js/seriesPage.js"></script>
 </body>

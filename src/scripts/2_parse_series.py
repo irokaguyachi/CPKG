@@ -3,7 +3,7 @@ import re, glob, json, os, sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-SERIES_DIR = r"C:\Users\kimji\Documents\러블리들\문학\문학 정리\시리즈"
+SERIES_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "문학 정리", "시리즈")
 
 name_re = re.compile(r"^- \*\*시리즈명\*\*:\s*(.+)$", re.MULTILINE)
 tag_re = re.compile(r"^- \*\*시리즈 태그\*\*:\s*(.+)$", re.MULTILINE)

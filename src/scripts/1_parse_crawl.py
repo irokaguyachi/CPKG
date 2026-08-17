@@ -3,7 +3,7 @@ import re, glob, json, os, sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-BASE = r"C:\Users\kimji\Documents\러블리들\문학\문학 정리"
+BASE = os.path.join(os.path.dirname(__file__), "..", "data", "문학 정리")
 CRAWL_DIR = os.path.join(BASE, "크롤링 파일")
 HOF_DIR = os.path.join(BASE, "명예관")
 CONTEST_DIR = os.path.join(BASE, "대회")

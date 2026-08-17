@@ -1,0 +1,501 @@
+/* ==========================================================================
+   ChoKaguya Dark Mode & Theme System CSS
+   ========================================================================== */
+
+/* Theme color transition on toggle */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *:before,
+html.theme-transitioning *:after {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease !important;
+}
+
+/* ==========================================================================
+   Theme Toggle Button in Header
+   ========================================================================== */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1875vw;
+  height: 2.1875vw;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  margin-left: -2vw;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  color: #000000;
+  cursor: pointer;
+  outline: none;
+  z-index: 30;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              opacity 0.25s ease;
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-0.15vw) scale(1.05);
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.theme-toggle-btn svg {
+  width: 1.0417vw;
+  height: 1.0417vw;
+  min-width: 16px;
+  min-height: 16px;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-toggle-btn:active svg {
+  transform: rotate(45deg);
+}
+
+/* When at page top, keep theme toggle button interactive */
+body.is-top .header-nav {
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: none !important;
+}
+
+body.is-top .header-nav a,
+body.is-top .header-nav a[data-locked] {
+  opacity: 0 !important;
+  transform: translateY(-6px) !important;
+  pointer-events: none !important;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+body.is-top .theme-toggle-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ==========================================================================
+   Dark Mode Theme Rules ([data-theme="dark"])
+   ========================================================================== */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body {
+  background: #121316;
+  color: #f1f3f5;
+}
+
+/* Custom scrollbar in dark mode */
+[data-theme="dark"] * {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Header & Navigation in dark mode */
+[data-theme="dark"] .header {
+  background: #121316;
+}
+
+[data-theme="dark"] .header-nav a {
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .header-nav a[data-locked] {
+  opacity: 0.35;
+}
+
+[data-theme="dark"] .theme-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+/* Site Info Hero Section */
+[data-theme="dark"] .site-info-title {
+  color: #ffffff;
+}
+[data-theme="dark"] .site-info-sub {
+  color: rgba(255, 255, 255, 0.7);
+}
+[data-theme="dark"] .site-info-stat {
+  color: #ffffff;
+}
+
+/* Search & Filter Toolbar */
+[data-theme="dark"] .series-toolbar-row {
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .series-search {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .series-search input {
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .series-search input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .series-search svg circle,
+[data-theme="dark"] .series-search svg line {
+  stroke: #f1f3f5;
+}
+
+[data-theme="dark"] .series-filter-btn {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .series-filter-btn.is-active {
+  color: #5c9aff;
+  border-color: #5c9aff;
+  background: rgba(92, 154, 255, 0.15);
+}
+
+/* Filter Dropdown Panel */
+[data-theme="dark"] .series-filter-panel {
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .sfp-header {
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .sfp-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .sfp-checkbox {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: #151619;
+}
+
+[data-theme="dark"] .sfp-empty {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Post Cards & Series Cards & HOF Cards */
+[data-theme="dark"] .post-card,
+[data-theme="dark"] .series-card {
+  background: #1c1d22;
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0.625vw 1.0417vw rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .post-card:hover,
+[data-theme="dark"] .series-card:hover {
+  box-shadow: 0 0.8333vw 1.5625vw rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .post-image,
+[data-theme="dark"] .series-card-image {
+  background-color: #25272d;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+[data-theme="dark"] .post-info,
+[data-theme="dark"] .series-card-info {
+  background: #1c1d22;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .post-title,
+[data-theme="dark"] .series-card-title {
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .post-title-id {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .series-card-count {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] .recent-section-title {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
+   ========================================================================== */
+[data-theme="dark"] .series-card-tag,
+[data-theme="dark"] .sfp-label,
+[data-theme="dark"] .post-tag-pill {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Individual tag soft tints in dark mode */
+[data-theme="dark"] .series-card-tag[data-tag="소설"],
+[data-theme="dark"] .sfp-label[data-tag="소설"] {
+  background: rgba(180, 125, 85, 0.22) !important;
+  color: #f2caa7 !important;
+  border-color: rgba(215, 150, 105, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="명예관"],
+[data-theme="dark"] .sfp-label[data-tag="명예관"] {
+  background: rgba(195, 145, 45, 0.22) !important;
+  color: #ffd97d !important;
+  border-color: rgba(235, 180, 60, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="피폐"],
+[data-theme="dark"] .sfp-label[data-tag="피폐"] {
+  background: rgba(175, 60, 70, 0.22) !important;
+  color: #fca5ac !important;
+  border-color: rgba(215, 85, 95, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="로맨스"],
+[data-theme="dark"] .sfp-label[data-tag="로맨스"] {
+  background: rgba(195, 75, 115, 0.22) !important;
+  color: #ffaec8 !important;
+  border-color: rgba(235, 105, 145, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="슬픔"],
+[data-theme="dark"] .sfp-label[data-tag="슬픔"] {
+  background: rgba(75, 105, 185, 0.22) !important;
+  color: #b2c8fb !important;
+  border-color: rgba(105, 140, 225, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="일상"],
+[data-theme="dark"] .sfp-label[data-tag="일상"] {
+  background: rgba(45, 145, 135, 0.22) !important;
+  color: #86ece3 !important;
+  border-color: rgba(70, 185, 175, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="코미디"],
+[data-theme="dark"] .sfp-label[data-tag="코미디"] {
+  background: rgba(180, 145, 35, 0.22) !important;
+  color: #ffe67d !important;
+  border-color: rgba(220, 180, 50, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="후방주의"],
+[data-theme="dark"] .sfp-label[data-tag="후방주의"] {
+  background: rgba(195, 60, 60, 0.22) !important;
+  color: #ff9999 !important;
+  border-color: rgba(235, 80, 80, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="짧문"],
+[data-theme="dark"] .sfp-label[data-tag="짧문"] {
+  background: rgba(175, 75, 160, 0.22) !important;
+  color: #f7b2ee !important;
+  border-color: rgba(215, 100, 200, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="장편"],
+[data-theme="dark"] .sfp-label[data-tag="장편"] {
+  background: rgba(75, 155, 65, 0.22) !important;
+  color: #a9f79e !important;
+  border-color: rgba(105, 195, 90, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="감동"],
+[data-theme="dark"] .sfp-label[data-tag="감동"] {
+  background: rgba(185, 125, 55, 0.22) !important;
+  color: #ffd294 !important;
+  border-color: rgba(225, 160, 80, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="대회"],
+[data-theme="dark"] .sfp-label[data-tag="대회"] {
+  background: rgba(60, 120, 195, 0.22) !important;
+  color: #9ecaff !important;
+  border-color: rgba(90, 155, 235, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="단편"],
+[data-theme="dark"] .sfp-label[data-tag="단편"] {
+  background: rgba(125, 85, 185, 0.22) !important;
+  color: #dcb8ff !important;
+  border-color: rgba(160, 115, 225, 0.35);
+}
+
+[data-theme="dark"] .series-card-tag[data-tag="글카스"],
+[data-theme="dark"] .sfp-label[data-tag="글카스"] {
+  background: rgba(110, 115, 125, 0.22) !important;
+  color: #d2d7df !important;
+  border-color: rgba(145, 150, 160, 0.35);
+}
+
+/* Series Detail Modal (PostDetailSeries) in dark mode */
+[data-theme="dark"] .pds-overlay {
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+[data-theme="dark"] .post-detail-series {
+  background: #1c1d22;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1vw 3vw rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="dark"] .pds-image {
+  background-color: #25272d;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+[data-theme="dark"] .pds-gradient {
+  background: linear-gradient(90deg, rgba(28, 29, 34, 0) 0%, #1c1d22 45%);
+}
+
+[data-theme="dark"] .pds-series-name {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pds-series-episode-count {
+  color: #ffffff;
+  opacity: 0.95;
+}
+
+[data-theme="dark"] .pds-close {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pds-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .pds-right-panel {
+  background: #1c1d22;
+}
+
+[data-theme="dark"] .pds-sort-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .pds-sort-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pds-list {
+  background: #1c1d22;
+}
+
+[data-theme="dark"] .pds-episode-item {
+  background: #25272e;
+  border: 0.1042vw solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0.2vw 0.5vw rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .pds-episode-item:hover {
+  background: #2d3038;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .pds-episode-title {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .pds-episode-title.is-marquee::after {
+  background: linear-gradient(to right, rgba(37, 39, 46, 0), #25272e);
+}
+
+[data-theme="dark"] .pds-episode-id {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .pds-episode-link {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="dark"] .pds-episode-badge {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Site Footer */
+[data-theme="dark"] .site-footer {
+  background: #151619;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .site-footer-line {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .site-footer-line strong {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="dark"] .site-footer-contact {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Full-page Loader & MiniLoading in dark mode */
+[data-theme="dark"] .loader {
+  background: #121316;
+}
+
+[data-theme="dark"] .loader-wipe {
+  background: #121316;
+}
+
+[data-theme="dark"] .loader-loading-text {
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .loader-tip {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] .loader-tip-tag {
+  background: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .mini-loading {
+  background: transparent;
+}
+[data-theme="dark"] .mini-loading-text {
+  color: rgba(255, 255, 255, 0.6);
+}

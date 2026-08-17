@@ -25,7 +25,6 @@
     "episodeCount": 1,
     "image": null,
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "후방주의"
@@ -66,7 +65,6 @@
     "episodeCount": 1,
     "image": "../assets/Image/크롤링사진/명예관/143807/1.gif",
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "피폐",
@@ -130,7 +128,8 @@
     "tags": [
       "짧문",
       "명예관",
-      "후방주의"
+      "후방주의",
+      "코미디"
     ],
     "charCount": "653자",
     "author": "ㅇㅇ",
@@ -148,7 +147,6 @@
     "episodeCount": 1,
     "image": "../assets/Image/크롤링사진/명예관/73958/1.webp",
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "후방주의",
@@ -172,7 +170,7 @@
     "tags": [
       "소설",
       "명예관",
-      "일상"
+      "후방주의"
     ],
     "charCount": "3,297자",
     "author": "dlfhpdhtl",
@@ -192,7 +190,7 @@
     "tags": [
       "짧문",
       "명예관",
-      "일상"
+      "코미디"
     ],
     "charCount": "256자",
     "author": "Yachi6974",
@@ -270,7 +268,6 @@
     "episodeCount": 1,
     "image": null,
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "슬픔"
@@ -332,7 +329,6 @@
     "episodeCount": 1,
     "image": null,
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "일상"
@@ -373,7 +369,6 @@
     "episodeCount": 1,
     "image": null,
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "일상"
@@ -394,7 +389,6 @@
     "episodeCount": 1,
     "image": null,
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "피폐",
@@ -416,7 +410,6 @@
     "episodeCount": 1,
     "image": null,
     "tags": [
-      "장문",
       "소설",
       "명예관",
       "일상"
