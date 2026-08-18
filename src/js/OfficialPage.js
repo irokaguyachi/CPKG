@@ -26,6 +26,27 @@
   if (!gridEl) return;
 
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var STAR_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+
+  // 즐겨찾기 별 버튼 — 카드 클릭(상세보기)과 별개로 동작하도록 클릭 시
+  // stopPropagation. 즐겨찾기 목록 확인/내보내기/불러오기는 추후 구현 예정
+  function createFavButton(key, meta) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'series-card-fav';
+    btn.innerHTML = STAR_ICON;
+    btn.setAttribute('aria-label', '즐겨찾기');
+    if (window.Favorites && window.Favorites.isFavorite(key)) {
+      btn.classList.add('is-fav');
+    }
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!window.Favorites) return;
+      var nowFav = window.Favorites.toggle(key, meta);
+      btn.classList.toggle('is-fav', nowFav);
+    });
+    return btn;
+  }
 
   var TAG_COLORS = {
     '일상': '#e2f4f2',
@@ -395,6 +416,7 @@
         image.style.backgroundImage = 'url("' + finalImg + '")';
       }
     }
+    image.appendChild(createFavButton('official:' + s.name, { type: 'official', name: s.name }));
     card.appendChild(image);
 
     var info = document.createElement('div');

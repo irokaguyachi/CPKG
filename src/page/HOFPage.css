@@ -397,6 +397,7 @@ body.is-top .site-info {
 }
 
 .series-card-image {
+  position: relative;
   width: 100%;
   aspect-ratio: 470 / 187;
   flex-shrink: 0;
@@ -404,6 +405,41 @@ body.is-top .site-info {
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
+}
+
+/* 즐겨찾기 별 버튼 — 카드 클릭(상세보기 열기)과 겹치지 않도록 이미지 우상단에 고정 */
+.series-card-fav {
+  position: absolute;
+  top: 0.5208vw;
+  right: 0.5208vw;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.875vw;
+  height: 1.875vw;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.series-card-fav svg {
+  width: 1.0417vw;
+  height: 1.0417vw;
+}
+.series-card-fav:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.5);
+}
+.series-card-fav.is-fav {
+  color: #ffd166;
+  background: rgba(0, 0, 0, 0.45);
+}
+.series-card-fav.is-fav svg {
+  fill: #ffd166;
 }
 
 .series-card-info {
