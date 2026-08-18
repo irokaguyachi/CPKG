@@ -49,9 +49,12 @@
   function updateLogos(theme) {
     var logos = document.querySelectorAll('img[data-light-src][data-dark-src]');
     logos.forEach(function (img) {
-      var targetSrc = theme === 'dark' ? img.getAttribute('data-dark-src') : img.getAttribute('data-light-src');
-      if (targetSrc && img.getAttribute('src') !== targetSrc) {
-        img.src = targetSrc;
+      var rawSrc = theme === 'dark' ? img.getAttribute('data-dark-src') : img.getAttribute('data-light-src');
+      if (rawSrc) {
+        var targetSrc = window.resolveAssetUrl ? window.resolveAssetUrl(rawSrc) : rawSrc;
+        if (img.getAttribute('src') !== targetSrc) {
+          img.src = targetSrc;
+        }
       }
     });
   }

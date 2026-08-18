@@ -33,7 +33,8 @@
         window.__loaderShowIcon = function () {
           var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10);
           var idx = ((counter % files.length) + files.length) % files.length;
-          var src = '../assets/Image/LoadingIcon/' + encodeURIComponent(files[idx]);
+          var rawSrc = '../assets/Image/LoadingIcon/' + files[idx];
+          var src = window.resolveAssetUrl ? window.resolveAssetUrl(rawSrc) : rawSrc;
           iconEl.style.backgroundImage = 'url("' + src + '")';
         };
         window.__loaderShowIcon();

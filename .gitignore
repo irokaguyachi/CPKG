@@ -1,5 +1,8 @@
 # Secrets & Local Configurations
 .mcp.json
+.r2_config.json
+.env
+*.env
 
 # OS generated files
 Thumbs.db
@@ -17,10 +20,10 @@ scratch/
 .venv/
 
 # Agent internal files — only rules/tag.md should be published
-.agent/*
-!.agent/rules
-.agent/rules/*
-!.agent/rules/tag.md
+# .agent/*
+# !.agent/rules
+# .agent/rules/*
+# !.agent/rules/tag.md
 
 
 # Src File

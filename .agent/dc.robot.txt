@@ -1,0 +1,128 @@
+# ============================================
+# robots.txt for m.dcinside.com (Mobile Web)
+# Version: 2.1.2
+# ============================================
+
+# ----- AI 학습 크롤러 차단 -----
+User-agent: GPTBot
+Disallow: /
+User-agent: ClaudeBot
+Disallow: /
+User-agent: anthropic-ai
+Disallow: /
+User-agent: Claude-Web
+Disallow: /
+User-agent: Google-Extended
+Disallow: /
+User-agent: Applebot-Extended
+Disallow: /
+User-agent: CCBot
+Disallow: /
+User-agent: Bytespider
+Disallow: /
+User-agent: Amazonbot
+Disallow: /
+User-agent: Meta-ExternalAgent
+Disallow: /
+User-agent: cohere-ai
+Disallow: /
+User-agent: PerplexityBot
+Disallow: /
+
+# 바이두봇 차단
+User-agent: Baiduspider
+Disallow: /
+User-agent: Baiduspider-video
+Disallow: /
+User-agent: Baiduspider-image
+Disallow: /
+
+# ----- 그 외 모든 봇 (검색봇 + AI 검색봇 포함) -----
+User-agent: *
+Allow: /
+
+# ----- 시스템 경로 -----
+Disallow: /api/
+Disallow: /captcha/
+Disallow: /kcaptcha/
+Disallow: /search/
+
+# ----- 갤러리 단위 차단 -----
+Disallow: /board/47/
+Disallow: /board/cat/
+Disallow: /board/dog/
+Disallow: /board/stock_new/
+Disallow: /board/stock_new2/
+Disallow: /board/baseball_new8/
+Disallow: /board/m_entertainer1/
+Disallow: /board/ib_new/
+Disallow: /board/d_fighter_new1/
+Disallow: /board/produce48/
+Disallow: /board/sportsseoul/
+Disallow: /board/metakr/
+Disallow: /board/salgoonews/
+Disallow: /board/rezero/
+Disallow: /board/singo/
+
+# ----- URL 파라미터 차단 (중복 콘텐츠/5xx 방지) -----
+Disallow: /*?page=
+Disallow: /*?recommend=
+Disallow: /*?headid=
+Disallow: /*?s_type=
+Disallow: /*?serval=
+
+# ----- 개별 게시물 차단 -----
+# hajungwoo
+Disallow: /board/hajungwoo/12995
+Disallow: /board/hajungwoo/14441
+Disallow: /board/hajungwoo/14508
+Disallow: /board/hajungwoo/14977
+# dongbang
+Disallow: /board/dongbang/43265
+Disallow: /board/dongbang/48008
+# arbeit
+Disallow: /board/arbeit/1781137
+Disallow: /board/arbeit/1854264
+Disallow: /board/arbeit/1827137
+Disallow: /board/arbeit/1902701
+# immovables
+Disallow: /board/immovables/827440
+Disallow: /board/immovables/1045608
+# government
+Disallow: /board/government/3795641
+Disallow: /board/government/3795657
+Disallow: /board/government/3795663
+Disallow: /board/government/3795664
+Disallow: /board/government/3795665
+Disallow: /board/government/3795671
+# etc.
+Disallow: /board/starcraft/5179138
+Disallow: /board/comedy_new/3182480
+Disallow: /board/plastic_s/118703
+Disallow: /board/aion/231406
+Disallow: /board/aoa/455310
+Disallow: /board/kimmyungmin/57241
+Disallow: /board/etc_entertainment1/1462322
+Disallow: /board/bigbang/107916
+Disallow: /board/exam_new/3441270
+Disallow: /board/theaterM/1062240
+Disallow: /board/admission/1591805
+
+# ----- 갤로그 차단 -----
+Disallow: /gallog/
+Disallow: /*gallog/
+# (아래는 v1.0.0에 명시되었던 개별 갤로그 항목, /gallog/ 전체 차단에 포함되나 감사 추적용으로 보존)
+Disallow: /gallog/tnwls232
+Disallow: /gallog/vubrkwe
+Disallow: /gallog/a7kim0413
+Disallow: /gallog/hankmj
+Disallow: /gallog/sksmsrjrhal
+Disallow: /gallog/kyeomhero
+Disallow: /gallog/aspjg6321
+
+# Sitemap
+Sitemap: https://m.dcinside.com/_seo/main_gall.xml
+Sitemap: https://m.dcinside.com/_seo/mini_gall.xml
+Sitemap: https://m.dcinside.com/_seo/minor_gall.xml
+Sitemap: https://m.dcinside.com/_seo/minor_gall2.xml
+Sitemap: https://m.dcinside.com/_seo/minor_gall3.xml

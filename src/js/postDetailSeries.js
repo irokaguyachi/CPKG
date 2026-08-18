@@ -56,12 +56,18 @@
     var image = document.createElement('div');
     image.className = 'pds-image';
     if (data.imageUrl) {
-      image.style.backgroundImage = 'url("' + data.imageUrl + '")';
+      var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(data.imageUrl) : data.imageUrl;
+      image.style.backgroundImage = 'url("' + finalImg + '")';
     }
 
     var imageEffect = document.createElement('div');
     imageEffect.className = 'pds-image-effect';
     image.appendChild(imageEffect);
+    card.appendChild(image);
+
+    var gradient = document.createElement('div');
+    gradient.className = 'pds-gradient';
+    card.appendChild(gradient);
 
     var seriesInfo = document.createElement('div');
     seriesInfo.className = 'pds-series-info';
@@ -83,12 +89,7 @@
     seriesInfo.appendChild(stats);
     */
 
-    image.appendChild(seriesInfo);
-    card.appendChild(image);
-
-    var gradient = document.createElement('div');
-    gradient.className = 'pds-gradient';
-    card.appendChild(gradient);
+    card.appendChild(seriesInfo);
 
     // Right side container holding toolbar & episode list
     var rightPanel = document.createElement('div');
@@ -201,6 +202,12 @@
   // being cut off under the episode badge — only overflowing ones animate
   function applyTitleMarquee(root) {
     var titles = root.querySelectorAll('.pds-episode-title');
+
+    // read phase — measure every title before touching the DOM. interleaving
+    // reads (scrollWidth/getComputedStyle) with writes (style/classList) here
+    // used to force a synchronous layout recalc on every single iteration,
+    // which visibly lagged the modal open for long episode lists
+    var toMarquee = [];
     for (var i = 0; i < titles.length; i++) {
       var titleEl = titles[i];
       var inner = titleEl.querySelector('.pds-episode-title-inner');
@@ -211,9 +218,14 @@
         // trailing text (e.g. the episode ID) ends up fully clear of the
         // gradient instead of sitting permanently faded under it
         var fadeWidth = parseFloat(getComputedStyle(titleEl, '::after').width) || 0;
-        titleEl.style.setProperty('--marquee-distance', (-(overflow + fadeWidth)) + 'px');
-        titleEl.classList.add('is-marquee');
+        toMarquee.push({ el: titleEl, distance: -(overflow + fadeWidth) });
       }
+    }
+
+    // write phase — apply all mutations after every measurement is done
+    for (var j = 0; j < toMarquee.length; j++) {
+      toMarquee[j].el.style.setProperty('--marquee-distance', toMarquee[j].distance + 'px');
+      toMarquee[j].el.classList.add('is-marquee');
     }
   }
 
@@ -232,7 +244,9 @@
     titleInner.appendChild(document.createTextNode((ep.title || '게시물 이름') + ' '));
     var idSpan = document.createElement('span');
     idSpan.className = 'pds-episode-id';
-    idSpan.textContent = '| ' + (ep.id != null ? ep.id : '게시물 ID');
+    var idText = '| ' + (ep.id != null ? ep.id : '게시물 ID');
+    if (ep.dcId != null) idText += ' (' + ep.dcId + ')';
+    idSpan.textContent = idText;
     titleInner.appendChild(idSpan);
     title.appendChild(titleInner);
     item.appendChild(title);

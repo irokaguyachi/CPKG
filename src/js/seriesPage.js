@@ -111,6 +111,7 @@
       // null until someone fills one in, and series-card-image stays the
       // empty Figma placeholder (PostContent's PostImage) until then
       allSeries = Array.isArray(data) ? data : [];
+      assignPostNumbers();
       if (countEl) countEl.textContent = allSeries.length + '개의 시리즈가 있습니다!';
       renderFilterOptions();
       renderGrid();
@@ -174,14 +175,34 @@
     return result;
   }
   var CHOSUNG_ONLY_RE = /^[ㄱ-ㅎ\s]+$/;
-  function matchesSearch(name, term) {
+  function matchesSearch(s, term) {
     if (!term) return true;
+    var name = s.name;
     var lowerName = name.toLowerCase();
     if (lowerName.indexOf(term) !== -1) return true;
     if (CHOSUNG_ONLY_RE.test(term)) {
-      return toChosung(name).indexOf(term) !== -1;
+      if (toChosung(name).indexOf(term) !== -1) return true;
+    }
+    // 자체 게시물 번호(S1...)나 디시 게시물 번호로도 검색 가능
+    var posts = s.posts || [];
+    for (var i = 0; i < posts.length; i++) {
+      var p = posts[i];
+      if (p.customNo && p.customNo.toLowerCase().indexOf(term) !== -1) return true;
+      if (p.id != null && String(p.id).indexOf(term) !== -1) return true;
     }
     return false;
+  }
+
+  // DC 게시물 번호(디시 게시물 번호) 대신 사이트 자체 게시물 번호를 매김 —
+  // 시리즈는 파일 순서대로 S1, S2, S3... 로 전체 화에 걸쳐 고유하게 부여
+  function assignPostNumbers() {
+    var counter = 1;
+    allSeries.forEach(function (s) {
+      (s.posts || []).forEach(function (post) {
+        post.customNo = 'S' + counter;
+        counter++;
+      });
+    });
   }
 
   function allTags() {
@@ -280,7 +301,7 @@
     var term = searchTerm.trim().toLowerCase();
     var activeList = Object.keys(activeTags);
     var filtered = allSeries.filter(function (s) {
-      if (!matchesSearch(s.name, term)) return false;
+      if (!matchesSearch(s, term)) return false;
       if (activeList.length && !activeList.some(function (t) { return s.tags.indexOf(t) !== -1; })) return false;
       return true;
     });
@@ -329,7 +350,8 @@
     icon.className = 'series-loading-icon';
     if (miniLoadingIcons.length) {
       var pick = miniLoadingIcons[Math.floor(Math.random() * miniLoadingIcons.length)];
-      icon.style.backgroundImage = 'url("../assets/Image/LoadingIcon/' + encodeURIComponent(pick) + '")';
+      var rawPick = '../assets/Image/LoadingIcon/' + pick;
+      icon.style.backgroundImage = 'url("' + (window.resolveAssetUrl ? window.resolveAssetUrl(rawPick) : rawPick) + '")';
     }
     sentinelEl.appendChild(icon);
 
@@ -366,7 +388,12 @@
     var image = document.createElement('div');
     image.className = 'series-card-image';
     if (s.image) {
-      image.style.backgroundImage = 'url("' + s.image + '")';
+      if (window.lazyLoadBackground) {
+        window.lazyLoadBackground(image, s.image);
+      } else {
+        var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(s.image) : s.image;
+        image.style.backgroundImage = 'url("' + finalImg + '")';
+      }
     }
     card.appendChild(image);
 
@@ -406,7 +433,8 @@
         episodes: (s.posts || []).map(function (post) {
           return {
             title: post.title,
-            id: post.id,
+            id: post.customNo,
+            dcId: post.id,
             link: post.link,
             episodeLabel: post.episode + ' 화'
           };

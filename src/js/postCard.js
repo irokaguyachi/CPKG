@@ -12,9 +12,14 @@
     var image = document.createElement('div');
     image.className = 'post-image';
     if (data.imageUrl) {
-      image.style.backgroundImage = 'url("' + data.imageUrl + '")';
       image.style.backgroundSize = 'cover';
       image.style.backgroundPosition = 'center';
+      if (window.lazyLoadBackground) {
+        window.lazyLoadBackground(image, data.imageUrl);
+      } else {
+        var finalUrl = window.resolveAssetUrl ? window.resolveAssetUrl(data.imageUrl) : data.imageUrl;
+        image.style.backgroundImage = 'url("' + finalUrl + '")';
+      }
     }
     card.appendChild(image);
 

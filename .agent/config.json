@@ -1,0 +1,13 @@
+{
+  "name": "LiteratureAgent",
+  "version": "1.2.0",
+  "description": "10,000개 단위 분할 크롤링, tag.md 참조 태그 분류, 데이터 정리 및 사이트 빌드 에이전트",
+  "language": "ko",
+  "mcp_servers": [],
+  "rules": [
+    "rules/tag.md",
+    "rules/crawling.md",
+    "rules/notepad-prep.md",
+    "rules/SeriesRule.md"
+  ]
+}
