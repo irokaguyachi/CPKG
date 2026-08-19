@@ -7,7 +7,13 @@
 (function (global) {
   var STORAGE_KEY = 'chokaguya_favorites';
 
-  function readAll() {
+  // localStorage reads are synchronous and block the main thread, and
+  // isFavorite() runs once per card — re-parsing the whole store 50 times per
+  // keystroke made typing in the search box stutter. Parse once, keep it in
+  // memory, and only touch localStorage on write.
+  var cache = null;
+
+  function loadFromStorage() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : {};
@@ -16,10 +22,23 @@
     }
   }
 
+  function readAll() {
+    if (cache === null) cache = loadFromStorage();
+    return cache;
+  }
+
   function writeAll(all) {
+    cache = all;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     } catch (e) {}
+  }
+
+  // another tab changed the store — drop the cache so the next read re-parses
+  if (global.addEventListener) {
+    global.addEventListener('storage', function (e) {
+      if (!e.key || e.key === STORAGE_KEY) cache = null;
+    });
   }
 
   function isFavorite(key) {
@@ -45,8 +64,15 @@
     return !!all[key];
   }
 
+  // shallow copy — readAll() now hands back the live cache, so callers must
+  // not be able to mutate it by accident
   function getAll() {
-    return readAll();
+    var all = readAll();
+    var copy = {};
+    for (var k in all) {
+      if (Object.prototype.hasOwnProperty.call(all, k)) copy[k] = all[k];
+    }
+    return copy;
   }
 
   global.Favorites = {

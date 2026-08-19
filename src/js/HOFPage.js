@@ -333,6 +333,11 @@
     isLoadingMore = false;
     if (loadMoreObserver) loadMoreObserver.disconnect();
     sentinelEl = null;
+    // cards about to be discarded may still be registered with the lazy-image
+    // observer (it only unobserves ones that actually became visible), so
+    // clear the batch before wiping the grid — otherwise every re-render on
+    // keystroke leaves detached nodes behind for it to keep re-checking
+    if (window.unobserveAllLazy) window.unobserveAllLazy();
     gridEl.innerHTML = '';
 
     if (!filtered.length) {
@@ -472,9 +477,16 @@
   }
 
   if (searchInput) {
+    // rebuilding the whole grid on every keystroke is far more work than a
+    // typist can outrun; coalesce bursts of input into one render
+    var searchTimer = null;
     searchInput.addEventListener('input', function () {
       searchTerm = searchInput.value;
-      renderGrid();
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        searchTimer = null;
+        renderGrid();
+      }, 150);
     });
   }
 })();
