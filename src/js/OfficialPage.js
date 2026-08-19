@@ -412,7 +412,7 @@
       if (window.lazyLoadBackground) {
         window.lazyLoadBackground(image, s.image);
       } else {
-        var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(s.image) : s.image;
+        var finalImg = window.resolveThumbUrl ? window.resolveThumbUrl(s.image) : s.image;
         image.style.backgroundImage = 'url("' + finalImg + '")';
       }
     }
