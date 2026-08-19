@@ -735,6 +735,13 @@ body.is-top .site-info {
   padding: 0.2vw 0.8854vw 2.5vw;
   overflow-y: auto;
   transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.4, 0, 1, 1), filter 0.14s ease;
+}
+
+/* will-change only while the sort transition is actually playing — keeping it
+   on permanently pinned a compositor layer for the whole time the modal was open */
+.pds-list.pds-list-anim-out,
+.pds-list.pds-list-anim-prep,
+.pds-list.pds-list-anim-in {
   will-change: transform, opacity;
 }
 
@@ -792,7 +799,9 @@ body.is-top .site-info {
   display: inline-block;
   white-space: nowrap;
 }
-.pds-episode-title.is-marquee .pds-episode-title-inner {
+/* the fade sits on every overflowing title, but the animation only runs while
+   the row is actually scrolled into view (see observeMarqueeVisibility) */
+.pds-episode-title.is-marquee.is-marquee-live .pds-episode-title-inner {
   animation: pds-title-marquee 7s ease-in-out infinite;
   will-change: transform;
 }
@@ -812,7 +821,7 @@ body.is-top .site-info {
   90%, 100% { transform: translateX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pds-episode-title.is-marquee .pds-episode-title-inner { animation: none; }
+  .pds-episode-title.is-marquee.is-marquee-live .pds-episode-title-inner { animation: none; }
 }
 .pds-episode-id {
   font-size: 0.7813vw;

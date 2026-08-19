@@ -147,12 +147,15 @@
         return currentSortOrder === 'asc' ? (a._idx - b._idx) : (b._idx - a._idx);
       });
 
+      // build off-document so the whole list lands in one layout pass
+      var frag = document.createDocumentFragment();
       sorted.forEach(function (ep) {
-        list.appendChild(createEpisodeItem(ep));
+        frag.appendChild(createEpisodeItem(ep));
       });
+      list.appendChild(frag);
 
       list.scrollTop = 0;
-      applyTitleMarquee(card);
+      applyTitleMarquee(card, list);
     }
 
     var isSorting = false;
@@ -184,49 +187,76 @@
     });
 
     updateSortButtonUI();
-    renderEpisodes();
 
     toolbar.appendChild(sortBtn);
     rightPanel.appendChild(toolbar);
     rightPanel.appendChild(list);
     card.appendChild(rightPanel);
 
+    // episodes are rendered only after the card is in the document — measuring
+    // title overflow on a detached node reads zeroes, so doing it earlier just
+    // threw the whole pass away and made it run twice.
+    // is-open goes on before the list is built (after a forced reflow, so the
+    // open transition still has a start value to animate from) — that way the
+    // marquee visibility observer measures against the modal's real on-screen
+    // geometry instead of its hidden, pre-open state.
     overlay.appendChild(card);
-    applyTitleMarquee(card);
-    requestAnimationFrame(function () {
-      overlay.classList.add('is-open');
-    });
+    void card.offsetWidth;
+    overlay.classList.add('is-open');
+    renderEpisodes();
   }
 
   // titles longer than the clipped box get a ping-pong scroll instead of
-  // being cut off under the episode badge — only overflowing ones animate
-  function applyTitleMarquee(root) {
+  // being cut off under the episode badge — only overflowing ones animate.
+  // Reads and writes are kept in separate passes so the browser recalculates
+  // layout twice total instead of once per title.
+  function applyTitleMarquee(root, scrollRoot) {
     var titles = root.querySelectorAll('.pds-episode-title');
 
-    // read phase — measure every title before touching the DOM. interleaving
-    // reads (scrollWidth/getComputedStyle) with writes (style/classList) here
-    // used to force a synchronous layout recalc on every single iteration,
-    // which visibly lagged the modal open for long episode lists
     var toMarquee = [];
     for (var i = 0; i < titles.length; i++) {
       var titleEl = titles[i];
       var inner = titleEl.querySelector('.pds-episode-title-inner');
       if (!inner) continue;
       var overflow = inner.scrollWidth - titleEl.clientWidth;
-      if (overflow > 0) {
-        // scroll past the overflow by the fade's own width too, so the
-        // trailing text (e.g. the episode ID) ends up fully clear of the
-        // gradient instead of sitting permanently faded under it
-        var fadeWidth = parseFloat(getComputedStyle(titleEl, '::after').width) || 0;
-        toMarquee.push({ el: titleEl, distance: -(overflow + fadeWidth) });
-      }
+      if (overflow > 0) toMarquee.push({ el: titleEl, overflow: overflow });
     }
+    if (!toMarquee.length) return;
 
-    // write phase — apply all mutations after every measurement is done
     for (var j = 0; j < toMarquee.length; j++) {
-      toMarquee[j].el.style.setProperty('--marquee-distance', toMarquee[j].distance + 'px');
       toMarquee[j].el.classList.add('is-marquee');
     }
+
+    // the ::after fade only exists once .is-marquee is set, and its width is
+    // the same for every title — so measure it once, after the class pass
+    var fadeWidth = parseFloat(getComputedStyle(toMarquee[0].el, '::after').width) || 0;
+
+    for (var k = 0; k < toMarquee.length; k++) {
+      // scroll past the overflow by the fade's own width too, so the trailing
+      // text (e.g. the episode ID) ends up fully clear of the gradient
+      // instead of sitting permanently faded under it
+      toMarquee[k].el.style.setProperty('--marquee-distance', -(toMarquee[k].overflow + fadeWidth) + 'px');
+    }
+
+    observeMarqueeVisibility(toMarquee, scrollRoot);
+  }
+
+  // A long series can have dozens of overflowing titles, and leaving every one
+  // of them running an infinite transform animation pins the compositor even
+  // though only a handful are on screen. Animate the visible ones only.
+  var marqueeObserver = null;
+  function observeMarqueeVisibility(entries, scrollRoot) {
+    if (!('IntersectionObserver' in global)) {
+      for (var i = 0; i < entries.length; i++) entries[i].el.classList.add('is-marquee-live');
+      return;
+    }
+    if (marqueeObserver) marqueeObserver.disconnect();
+    marqueeObserver = new IntersectionObserver(function (records) {
+      records.forEach(function (record) {
+        record.target.classList.toggle('is-marquee-live', record.isIntersecting);
+      });
+    }, { root: scrollRoot || null, rootMargin: '50px 0px' });
+    for (var j = 0; j < entries.length; j++) marqueeObserver.observe(entries[j].el);
   }
 
   function createEpisodeItem(ep) {
@@ -267,6 +297,15 @@
   function close() {
     if (!overlayEl) return;
     overlayEl.classList.remove('is-open');
+    // closing only fades the overlay out — the card stays in the document, so
+    // the marquee animations would otherwise keep running against an invisible
+    // modal until the next open replaced it
+    if (marqueeObserver) {
+      marqueeObserver.disconnect();
+      marqueeObserver = null;
+    }
+    var live = overlayEl.querySelectorAll('.is-marquee-live');
+    for (var i = 0; i < live.length; i++) live[i].classList.remove('is-marquee-live');
   }
 
   global.PostDetailSeries = {
