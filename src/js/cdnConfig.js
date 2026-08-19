@@ -6,6 +6,16 @@
 (function (global) {
   var R2_CDN_BASE = 'https://pub-908f4390549649fbbdff99353f22c6d4.r2.dev';
 
+  // Local JSON used to be fetched with { cache: 'no-store' }, which defeated
+  // the browser cache entirely and re-downloaded every data file on every
+  // navigation. Cache normally instead and bust it explicitly by bumping this
+  // when the data under src/data/ changes.
+  var DATA_VERSION = '20260820';
+  function dataUrl(path) {
+    if (!path) return path;
+    return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;
+  }
+
   function resolveAssetUrl(path) {
     if (!path) return '';
     if (/^https?:\/\//i.test(path) || path.startsWith('data:')) {
@@ -106,6 +116,8 @@
 
   global.resolveAssetUrl = resolveAssetUrl;
   global.resolveThumbUrl = resolveThumbUrl;
+  global.dataUrl = dataUrl;
+  global.DATA_VERSION = DATA_VERSION;
   global.R2_CDN_BASE = R2_CDN_BASE;
   global.lazyLoadBackground = lazyLoadBackground;
   global.unobserveAllLazy = unobserveAllLazy;

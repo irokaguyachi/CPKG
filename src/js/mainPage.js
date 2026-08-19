@@ -35,26 +35,42 @@
   var contentEl = document.getElementById('content');
   if (!contentEl || !window.PostDetailSeries) return;
 
-  var POST_LINK_BASE = 'https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=';
+  var DATA = window.dataUrl || function (p) { return p; };
 
   // demo: post-cards have no real detail pages yet, so clicking one opens
-  // the series-detail modal populated with a real series pulled from
-  // MoonHakdata.json, previewing the interaction ahead of real routing.
-  fetch('../data/MoonHakdata.json', { cache: 'no-store' })
+  // the series-detail modal populated with a real series, previewing the
+  // interaction ahead of real routing.
+  // Reads Series.json (138 KB) rather than MoonHakdata.json (493 KB) — this
+  // only ever needs one series, and Series.json is already the file the
+  // series page loads, so a visitor who goes there reuses the cached copy.
+  fetch(DATA('../data/PageData/Series.json'))
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      var series = data && data.series && data.series[0];
-      if (!series) return;
+      if (!Array.isArray(data) || !data.length) return;
+      var series = data[0];
+
+      // mirror seriesPage.js's numbering (S1, S2, ... across the whole file)
+      // so the demo modal shows the same post numbers as the real page
+      var counter = 1;
+      var numbers = [];
+      data.forEach(function (s) {
+        (s.posts || []).forEach(function (post) {
+          if (s === series) numbers.push('S' + counter);
+          counter++;
+        });
+      });
 
       var demoData = {
-        seriesName: (series.n || '').replace(/^\[|\]$/g, ''),
-        episodeCount: series.c,
-        episodes: (series.ch || []).map(function (ch) {
+        seriesName: series.name,
+        episodeCount: series.episodeCount,
+        imageUrl: series.image,
+        episodes: (series.posts || []).map(function (post, i) {
           return {
-            title: ch.t,
-            id: ch.i,
-            link: POST_LINK_BASE + ch.i,
-            episodeLabel: ch.n + ' 화'
+            title: post.title,
+            id: numbers[i],
+            dcId: post.id,
+            link: post.link,
+            episodeLabel: post.episode + ' 화'
           };
         })
       };

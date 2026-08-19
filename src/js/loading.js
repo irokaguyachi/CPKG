@@ -1,9 +1,11 @@
 (function () {
   var tipEl = document.getElementById('loader-tip-text');
   var iconEl = document.getElementById('loader-icon');
+  // versioned URL so the browser may cache these normally (see cdnConfig.js)
+  var DATA = window.dataUrl || function (p) { return p; };
 
   if (tipEl) {
-    fetch('../data/Tip.json', { cache: 'no-store' })
+    fetch(DATA('../data/Tip.json'))
       .then(function (r) { return r.json(); })
       .then(function (tips) {
         if (!Array.isArray(tips) || !tips.length) return;
@@ -23,7 +25,7 @@
   }
 
   if (iconEl) {
-    fetch('../data/LoadingIcons.json', { cache: 'no-store' })
+    fetch(DATA('../data/LoadingIcons.json'))
       .then(function (r) { return r.json(); })
       .then(function (files) {
         if (!Array.isArray(files) || !files.length) return;

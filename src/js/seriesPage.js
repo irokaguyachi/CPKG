@@ -119,13 +119,16 @@
   // MiniLoading (Figma #2183:2) reuses the same mascot gifs as the full-page
   // loader — pick a random one per sentinel instead of the counter-based
   // rotation loading.js uses for the intro screen
+  // versioned URL so the browser may cache these normally (see cdnConfig.js)
+  var DATA = window.dataUrl || function (p) { return p; };
+
   var miniLoadingIcons = [];
-  fetch('../data/LoadingIcons.json', { cache: 'no-store' })
+  fetch(DATA('../data/LoadingIcons.json'))
     .then(function (r) { return r.json(); })
     .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })
     .catch(function () {});
 
-  fetch('../data/PageData/Series.json', { cache: 'no-store' })
+  fetch(DATA('../data/PageData/Series.json'))
     .then(function (r) { return r.json(); })
     .then(function (data) {
       // Series.json is the hand-editable source for this page — image is
