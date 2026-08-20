@@ -7,12 +7,21 @@ POST_LINK_BASE = "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahim
 LEADING_TAG_RE = re.compile(r"^\[([^\]]*)\]")
 
 src_path = os.path.join(HERE, "..", "data", "MoonHakdata.json")
+hof_md_path = os.path.join(HERE, "..", "data", "문학 정리", "명예관", "명예관.md")
 photos_dir = os.path.join(HERE, "..", "assets", "Image", "크롤링사진", "시리즈")
 out_dir = os.path.join(HERE, "..", "data", "PageData")
 out_path = os.path.join(out_dir, "Series.json")
 
 data = json.load(open(src_path, encoding="utf-8"))
 posts_by_id = {p["i"]: p for p in data["posts"]}
+
+# 명예관 여부의 authoritative 출처는 문학 정리/명예관/명예관.md 입니다.
+# MoonHakdata 의 per-post 태그에는 일부만 반영돼 있어(73건 중 소수), 이것만
+# 보고 판정하면 명예관에 오른 화를 가진 시리즈에 태그가 안 붙습니다.
+hof_ids = set()
+if os.path.exists(hof_md_path):
+    hof_src = open(hof_md_path, encoding="utf-8").read()
+    hof_ids = {int(m) for m in re.findall(r"^###\s*\[(\d+)\]", hof_src, re.M)}
 
 series_out = []
 for s in data["series"]:
@@ -23,7 +32,8 @@ for s in data["series"]:
     # the series-level tagline doesn't carry 명예관 (it's a per-post tag),
     # so promote it to the series if any chapter was individually tagged
     if "명예관" not in tags and any(
-        "명예관" in (posts_by_id.get(ch["i"], {}).get("g") or []) for ch in s.get("ch", [])
+        ch["i"] in hof_ids or "명예관" in (posts_by_id.get(ch["i"], {}).get("g") or [])
+        for ch in s.get("ch", [])
     ):
         tags.append("명예관")
 
