@@ -1,11 +1,18 @@
 /**
  * ChoKaguya Favorites Store
- * - Persists favorited series/posts in localStorage as { key: meta }
- * - Today: toggling + read-back only. Viewing the full list, exporting to a
- *   JSON file, and importing one back are follow-up work (not implemented yet).
+ * - Persists favorited items in localStorage, split into buckets by tab:
+ *   { novel: [id, ...], series: [id, ...], hof: [id, ...], official: [id, ...] }
+ * - Each bucket holds only representative post IDs (no name/timestamp) to
+ *   keep the stored JSON small. A future favorites list view resolves IDs
+ *   back to titles/images by looking them up in the page data.
  */
 (function (global) {
   var STORAGE_KEY = 'chokaguya_favorites';
+  var TYPES = ['novel', 'series', 'hof', 'official'];
+
+  function emptyStore() {
+    return { novel: [], series: [], hof: [], official: [] };
+  }
 
   // localStorage reads are synchronous and block the main thread, and
   // isFavorite() runs once per card — re-parsing the whole store 50 times per
@@ -13,12 +20,24 @@
   // memory, and only touch localStorage on write.
   var cache = null;
 
+  function isValidStore(store) {
+    if (!store || typeof store !== 'object') return false;
+    for (var i = 0; i < TYPES.length; i++) {
+      if (!Array.isArray(store[TYPES[i]])) return false;
+    }
+    return true;
+  }
+
   function loadFromStorage() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
+      if (!raw) return emptyStore();
+      var parsed = JSON.parse(raw);
+      // pre-bucket (or otherwise malformed) data from an earlier version of
+      // this store isn't migratable one-to-one, so it's just reset here
+      return isValidStore(parsed) ? parsed : emptyStore();
     } catch (e) {
-      return {};
+      return emptyStore();
     }
   }
 
@@ -41,27 +60,24 @@
     });
   }
 
-  function isFavorite(key) {
-    if (!key) return false;
-    return !!readAll()[key];
+  function isFavorite(type, id) {
+    if (!type || id == null || TYPES.indexOf(type) === -1) return false;
+    return readAll()[type].indexOf(id) !== -1;
   }
 
-  // meta: arbitrary extra fields (type, name, ...) stored alongside the key
-  // for tomorrow's list/export view. Returns the new favorited state.
-  function toggle(key, meta) {
-    if (!key) return false;
+  // Returns the new favorited state.
+  function toggle(type, id) {
+    if (!type || id == null || TYPES.indexOf(type) === -1) return false;
     var all = readAll();
-    if (all[key]) {
-      delete all[key];
+    var bucket = all[type];
+    var idx = bucket.indexOf(id);
+    if (idx !== -1) {
+      bucket.splice(idx, 1);
     } else {
-      var entry = { addedAt: Date.now() };
-      for (var k in meta) {
-        if (Object.prototype.hasOwnProperty.call(meta, k)) entry[k] = meta[k];
-      }
-      all[key] = entry;
+      bucket.push(id);
     }
     writeAll(all);
-    return !!all[key];
+    return idx === -1;
   }
 
   // shallow copy — readAll() now hands back the live cache, so callers must
@@ -69,15 +85,19 @@
   function getAll() {
     var all = readAll();
     var copy = {};
-    for (var k in all) {
-      if (Object.prototype.hasOwnProperty.call(all, k)) copy[k] = all[k];
-    }
+    for (var i = 0; i < TYPES.length; i++) copy[TYPES[i]] = all[TYPES[i]].slice();
     return copy;
+  }
+
+  function getBucket(type) {
+    if (TYPES.indexOf(type) === -1) return [];
+    return readAll()[type].slice();
   }
 
   global.Favorites = {
     isFavorite: isFavorite,
     toggle: toggle,
-    getAll: getAll
+    getAll: getAll,
+    getBucket: getBucket
   };
 })(window);

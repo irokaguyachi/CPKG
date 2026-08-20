@@ -160,19 +160,19 @@
 
     // 즐겨찾기 별 버튼 — 카드 클릭(상세보기)과 별개로 동작하도록 클릭 시
     // stopPropagation. 즐겨찾기 목록 확인/내보내기/불러오기는 추후 구현 예정
-    function createFavButton(key, meta) {
+    function createFavButton(type, id) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'series-card-fav';
       btn.innerHTML = STAR_ICON;
       btn.setAttribute('aria-label', '즐겨찾기');
-      if (global.Favorites && global.Favorites.isFavorite(key)) {
+      if (global.Favorites && global.Favorites.isFavorite(type, id)) {
         btn.classList.add('is-fav');
       }
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         if (!global.Favorites) return;
-        var nowFav = global.Favorites.toggle(key, meta);
+        var nowFav = global.Favorites.toggle(type, id);
         btn.classList.toggle('is-fav', nowFav);
       });
       return btn;
@@ -468,7 +468,8 @@
           image.style.backgroundImage = 'url("' + finalImg + '")';
         }
       }
-      image.appendChild(createFavButton(config.favType + ':' + s.name, { type: config.favType, name: s.name }));
+      var favId = s.posts && s.posts[0] && s.posts[0].id;
+      if (favId != null) image.appendChild(createFavButton(config.favType, favId));
       card.appendChild(image);
 
       var info = document.createElement('div');
