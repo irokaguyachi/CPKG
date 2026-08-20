@@ -201,6 +201,25 @@ body.is-top .theme-toggle-btn {
 }
 
 /* Post Cards & Series Cards & HOF Cards */
+[data-theme="dark"] .report-heading {
+  color: #ffffff;
+}
+[data-theme="dark"] .report-button {
+  background: #1c1d22;
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0.2083vw 0.2083vw rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .report-button:hover {
+  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .report-button-label {
+  color: #ffffff;
+}
+[data-theme="dark"] .report-button-link {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 [data-theme="dark"] .post-card,
 [data-theme="dark"] .series-card {
   background: #1c1d22;

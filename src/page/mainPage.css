@@ -321,6 +321,69 @@ body.is-top .site-info {
   flex-shrink: 0;
 }
 
+/* 문의 섹션 — Figma "Frame_Report" #2214:9 / "문의 버튼" #2214:2 기준.
+   1920px 캔버스 → vw 환산 (486x78 -> 25.3125 x 4.0625vw, radius 15px,
+   라벨 20px, 링크 12px, 그림자 0 4px 4px rgba(0,0,0,.1)) */
+.report {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.0417vw 0.5208vw 2.0833vw;
+}
+
+.report-heading {
+  margin: 0 0 1.0417vw;
+  font-size: 1.25vw;
+  font-weight: 700;
+  color: #000000;
+  text-align: center;
+}
+
+.report-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5208vw;
+  padding: 0.5208vw;
+}
+
+.report-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.2604vw;
+  width: 25.3125vw;
+  height: 4.0625vw;
+  padding: 0.5208vw;
+  background: #ffffff;
+  border-radius: 0.7813vw;
+  box-shadow: 0 0.2083vw 0.2083vw rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  text-align: center;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+.report-button:hover {
+  transform: translateY(-0.2vw);
+  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.18);
+}
+
+.report-button-label {
+  font-size: 1.0417vw;
+  font-weight: 600;
+  color: #000000;
+}
+
+.report-button-link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.625vw;
+  color: rgba(0, 0, 0, 0.5);
+}
+
 .site-footer {
   display: flex;
   flex-direction: column;
