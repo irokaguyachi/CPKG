@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /page/favoritesPage.html
+Disallow: /page/sharedFavoritesPage.html
