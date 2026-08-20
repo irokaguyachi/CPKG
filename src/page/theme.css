@@ -518,3 +518,31 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .mini-loading-text {
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* 즐겨찾기 목록 페이지 */
+[data-theme="dark"] .fav-section-title {
+  color: #f1f3f5;
+}
+[data-theme="dark"] .fav-share-box {
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .fav-share-input {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .fav-share-copy-btn {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .fav-share-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .fav-share-status {
+  color: rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .fav-share-status.is-error {
+  color: #ff8080;
+}

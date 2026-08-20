@@ -4,6 +4,9 @@
 .env
 *.env
 
+# Cloudflare Workers local cache/state
+worker/.wrangler/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db

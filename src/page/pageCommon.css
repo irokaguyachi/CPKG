@@ -934,6 +934,86 @@ body.is-top .site-info {
 @media (prefers-reduced-motion: reduce) {
   .loader-caret { animation: none; }
 }
+/* 즐겨찾기 목록 페이지 전용 — 탭별 섹션 헤더 + 공유 링크 위젯 */
+.fav-section {
+  margin-bottom: 3.125vw;
+}
+
+.fav-section-title {
+  margin: 0 0 1.0417vw;
+  padding: 0 1.5625vw;
+  font-size: 1.25vw;
+  font-weight: 700;
+  color: #000000;
+}
+
+.fav-share-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7813vw;
+  max-width: 40vw;
+  margin: 0 auto 2.0833vw;
+  padding: 1.25vw 1.5625vw;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 1.0417vw;
+}
+
+.fav-share-btn {
+  align-self: flex-start;
+  padding: 0.625vw 1.25vw;
+  font-family: inherit;
+  font-size: 0.8333vw;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.fav-share-btn:hover { background: #2058c9; }
+.fav-share-btn:disabled { opacity: 0.5; cursor: default; }
+
+.fav-share-result {
+  display: flex;
+  align-items: center;
+  gap: 0.5208vw;
+}
+
+.fav-share-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5208vw 0.8333vw;
+  font-family: inherit;
+  font-size: 0.8333vw;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.fav-share-copy-btn {
+  flex-shrink: 0;
+  padding: 0.5208vw 1.0417vw;
+  font-family: inherit;
+  font-size: 0.7813vw;
+  font-weight: 600;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.fav-share-copy-btn:hover { background: #eeeeee; }
+
+.fav-share-status {
+  margin: 0;
+  font-size: 0.7292vw;
+  color: rgba(0, 0, 0, 0.6);
+}
+.fav-share-status.is-error { color: #d64545; }
+
 @keyframes loader-caret-blink {
   50% { opacity: 0; }
 }

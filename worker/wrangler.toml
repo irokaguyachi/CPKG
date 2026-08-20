@@ -1,0 +1,17 @@
+name = "chokaguya-favorites-share"
+main = "favoritesShareWorker.js"
+compatibility_date = "2026-08-20"
+
+# 즐겨찾기 공유 데이터를 이미지와 같은 R2 버킷의 share/ 프리픽스 아래에 저장합니다.
+# bucket_name은 로컬 .r2_config.json의 bucket_name 값과 동일해야 합니다
+# (src/scripts/sync_to_r2.py가 이미지 업로드에 쓰는 것과 같은 버킷).
+[[r2_buckets]]
+binding = "FAVORITES_BUCKET"
+bucket_name = "chokaguya-assets"
+
+# 배포 절차:
+#   cd worker
+#   wrangler login
+#   wrangler deploy
+# 배포가 끝나면 출력되는 workers.dev 주소를
+# src/js/favoritesShareRemote.js 의 WORKER_URL 에 넣어주세요.
