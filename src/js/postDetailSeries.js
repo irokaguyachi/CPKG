@@ -4,6 +4,32 @@
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
 
   var overlayEl = null;
+  var openCard = null;
+
+  // The card is sized in vw (80.8333 x 55.4167) and then transform-scaled, so
+  // on a short/wide window its scaled height can exceed the viewport. The
+  // overlay centres it and cannot scroll, so the excess was simply cut off the
+  // top and bottom with no way to reach it. Shrink the scale just enough to
+  // fit; on normal windows this stays at the designed 0.62.
+  var BASE_SCALE = 0.62;
+  var DESIGN_W_VW = 80.8333;
+  var DESIGN_H_VW = 55.4167;
+
+  function applyFitScale(card) {
+    if (!card) return;
+    var unit = window.innerWidth / 100;
+    var scale = Math.min(
+      BASE_SCALE,
+      (window.innerWidth * 0.96) / (DESIGN_W_VW * unit),
+      (window.innerHeight * 0.92) / (DESIGN_H_VW * unit)
+    );
+    card.style.setProperty('--pds-scale', scale);
+  }
+
+  window.addEventListener('resize', function () {
+    if (openCard) applyFitScale(openCard);
+  });
+
 
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
@@ -200,6 +226,8 @@
     // open transition still has a start value to animate from) — that way the
     // marquee visibility observer measures against the modal's real on-screen
     // geometry instead of its hidden, pre-open state.
+    openCard = card;
+    applyFitScale(card);
     overlay.appendChild(card);
     void card.offsetWidth;
     overlay.classList.add('is-open');
@@ -296,6 +324,7 @@
 
   function close() {
     if (!overlayEl) return;
+    openCard = null;
     overlayEl.classList.remove('is-open');
     // closing only fades the overlay out — the card stays in the document, so
     // the marquee animations would otherwise keep running against an invisible
