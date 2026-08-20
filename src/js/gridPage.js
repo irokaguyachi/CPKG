@@ -110,19 +110,6 @@
     return arr;
   }
 
-  function typePlaceholder(el, text, speed, done) {
-    el.placeholder = '';
-    var i = 0;
-    var timer = setInterval(function () {
-      el.placeholder += text.charAt(i);
-      i++;
-      if (i >= text.length) {
-        clearInterval(timer);
-        if (done) done();
-      }
-    }, speed);
-  }
-
   function create(config) {
     config = config || {};
 
@@ -199,14 +186,55 @@
       var names = allItems.map(function (s) { return s.name; });
       var order = shuffle(names.slice());
       var idx = 0;
+      var typeTimer = null;
+      var gapTimer = null;
+      var onScreen = true;
+      var running = false;
+
+      // the typing effect used to run a 70ms interval for as long as the page
+      // was open, even in a background tab or with the search box scrolled far
+      // out of view. It now only ticks while it can actually be seen.
+      function canRun() { return onScreen && !document.hidden; }
+
+      function stop() {
+        running = false;
+        if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+        if (gapTimer) { clearTimeout(gapTimer); gapTimer = null; }
+      }
+
       function cycle() {
+        if (!canRun()) { stop(); return; }
+        running = true;
         if (idx >= order.length) { order = shuffle(names.slice()); idx = 0; }
         var name = order[idx];
         idx++;
-        typePlaceholder(searchInput, name, 70, function () {
-          setTimeout(cycle, 5000);
-        });
+        searchInput.placeholder = '';
+        var i = 0;
+        typeTimer = setInterval(function () {
+          if (!canRun()) { stop(); return; }
+          searchInput.placeholder += name.charAt(i);
+          i++;
+          if (i >= name.length) {
+            clearInterval(typeTimer);
+            typeTimer = null;
+            gapTimer = setTimeout(cycle, 5000);
+          }
+        }, 70);
       }
+
+      function sync() {
+        if (canRun()) { if (!running) cycle(); }
+        else stop();
+      }
+
+      document.addEventListener('visibilitychange', sync);
+      if ('IntersectionObserver' in global) {
+        new IntersectionObserver(function (records) {
+          onScreen = records[0].isIntersecting;
+          sync();
+        }).observe(searchInput);
+      }
+
       cycle();
     }
 
@@ -417,10 +445,12 @@
     function handleSentinelVisible() {
       if (isLoadingMore || renderedCount >= currentFiltered.length) return;
       isLoadingMore = true;
+      // brief hold so the MiniLoading row is legible rather than flashing —
+      // 500ms just read as the next cards being slow to arrive
       setTimeout(function () {
         appendNextPage();
         isLoadingMore = false;
-      }, 500);
+      }, 180);
     }
 
     function createCard(s) {

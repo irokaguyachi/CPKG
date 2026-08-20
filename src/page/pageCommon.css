@@ -61,19 +61,18 @@ body {
   object-fit: cover;
   z-index: 21;
   cursor: pointer;
-  transition: top 0.5s cubic-bezier(0.22, 1, 0.36, 1), left 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  /* only transform animates — top/left/width/height each force a layout
+     recalc every frame, which is what made this stutter when scrolling off
+     the top of the page */
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* decorative hero state — not a nav target, so clicks pass through until it
    shrinks back into its normal clickable header spot */
 body.is-top .header-logo {
-  top: 13vw;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 24vw;
-  height: 4.8vw;
+  /* identical on-screen box to the previous top/left/width/height
+     version: centre 50vw / 13vw, 24vw x 4.8vw */
+  transform: translateY(-50%) translate(40.0781vw, 10.5vw) scale(1.63986, 1.6457);
   pointer-events: none;
   cursor: default;
 }

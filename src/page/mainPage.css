@@ -65,9 +65,10 @@ body {
   object-fit: cover;
   z-index: 21;
   cursor: pointer;
-  transition: top 0.5s cubic-bezier(0.22, 1, 0.36, 1), left 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  /* only transform animates — top/left/width/height each force a layout
+     recalc every frame, which is what made this stutter when scrolling off
+     the top of the page */
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* top-of-page state: logo breaks out of the header and blows up into a big
@@ -76,11 +77,9 @@ body {
    it's decorative here, not a nav target, so clicks pass straight through to
    whatever's underneath until it's shrunk back into its normal header spot */
 body.is-top .header-logo {
-  top: 13vw;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 34vw;
-  height: 6.8vw;
+  /* identical on-screen box to the previous top/left/width/height
+     version: centre 50vw / 13vw, 34vw x 6.8vw */
+  transform: translateY(-50%) translate(40.0781vw, 10.5vw) scale(2.32313, 2.3314);
   pointer-events: none;
   cursor: default;
 }
