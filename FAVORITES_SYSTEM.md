@@ -93,7 +93,7 @@ python -m http.server 8000
 - **`favoritesShare.js`(파일 내보내기/불러오기)**: 함수는 있지만 어느 페이지에도 버튼으로 연결 안 돼있음.
 - **공유 데이터 만료/정리**: R2에 쌓이는 `share/*.json`은 자동으로 안 지워짐. 필요하면 Cloudflare R2 대시보드에서 lifecycle rule(예: 90일 후 자동 삭제)을 설정하면 됨 — 코드 변경 없이 대시보드에서만 하면 됨.
 - **남용 방지**: Worker의 `POST /share`는 로그인 없는 공개 쓰기 API라 크기 제한(4KB)만 걸어뒀음. 남용이 실제로 발생하면 Cloudflare Turnstile이나 Rate Limiting 추가 검토 필요.
-- **크롤러 트래픽 차단**: `src/robots.txt`에서 `favoritesPage.html`, `sharedFavoritesPage.html`을 `Disallow` 처리해서, 검색엔진 등 규칙을 지키는 봇이 이 페이지들을 훑고 다니며 Worker/R2 요청을 유발하지 않도록 함. 단, robots.txt는 자율 규칙이라 이걸 무시하는 악성 스크래퍼까지 막지는 못함 — 필요하면 Worker 쪽에 Rate Limiting을 추가로 고려.
+- **크롤러 트래픽 차단**: `src/robots.txt`에서 사이트 전체(`/`)를 `Disallow` 처리해서, 검색엔진 등 규칙을 지키는 봇이 즐겨찾기 페이지를 포함한 어떤 페이지도 훑고 다니며 Worker/R2 요청을 유발하지 않도록 함. 단, robots.txt는 자율 규칙이라 이걸 무시하는 악성 스크래퍼까지 막지는 못함 — 필요하면 Worker 쪽에 Rate Limiting을 추가로 고려.
 
 ---
 
