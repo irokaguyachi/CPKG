@@ -75,6 +75,17 @@
   var INTRO_MS = 1300;
   var OUTRO_MS = 2200;
 
+  // 로더가 화면을 덮고 있는 동안은 그 뒤의 실제 페이지가 스크롤되지 않게 막음
+  // — 안 막으면 로더가 안 보이는 사이에 그리드가 이미 스크롤된 채로 드러남
+  function lockScroll() {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+  function unlockScroll() {
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+  }
+
   // intro: white circle covers the screen, then shrinks away to nothing
   // while the content fades in at the same time, so the two blend together
   // instead of one waiting for the other to finish.
@@ -106,6 +117,7 @@
     wipeEl.classList.add('is-covering');
     setTimeout(function () {
       loaderEl.classList.add('is-hidden');
+      unlockScroll();
     }, OUTRO_REVEAL_MS);
   };
 
@@ -124,6 +136,7 @@
   if (!isFreshEntry()) {
     loaderEl.style.display = 'none';
   } else {
+    lockScroll();
     playIntro();
 
     // hold the loader for at least MIN_VISIBLE_MS so it doesn't just flash,
@@ -155,6 +168,7 @@
       if (demoRunning) return;
       demoRunning = true;
       loaderEl.classList.remove('is-hidden');
+      lockScroll();
       playIntro();
       setTimeout(function () {
         window.finishLoading();

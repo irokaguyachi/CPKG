@@ -9,41 +9,34 @@
 (function (global) {
   var SECTIONS = [
     {
+      type: 'novel',
+      title: '문학',
+      dataUrl: '../data/PageData/Novel.json',
+      numberPrefix: 'N'
+    },
+    {
       type: 'series',
       title: '시리즈',
       dataUrl: '../data/PageData/Series.json',
-      numberPrefix: 'S',
-      countLine: function (s) { return s.episodeCount + '화'; }
+      numberPrefix: 'S'
     },
     {
       type: 'hof',
       title: '명예관',
       dataUrl: '../data/PageData/HOF.json',
-      numberPrefix: 'H',
-      countLine: function (s) { return s.charCount || (s.episodeCount + '화'); }
+      numberPrefix: 'H'
     },
     {
       type: 'official',
       title: '공식',
       dataUrl: '../data/PageData/Official.json',
-      numberPrefix: 'O',
-      countLine: function (s) { return s.charCount || (s.episodeCount + '화'); }
+      numberPrefix: 'O'
     }
   ];
 
   var sectionsEl = document.getElementById('fav-sections');
   var countEl = document.getElementById('fav-count');
   var DATA = global.dataUrl || function (p) { return p; };
-
-  function assignPostNumbers(items, prefix) {
-    var counter = 1;
-    items.forEach(function (s) {
-      (s.posts || []).forEach(function (post) {
-        post.customNo = prefix + counter;
-        counter++;
-      });
-    });
-  }
 
   function showMessage(text) {
     sectionsEl.innerHTML = '';
@@ -79,7 +72,7 @@
 
     var count = document.createElement('p');
     count.className = 'series-card-count';
-    count.textContent = config.countLine(s);
+    count.textContent = SeriesUtil.countLine(s) + ' | ' + SeriesUtil.itemNumber(s);
     info.appendChild(count);
 
     card.appendChild(info);
@@ -88,7 +81,6 @@
       if (!global.PostDetailSeries) return;
       PostDetailSeries.open({
         seriesName: s.name,
-        episodeCount: s.episodeCount,
         imageUrl: s.image,
         episodes: (s.posts || []).map(function (post) {
           return {
@@ -141,7 +133,8 @@
           var anyRendered = false;
           SECTIONS.forEach(function (config, i) {
             var allItems = Array.isArray(results[i]) ? results[i] : [];
-            assignPostNumbers(allItems, config.numberPrefix);
+            SeriesUtil.assignPostNumbers(allItems, config.numberPrefix);
+            SeriesUtil.assignSeriesNumbers(allItems, config.numberPrefix);
             var favIds = favBuckets[config.type] || [];
             if (!favIds.length) return;
             var matched = allItems.filter(function (item) {

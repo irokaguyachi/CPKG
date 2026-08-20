@@ -5,6 +5,5 @@ window.GridPage.create({
   numberPrefix: 'S',
   favType: 'series',
   countText: function (n) { return n + '개의 시리즈가 있습니다!'; },
-  emptyText: '조건에 맞는 시리즈가 없어요.',
-  countLine: function (s) { return s.episodeCount + '화'; }
+  emptyText: '조건에 맞는 시리즈가 없어요.'
 });

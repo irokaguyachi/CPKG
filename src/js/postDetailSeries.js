@@ -62,7 +62,8 @@
     return wrap;
   }
 
-  // data: { seriesName, episodeCount, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }] }
+  // data: { seriesName, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }] }
+  // 화수는 따로 받지 않고 episodes 길이로 계산합니다 (시리즈 판별 기준과 동일).
   function open(data) {
     data = data || {};
     var overlay = ensureOverlay();
@@ -103,7 +104,7 @@
     name.textContent = data.seriesName || '시리즈 이름';
     var episodeCountEl = document.createElement('span');
     episodeCountEl.className = 'pds-series-episode-count';
-    episodeCountEl.textContent = (data.episodeCount != null ? data.episodeCount : '00') + ' 화';
+    episodeCountEl.textContent = (data.episodes || []).length + ' 화';
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
 
@@ -175,8 +176,9 @@
 
       // build off-document so the whole list lands in one layout pass
       var frag = document.createDocumentFragment();
+      var isSolo = episodes.length <= 1;
       sorted.forEach(function (ep) {
-        frag.appendChild(createEpisodeItem(ep));
+        frag.appendChild(createEpisodeItem(ep, isSolo));
       });
       list.appendChild(frag);
 
@@ -287,7 +289,7 @@
     for (var j = 0; j < entries.length; j++) marqueeObserver.observe(entries[j].el);
   }
 
-  function createEpisodeItem(ep) {
+  function createEpisodeItem(ep, isSolo) {
     ep = ep || {};
     var item = document.createElement('a');
     item.className = 'pds-episode-item';
@@ -302,8 +304,12 @@
     titleInner.appendChild(document.createTextNode((ep.title || '게시물 이름') + ' '));
     var idSpan = document.createElement('span');
     idSpan.className = 'pds-episode-id';
-    var idText = '| ' + (ep.id != null ? ep.id : '게시물 ID');
-    if (ep.dcId != null) idText += ' (' + ep.dcId + ')';
+    // 화가 하나뿐인 게시물(문학/명예관/공식)은 사이트 자체 번호 없이 디시
+    // 게시물 번호만 보여줌 — 시리즈처럼 여러 화를 오가며 찾을 일이 없어서
+    // 사이트 번호가 굳이 필요 없음
+    var idText = isSolo
+      ? '| ' + (ep.dcId != null ? ep.dcId : (ep.id != null ? ep.id : '게시물 ID'))
+      : '| ' + (ep.id != null ? ep.id : '게시물 ID') + (ep.dcId != null ? ' (' + ep.dcId + ')' : '');
     idSpan.textContent = idText;
     titleInner.appendChild(idSpan);
     title.appendChild(titleInner);

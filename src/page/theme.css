@@ -523,26 +523,40 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .fav-section-title {
   color: #f1f3f5;
 }
-[data-theme="dark"] .fav-share-box {
+
+/* 북마크 페이지 */
+[data-theme="dark"] .bkm-back-link {
+  color: #5c9aff;
+}
+[data-theme="dark"] .bkm-inline-create-input {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .bkm-folder-image {
+  color: rgba(255, 255, 255, 0.15);
+}
+[data-theme="dark"] .bkm-rename-btn {
+  color: rgba(255, 255, 255, 0.4);
+}
+[data-theme="dark"] .bkm-rename-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+[data-theme="dark"] .bkm-rename-input {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .bkm-picker {
   background: #1c1d22;
   border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.6);
 }
-[data-theme="dark"] .fav-share-input {
+[data-theme="dark"] .bkm-picker-new {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .bkm-picker-new-input {
   background: #151619;
   border-color: rgba(255, 255, 255, 0.15);
   color: #f1f3f5;
-}
-[data-theme="dark"] .fav-share-copy-btn {
-  background: #151619;
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #f1f3f5;
-}
-[data-theme="dark"] .fav-share-copy-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-[data-theme="dark"] .fav-share-status {
-  color: rgba(255, 255, 255, 0.6);
-}
-[data-theme="dark"] .fav-share-status.is-error {
-  color: #ff8080;
 }

@@ -5,6 +5,5 @@ window.GridPage.create({
   numberPrefix: 'O',
   favType: 'official',
   countText: function (n) { return n + '개의 게시물이 있습니다!'; },
-  emptyText: '조건에 맞는 게시물이 없어요.',
-  countLine: function (s) { return s.charCount || (s.episodeCount + '화'); }
+  emptyText: '조건에 맞는 게시물이 없어요.'
 });

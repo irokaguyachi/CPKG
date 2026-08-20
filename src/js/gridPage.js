@@ -4,6 +4,8 @@
  *   ~95% identical scripts, so they now pass their differences in as config
  *   and this file owns the behaviour.
  * - Config: { dataUrl, numberPrefix, favType, countText(n), emptyText, countLine(s) }
+ *   countLine 을 생략하면 SeriesUtil.countLine (자식 글이 2개 이상이면 시리즈로
+ *   보고 화수, 아니면 글자 수) 을 씁니다.
  */
 (function (global) {
   var TOP_THRESHOLD = 10;
@@ -26,7 +28,6 @@
   })();
 
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  var STAR_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
 
   var TAG_COLORS = {
     '일상': '#e2f4f2',
@@ -72,7 +73,7 @@
     '명예관', '대회',
     '피폐', '슬픔', '감동', '로맨스', '후방주의', '코미디', '일상', '미스테리', 'SF',
     '글카스', '이모티콘', 'IF 스토리',
-    '분류 안함', 'AI', '로카'
+    '분류 안함', '로카'
   ];
   function tagOrderIndex(t) {
     var i = TAG_ORDER.indexOf(t);
@@ -121,7 +122,7 @@
     var countEl = document.getElementById('series-count');
     if (!gridEl) return;
 
-    var countLine = config.countLine || function (s) { return s.episodeCount + '화'; };
+    var countLine = config.countLine || global.SeriesUtil.countLine;
 
     var allItems = [];
     var activeTags = {};
@@ -157,26 +158,6 @@
         startSearchPlaceholderCycle();
       })
       .catch(function () {});
-
-    // 즐겨찾기 별 버튼 — 카드 클릭(상세보기)과 별개로 동작하도록 클릭 시
-    // stopPropagation. 즐겨찾기 목록 확인/내보내기/불러오기는 추후 구현 예정
-    function createFavButton(type, id) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'series-card-fav';
-      btn.innerHTML = STAR_ICON;
-      btn.setAttribute('aria-label', '즐겨찾기');
-      if (global.Favorites && global.Favorites.isFavorite(type, id)) {
-        btn.classList.add('is-fav');
-      }
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (!global.Favorites) return;
-        var nowFav = global.Favorites.toggle(type, id);
-        btn.classList.toggle('is-fav', nowFav);
-      });
-      return btn;
-    }
 
     // rotates the (empty) search input's placeholder through real item
     // names, typed out like loading.js's tip text, so the dim placeholder
@@ -257,15 +238,10 @@
     }
 
     // DC 게시물 번호(디시 게시물 번호) 대신 사이트 자체 게시물 번호를 매김 —
-    // 파일 순서대로 <prefix>1, <prefix>2... 로 전체에 걸쳐 고유하게 부여
+    // 규칙은 SeriesUtil (오래된 글이 <prefix>1, 최신 글이 마지막 번호)
     function assignPostNumbers() {
-      var counter = 1;
-      allItems.forEach(function (s) {
-        (s.posts || []).forEach(function (post) {
-          post.customNo = config.numberPrefix + counter;
-          counter++;
-        });
-      });
+      global.SeriesUtil.assignPostNumbers(allItems, config.numberPrefix);
+      global.SeriesUtil.assignSeriesNumbers(allItems, config.numberPrefix);
     }
 
     function allTags() {
@@ -469,7 +445,7 @@
         }
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
-      if (favId != null) image.appendChild(createFavButton(config.favType, favId));
+      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
       card.appendChild(image);
 
       var info = document.createElement('div');
@@ -482,7 +458,7 @@
 
       var count = document.createElement('p');
       count.className = 'series-card-count';
-      count.textContent = countLine(s);
+      count.textContent = countLine(s) + ' | ' + global.SeriesUtil.itemNumber(s);
       info.appendChild(count);
 
       var tagsWrap = document.createElement('div');
@@ -503,7 +479,6 @@
         if (!global.PostDetailSeries) return;
         PostDetailSeries.open({
           seriesName: s.name,
-          episodeCount: s.episodeCount,
           imageUrl: s.image,
           episodes: (s.posts || []).map(function (post) {
             return {

@@ -21,6 +21,7 @@ scratch/
 
 # Python virtual environment
 .venv/
+__pycache__/
 
 # Agent internal files — only rules/tag.md should be published
 # .agent/*

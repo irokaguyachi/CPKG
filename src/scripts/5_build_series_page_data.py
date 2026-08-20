@@ -49,7 +49,6 @@ for s in data["series"]:
 
     series_out.append({
         "name": s["n"],
-        "episodeCount": s["c"],
         "image": None,
         "tags": tags,
         "posts": posts,

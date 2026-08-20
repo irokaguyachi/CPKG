@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 카드 썸네일 생성 스크립트 (6_build_thumbnails.py)
-- Series.json / HOF.json / Official.json 의 `image` 가 가리키는 원본을 읽어
+- Series.json / HOF.json / Official.json / Novel.json 의 `image` 가 가리키는 원본을 읽어
   가로 600px / WebP quality 80 썸네일을 src/assets/Image/thumb/ 아래에 생성합니다.
 - 원본 경로 구조를 그대로 미러링하며, 확장자만 .webp 로 바뀝니다.
   예) ../assets/Image/크롤링사진/시리즈/A/1.gif
@@ -26,7 +26,7 @@ IMAGE_DIR = os.path.join(HERE, "..", "assets", "Image")
 THUMB_DIR = os.path.join(IMAGE_DIR, "thumb")
 DATA_DIR = os.path.join(HERE, "..", "data", "PageData")
 
-SOURCES = ["Series.json", "HOF.json", "Official.json"]
+SOURCES = ["Series.json", "HOF.json", "Official.json", "Novel.json"]
 THUMB_WIDTH = 600
 WEBP_QUALITY = 80
 
@@ -40,7 +40,11 @@ def collect_image_paths():
             print(f"  (건너뜀) {name} 없음")
             continue
         with open(path, encoding="utf-8") as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except ValueError as e:
+                print(f"  (건너뜀) {name} 파싱 실패: {e}")
+                continue
         found = [e["image"] for e in data if e.get("image")]
         for rel in found:
             if rel not in seen:

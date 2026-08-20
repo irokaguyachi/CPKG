@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>즐겨찾기</title>
+<title>북마크</title>
 <link rel="preload" href="../fonts/Pretendard-1.3.9/web/variable/woff2/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="pageCommon.css" />
 <link rel="stylesheet" href="theme.css" />
@@ -30,34 +30,25 @@
 
 <header class="header">
   <a class="header-logo-link" href="mainPage.html" aria-label="메인 페이지로 이동">
-    <img class="header-logo" src="../assets/Image/Logo_Official_Dark.png" data-light-src="../assets/Image/Logo_Official_Dark.png" data-dark-src="../assets/Image/Logo_Official_Light.png" alt="즐겨찾기" />
+    <img class="header-logo" src="../assets/Image/Logo_Official_Dark.png" data-light-src="../assets/Image/Logo_Official_Dark.png" data-dark-src="../assets/Image/Logo_Official_Light.png" alt="북마크" />
   </a>
   <nav class="header-nav">
     <a href="OfficialPage.html">공식</a>
     <a href="#" data-locked>번역</a>
-    <a href="#">문학</a>
+    <a href="novelPage.html">문학</a>
     <a href="seriesPage.html">시리즈</a>
     <a href="HOFPage.html">명예관</a>
-    <a href="favoritesPage.html" class="header-nav-strong">즐겨찾기</a>
+    <a href="bookmarksPage.html" class="header-nav-strong">북마크</a>
   </nav>
 </header>
 
 <section class="site-info">
-  <h1 class="site-info-title">즐겨찾기</h1>
-  <p class="site-info-sub">내가 별표한 게시물들을 모아봤어요</p>
-  <p class="site-info-stat" id="fav-count">0개의 즐겨찾기가 있습니다!</p>
+  <h1 class="site-info-title" id="bkm-title">북마크</h1>
+  <p class="site-info-sub" id="bkm-sub">내가 만든 북마크들을 모아봤어요</p>
+  <p class="site-info-stat" id="bkm-count">0개의 북마크가 있습니다!</p>
 </section>
 
-<div class="fav-share-box">
-  <button type="button" class="fav-share-btn" id="fav-share-btn">공유 링크 만들기</button>
-  <div class="fav-share-result" id="fav-share-result" hidden>
-    <input type="text" class="fav-share-input" id="fav-share-input" readonly />
-    <button type="button" class="fav-share-copy-btn" id="fav-share-copy-btn">복사</button>
-  </div>
-  <p class="fav-share-status" id="fav-share-status"></p>
-</div>
-
-<div id="fav-sections"></div>
+<div id="bkm-content"></div>
 
 <footer class="site-footer">
   <p class="site-footer-line">해당 페이지는 <strong>절대로</strong> 초! 카구야 공주의 공식이 아니며, 팬메이드 페이지임을 알립니다.</p>
@@ -66,13 +57,12 @@
 </footer>
 
 <script src="../js/cdnConfig.js"></script>
-<script src="../js/favorites.js"></script>
-<script src="../js/favoritesCodec.js"></script>
-<script src="../js/favoritesShare.js"></script>
-<script src="../js/favoritesShareRemote.js"></script>
+<script src="../js/bookmarks.js"></script>
+<script src="../js/bookmarkPicker.js"></script>
 <script src="../js/loading.js"></script>
 <script src="../js/theme.js"></script>
+<script src="../js/seriesUtil.js"></script>
 <script src="../js/postDetailSeries.js"></script>
-<script src="../js/favoritesPage.js"></script>
+<script src="../js/bookmarksPage.js"></script>
 </body>
 </html>

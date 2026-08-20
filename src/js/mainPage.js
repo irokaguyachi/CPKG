@@ -49,25 +49,17 @@
       if (!Array.isArray(data) || !data.length) return;
       var series = data[0];
 
-      // mirror seriesPage.js's numbering (S1, S2, ... across the whole file)
-      // so the demo modal shows the same post numbers as the real page
-      var counter = 1;
-      var numbers = [];
-      data.forEach(function (s) {
-        (s.posts || []).forEach(function (post) {
-          if (s === series) numbers.push('S' + counter);
-          counter++;
-        });
-      });
+      // seriesPage.js 와 같은 번호(오래된 글이 S1)를 붙여서, 데모 모달에도
+      // 실제 페이지에서 보이는 것과 동일한 게시물 번호가 나오게 함
+      SeriesUtil.assignPostNumbers(data, 'S');
 
       var demoData = {
         seriesName: series.name,
-        episodeCount: series.episodeCount,
         imageUrl: series.image,
-        episodes: (series.posts || []).map(function (post, i) {
+        episodes: (series.posts || []).map(function (post) {
           return {
             title: post.title,
-            id: numbers[i],
+            id: post.customNo,
             dcId: post.id,
             link: post.link,
             episodeLabel: post.episode + ' 화'

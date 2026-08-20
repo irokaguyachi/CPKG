@@ -947,43 +947,31 @@ body.is-top .site-info {
   color: #000000;
 }
 
-.fav-share-box {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7813vw;
-  max-width: 40vw;
-  margin: 0 auto 2.0833vw;
-  padding: 1.25vw 1.5625vw;
-  background: #f5f5f5;
-  border: 0.5px solid rgba(0, 0, 0, 0.2);
-  border-radius: 1.0417vw;
-}
-
-.fav-share-btn {
-  align-self: flex-start;
-  padding: 0.625vw 1.25vw;
-  font-family: inherit;
+/* 북마크 페이지 전용 — 목록(폴더 카드) + 카드에서 뜨는 담기 팝오버 */
+.bkm-back-link {
+  display: inline-block;
+  margin-top: 0.4167vw;
   font-size: 0.8333vw;
-  font-weight: 700;
-  color: #ffffff;
-  background: #2f6fed;
-  border: none;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  font-weight: 600;
+  color: #2f6fed;
+  text-decoration: none;
 }
-.fav-share-btn:hover { background: #2058c9; }
-.fav-share-btn:disabled { opacity: 0.5; cursor: default; }
+.bkm-back-link:hover { text-decoration: underline; }
 
-.fav-share-result {
+.bkm-list-toolbar {
+  display: flex;
+  justify-content: center;
+  padding: 0 2.6042vw 1.5625vw;
+}
+
+.bkm-inline-create {
   display: flex;
   align-items: center;
   gap: 0.5208vw;
 }
 
-.fav-share-input {
-  flex: 1;
-  min-width: 0;
+.bkm-inline-create-input {
+  width: 13vw;
   padding: 0.5208vw 0.8333vw;
   font-family: inherit;
   font-size: 0.8333vw;
@@ -993,26 +981,131 @@ body.is-top .site-info {
   border-radius: 999px;
 }
 
-.fav-share-copy-btn {
+.bkm-inline-create-btn {
   flex-shrink: 0;
-  padding: 0.5208vw 1.0417vw;
+  padding: 0.5208vw 1.25vw;
   font-family: inherit;
-  font-size: 0.7813vw;
-  font-weight: 600;
+  font-size: 0.8333vw;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bkm-inline-create-btn:hover { background: #2058c9; }
+
+.bkm-folder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.2);
+}
+.bkm-folder-image svg {
+  width: 3.125vw;
+  height: 3.125vw;
+}
+
+.bkm-folder-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4167vw;
+}
+.bkm-folder-title-row .series-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.bkm-rename-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25vw;
+  height: 1.25vw;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.bkm-rename-btn:hover { color: rgba(0, 0, 0, 0.7); }
+.bkm-rename-btn svg { width: 0.8333vw; height: 0.8333vw; }
+
+.bkm-rename-input {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 1.0417vw;
+  font-weight: 700;
   color: #000000;
   background: #ffffff;
-  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border: 0.5px solid rgba(0, 0, 0, 0.25);
+  border-radius: 0.3125vw;
+  padding: 0.1042vw 0.3125vw;
+}
+
+/* 담을 북마크 고르기 팝오버 — .series-filter-panel 과 같은 생김새지만
+   .series-card 의 overflow:hidden 에 안 잘리도록 body 에 하나만 붙여서
+   position:fixed 로 버튼 위치를 따라감 (src/js/bookmarkPicker.js) */
+.bkm-picker {
+  position: fixed;
+  width: 15.625vw;
+  padding: 0.5729vw;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.4688vw;
+  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.96);
+  transform-origin: top right;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.2s ease;
+  z-index: 50;
+}
+.bkm-picker.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.bkm-picker-new {
+  display: flex;
+  align-items: center;
+  gap: 0.4167vw;
+  margin-top: 0.3125vw;
+  padding-top: 0.5208vw;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+
+.bkm-picker-new-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3646vw 0.5208vw;
+  font-family: inherit;
+  font-size: 0.7292vw;
+  color: #000000;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.bkm-picker-new-btn {
+  flex-shrink: 0;
+  padding: 0.3646vw 0.7813vw;
+  font-family: inherit;
+  font-size: 0.7292vw;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
   border-radius: 999px;
   cursor: pointer;
 }
-.fav-share-copy-btn:hover { background: #eeeeee; }
-
-.fav-share-status {
-  margin: 0;
-  font-size: 0.7292vw;
-  color: rgba(0, 0, 0, 0.6);
-}
-.fav-share-status.is-error { color: #d64545; }
+.bkm-picker-new-btn:hover { background: #2058c9; }
 
 @keyframes loader-caret-blink {
   50% { opacity: 0; }
