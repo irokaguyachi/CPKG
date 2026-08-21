@@ -1,0 +1,149 @@
+.series-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 30px 50px 60px;
+  min-height: 384px;
+}
+
+/* card layout mirrors Figma's PostContent (#2120:96) */
+.series-card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+.series-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.series-card-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 470 / 187;
+  flex-shrink: 0;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* 즐겨찾기 별 버튼 — 카드 클릭(상세보기 열기)과 겹치지 않도록 이미지 우상단에 고정 */
+.series-card-fav {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.series-card-fav svg {
+  width: 20px;
+  height: 20px;
+}
+.series-card-fav:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.5);
+}
+.series-card-fav.is-fav {
+  color: #ffd166;
+  background: rgba(0, 0, 0, 0.45);
+}
+.series-card-fav.is-fav svg {
+  fill: #ffd166;
+}
+
+.series-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 21px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.3);
+}
+
+.series-card-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.series-card-count {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.series-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.series-card-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c2d30;
+  border-radius: 999px;
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+
+.series-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 0;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 20px;
+}
+
+/* infinite-scroll sentinel row — Matches the Figma "MiniLoading" component (#2183:2) */
+.series-loading-more {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px;
+}
+
+.series-loading-icon {
+  width: 65px;
+  height: 65px;
+  flex-shrink: 0;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+}
+
+.series-loading-text {
+  margin: 0;
+  font-family: "CCElephantmen", "Pretendard", sans-serif;
+  font-size: 30px;
+  font-weight: 400;
+  color: #06b3ba;
+  text-align: center;
+}

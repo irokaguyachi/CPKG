@@ -1,0 +1,20 @@
+/* ==========================================================================
+   ChoKaguya Main Page Stylesheet Bundle
+   ========================================================================== */
+
+/* Base & Fonts */
+@import url("./base/fonts.css");
+@import url("./base/reset.css");
+
+/* Layout */
+@import url("./layout/header.css");
+@import url("./layout/site-info.css");
+@import url("./layout/footer.css");
+
+/* Components */
+@import url("./components/loader.css");
+@import url("./components/modal-series.css");
+@import url("./components/auth.css");
+
+/* Main Page Specific */
+@import url("./pages/main-page.css");

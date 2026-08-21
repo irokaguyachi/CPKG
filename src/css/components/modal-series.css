@@ -1,0 +1,304 @@
+/* Post_Detail_Series modal — Figma node #2160:2 */
+.pds-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.pds-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.post-detail-series {
+  --pds-scale: 0.62;
+  position: relative;
+  display: flex;
+  width: 1552px;
+  height: 1064px;
+  background: #ffffff;
+  border-radius: 15px;
+  overflow: hidden;
+  transform: scale(calc(var(--pds-scale) * 0.96));
+  transition: transform 0.3s ease;
+}
+.pds-overlay.is-open .post-detail-series {
+  transform: scale(var(--pds-scale));
+}
+
+.pds-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.pds-close svg { width: 16px; height: 16px; }
+
+.pds-image {
+  position: relative;
+  flex-shrink: 0;
+  width: 758px;
+  height: 1064px;
+  background: #d9d9d9 center / cover no-repeat;
+}
+
+.pds-image-effect {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.pds-gradient {
+  position: absolute;
+  top: 0;
+  left: 579px;
+  width: 257px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 45%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pds-series-info {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 758px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pds-series-name {
+  position: absolute;
+  left: 50px;
+  top: 73px;
+  width: 662px;
+  max-width: calc(100% - 67px);
+  margin: 0;
+  font-size: 55px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #ffffff;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+}
+
+.pds-series-episode-count {
+  display: block;
+  margin-top: 12px;
+  font-size: 28px;
+  font-weight: 400;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+
+.pds-stats {
+  position: absolute;
+  left: 55px;
+  top: 979px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.pds-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.pds-stat-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.pds-stat-icon path, .pds-stat-icon circle { stroke: #ffffff; }
+
+.pds-right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.pds-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 24px 67px 15px 23px;
+  flex-shrink: 0;
+}
+
+.pds-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #222222;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.pds-sort-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px);
+}
+.pds-sort-btn:active {
+  transform: scale(0.96);
+}
+
+.pds-sort-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.pds-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 17px 48px;
+  overflow-y: auto;
+  transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.4, 0, 1, 1), filter 0.14s ease;
+}
+
+/* will-change only while the sort transition is actually playing */
+.pds-list.pds-list-anim-out,
+.pds-list.pds-list-anim-prep,
+.pds-list.pds-list-anim-in {
+  will-change: transform, opacity;
+}
+
+.pds-list.pds-list-anim-out {
+  opacity: 0;
+  transform: translateX(29px);
+  filter: blur(1.5px);
+}
+
+.pds-list.pds-list-anim-prep {
+  opacity: 0;
+  transform: translateX(-29px);
+  filter: blur(1.5px);
+  transition: none !important;
+}
+
+.pds-list.pds-list-anim-in {
+  opacity: 1;
+  transform: translateX(0);
+  filter: blur(0);
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1), transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), filter 0.24s ease;
+}
+
+.pds-episode-item {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+  width: 671px;
+  height: 116px;
+  background: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-radius: 15px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.pds-episode-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.pds-episode-title {
+  position: absolute;
+  left: 23px;
+  top: 25px;
+  right: 72px;
+  margin: 0;
+  font-size: 25px;
+  font-weight: 400;
+  color: #000000;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pds-episode-title-inner {
+  display: inline-block;
+  white-space: nowrap;
+}
+.pds-episode-title.is-marquee.is-marquee-live .pds-episode-title-inner,
+.pds-episode-title.is-marquee .pds-episode-title-inner {
+  animation: pds-title-marquee 7s ease-in-out infinite;
+  will-change: transform;
+}
+.pds-episode-title.is-marquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), #ffffff);
+  pointer-events: none;
+}
+@keyframes pds-title-marquee {
+  0%, 10% { transform: translateX(0); }
+  45%, 55% { transform: translateX(var(--marquee-distance)); }
+  90%, 100% { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pds-episode-title.is-marquee .pds-episode-title-inner,
+  .pds-episode-title.is-marquee.is-marquee-live .pds-episode-title-inner { animation: none; }
+}
+.pds-episode-id {
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.pds-episode-link {
+  position: absolute;
+  left: 23px;
+  top: 65px;
+  right: 115px;
+  margin: 0;
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pds-episode-badge {
+  position: absolute;
+  right: 23px;
+  top: 46px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #000000;
+}

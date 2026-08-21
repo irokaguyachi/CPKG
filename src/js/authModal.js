@@ -7,7 +7,7 @@
  * - src/js/postDetailSeries.js 의 싱글턴 오버레이 패턴(document.body 에 한
  *   번만 append, 바깥클릭/Escape 로 닫힘, .is-open 토글)을 그대로 본떴다.
  * - Figma "개인 공간" 파일의 SignInFrame/SignUpFrame(node #2222) 디자인을
- *   반영(CSS: src/page/pageCommon.css 의 .auth-* 규칙).
+ *   반영(CSS: src/css/components/auth.css 의 .auth-* 규칙).
  */
 (function (global) {
   var overlayEl = null;

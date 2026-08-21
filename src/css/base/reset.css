@@ -1,0 +1,46 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #ffffff;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+}
+
+/* hidden 속성으로 껐다 켜는 요소들(.bkm-claim-panel 등)은 대부분 자기 클래스에
+   display:flex 를 직접 지정하고 있어서, 속성 선택자([hidden])와 클래스 선택자의
+   특이도가 같으면 나중에 나온 클래스 규칙이 브라우저 기본 [hidden]{display:none}
+   을 덮어버린다. !important 로 항상 이기게 고정해서 어떤 요소든 hidden 이면
+   실제로 안 보이게 보장한다. */
+[hidden] {
+  display: none !important;
+}
+
+/* custom scrollbar — thin, rounded, matches the site's existing rgba(0,0,0,.25) border tone */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}

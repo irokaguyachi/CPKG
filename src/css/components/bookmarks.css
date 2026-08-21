@@ -1,0 +1,381 @@
+/* 즐겨찾기 목록 페이지 전용 — 탭별 섹션 헤더 */
+.fav-section {
+  margin-bottom: 60px;
+}
+
+.fav-section-title {
+  margin: 0 0 20px;
+  padding: 0 30px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #000000;
+}
+
+/* 북마크 페이지 전용 — 목록(폴더 카드) + 카드에서 뜨는 담기 팝오버 */
+.bkm-back-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2f6fed;
+  text-decoration: none;
+}
+.bkm-back-link:hover { text-decoration: underline; }
+
+.bkm-list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 50px 30px;
+}
+
+/* 라이브러리 목록 검색/정렬 + 관리 코드 되찾기 패널 */
+.bkm-library-toolbar {
+  gap: 10px;
+  align-items: center;
+}
+
+.bkm-library-search {
+  width: 346px;
+}
+
+.bkm-library-sort {
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 16px;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.bkm-claim-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 50px 30px;
+  text-align: center;
+}
+
+.bkm-claim-token {
+  width: 307px;
+}
+
+/* 개인 코드 표시 — 복사해서 옮겨 적을 값이라 자간을 넓혀 읽기 쉽게 함 */
+.bkm-personal-code-display {
+  width: 326px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+/* recoverPanel 안에 중첩되는 legacyPanel */
+.bkm-claim-subpanel {
+  width: 100%;
+  margin-top: 10px;
+  padding: 16px 0 0;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+
+.bkm-legacy-claim-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.bkm-inline-create {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bkm-inline-create-input {
+  width: 250px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 16px;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.bkm-inline-create-btn {
+  flex-shrink: 0;
+  padding: 10px 24px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bkm-inline-create-btn:hover { background: #2058c9; }
+
+.bkm-folder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.2);
+}
+.bkm-folder-image svg {
+  width: 60px;
+  height: 60px;
+}
+
+.bkm-folder-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bkm-folder-title-row .series-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.bkm-rename-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.bkm-rename-btn:hover { color: rgba(0, 0, 0, 0.7); }
+.bkm-rename-btn svg { width: 16px; height: 16px; }
+
+.bkm-rename-input {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* 담을 북마크 고르기 팝오버 — body 싱글턴 position:fixed (src/js/bookmarkPicker.js) */
+.bkm-picker {
+  position: fixed;
+  width: 300px;
+  padding: 11px;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.96);
+  transform-origin: top right;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.2s ease;
+  z-index: 50;
+}
+.bkm-picker.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.bkm-picker-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+
+.bkm-picker-new-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #000000;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.bkm-picker-new-btn {
+  flex-shrink: 0;
+  padding: 7px 15px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.bkm-picker-new-btn:hover { background: #2058c9; }
+
+/* 내 북마크 / 북마크 라이브러리 알약 토글 */
+.bkm-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 auto 30px;
+  padding: 4px;
+  background: #f0f0f0;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+
+/* 북마크 상세 — 타입 필터 칩 */
+.bkm-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 50px 24px;
+}
+
+.bkm-chip {
+  padding: 7px 20px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  background: #f0f1f3;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.bkm-chip:hover { color: rgba(0, 0, 0, 0.8); }
+.bkm-chip.is-active {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: #2f6fed;
+}
+
+.bkm-tab {
+  padding: 8px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  text-decoration: none;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.bkm-tab:hover { color: rgba(0, 0, 0, 0.8); }
+.bkm-tab.is-active {
+  color: #000000;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* 공유 버튼 */
+.bkm-folder-share {
+  right: auto;
+  left: 10px;
+}
+.bkm-folder-share.is-published {
+  color: #6ee7a8;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.bkm-library-card .bkm-folder-image {
+  color: rgba(47, 111, 237, 0.35);
+}
+
+.bkm-load-more {
+  display: block;
+  margin: 30px auto 0;
+  padding: 10px 36px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bkm-load-more:hover { background: #f0f0f0; }
+.bkm-load-more:disabled { opacity: 0.6; cursor: default; }
+
+/* 라이브러리 공개 패널 (src/js/bookmarksPage.js 의 openSharePanel) */
+.bkm-share-panel {
+  width: 360px;
+}
+
+.bkm-share-note {
+  margin: 6px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.bkm-share-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bkm-share-btn:hover { background: #e8e8e8; }
+.bkm-share-btn:disabled { opacity: 0.6; cursor: default; }
+.bkm-share-btn.is-primary {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: transparent;
+}
+.bkm-share-btn.is-primary:hover { background: #2058c9; }
+.bkm-share-btn.is-danger {
+  color: #d64545;
+  border-color: rgba(214, 69, 69, 0.35);
+}
+.bkm-share-btn.is-danger:hover { background: rgba(214, 69, 69, 0.08); }
+
+.bkm-share-code {
+  width: 100%;
+  margin-top: 3px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #000000;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+.bkm-share-link {
+  display: inline-block;
+  margin: 4px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2f6fed;
+  text-decoration: none;
+}
+.bkm-share-link:hover { text-decoration: underline; }

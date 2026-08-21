@@ -1,0 +1,189 @@
+/* ==========================================================================
+   Main Page Exclusive Styles
+   ========================================================================== */
+
+/* Main page hero logo expansion at top of page */
+body.is-top .header-logo {
+  transform: translateY(-50%) translate(769px, 202px) scale(2.32313, 2.3314);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 50px;
+}
+
+.content-heading {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 10px 0;
+  width: fit-content;
+  font-size: 25px;
+  font-weight: 500;
+  color: #000000;
+  cursor: pointer;
+}
+
+.content-heading-arrow {
+  width: 10px;
+  height: 16px;
+}
+
+.post-list {
+  display: flex;
+  gap: 15px;
+  padding: 10px 0;
+  overflow-x: auto;
+}
+
+.post-card {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  width: 470px;
+  height: 304px;
+  background: #efefef;
+  border: 0.5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+
+.post-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.post-image {
+  flex-shrink: 0;
+  width: 100%;
+  height: 187px;
+  background: #d9d9d9;
+}
+
+.post-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px 21px;
+  background: #ffffff;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.3);
+}
+
+.post-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: normal;
+  color: #000000;
+}
+
+.post-title-id {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.post-tag {
+  display: flex;
+  align-items: center;
+}
+
+.post-tag-pill {
+  display: inline-block;
+  width: 75px;
+  height: 28px;
+  background: #daf5f3;
+  border-radius: 24px;
+}
+
+.post-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.post-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #000000;
+}
+
+.post-stat-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* 문의 섹션 — Figma "Frame_Report" #2214:9 / "문의 버튼" #2214:2 기준 */
+.report {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 10px 40px;
+}
+
+.report-heading {
+  margin: 0 0 20px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #000000;
+  text-align: center;
+}
+
+.report-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.report-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 486px;
+  height: 78px;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  text-align: center;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+.report-button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+}
+
+.report-button-label {
+  font-size: 20px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.report-button-link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}

@@ -1,0 +1,177 @@
+/* ---- 로그인/회원가입 (Figma SignInFrame/SignUpFrame, node #2222 — src/js/authModal.js) ---- */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 550;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.auth-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.auth-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 1213px;
+  min-height: 566px;
+  padding: 67px 77px;
+  background: #ffffff;
+  border-radius: 15px;
+  text-align: center;
+  transform: scale(0.96);
+  transition: transform 0.3s ease;
+}
+.auth-overlay.is-open .auth-card {
+  transform: scale(1);
+}
+
+.auth-title {
+  margin: 0 0 48px;
+  font-size: 75px;
+  font-weight: 800;
+  color: #000000;
+}
+.auth-title.is-small {
+  margin-bottom: 24px;
+  font-size: 40px;
+}
+
+.auth-desc {
+  margin: 0 0 48px;
+  font-size: 30px;
+  line-height: 1.5;
+  color: #000000;
+}
+
+.auth-reason {
+  margin: 0 0 29px;
+  padding: 12px 24px;
+  font-size: 20px;
+  color: rgba(0, 0, 0, 0.55);
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+.auth-form-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.auth-input {
+  flex: 1;
+  height: 86px;
+  padding: 0 38px;
+  font-family: inherit;
+  font-size: 25px;
+  font-weight: 700;
+  color: #000000;
+  background: #d9d9d9;
+  border: none;
+  border-radius: 50px;
+  text-align: center;
+}
+.auth-input::placeholder {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.auth-btn {
+  flex-shrink: 0;
+  height: 86px;
+  padding: 0 48px;
+  font-family: inherit;
+  font-size: 25px;
+  font-weight: 700;
+  color: #000000;
+  background: #00ffcc;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.auth-btn:hover {
+  background: #00e6b8;
+}
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.auth-code-display {
+  margin: 29px 0 48px;
+  font-size: 60px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #000000;
+}
+
+.auth-switch {
+  margin-top: 29px;
+  font-size: 25px;
+  font-weight: 700;
+  color: #000000;
+}
+.auth-switch-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: #2f6fed;
+  cursor: pointer;
+}
+.auth-switch-link:hover {
+  text-decoration: underline;
+}
+
+.auth-error {
+  margin-top: 19px;
+  font-size: 20px;
+  color: #d64545;
+}
+
+/* 헤더 로그인/개인코드관리 버튼 (src/js/auth.js) */
+.auth-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 24px;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  color: #000000;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.auth-header-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+.auth-header-btn.is-logged-in {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: transparent;
+}
+.auth-header-btn.is-logged-in:hover {
+  background: #2058c9;
+}
+
+/* 로그인 후 헤더 버튼을 누르면 뜨는 관리 패널 (src/js/auth.js) */
+.auth-manage-panel {
+  width: 374px;
+}
