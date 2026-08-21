@@ -16,6 +16,12 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* hidden 속성으로 껐다 켜는 요소들(.bkm-claim-panel 등)은 대부분 자기 클래스에
+   display:flex 를 직접 지정하고 있어서, 속성 선택자([hidden])와 클래스 선택자의
+   특이도가 같으면 나중에 나온 클래스 규칙이 브라우저 기본 [hidden]{display:none}
+   을 덮어버린다. !important 로 항상 이기게 고정해서 어떤 요소든 hidden 이면
+   실제로 안 보이게 보장한다. */
+[hidden] { display: none !important; }
 body {
   background: #ffffff;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
@@ -960,7 +966,9 @@ body.is-top .site-info {
 
 .bkm-list-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 0.5208vw;
   padding: 0 2.6042vw 1.5625vw;
 }
 
@@ -996,6 +1004,34 @@ body.is-top .site-info {
 
 .bkm-claim-token {
   width: 16vw;
+}
+
+/* 개인 코드 표시 — 복사해서 옮겨 적을 값이라 자간을 넓혀 읽기 쉽게 함.
+   대시 포함 23자가 한 줄에 들어가도록 .bkm-inline-create-input 기본
+   너비(13vw)보다 넓힌다 */
+.bkm-personal-code-display {
+  width: 17vw;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+/* recoverPanel 안에 중첩되는 legacyPanel — 바깥 .bkm-claim-panel과 같은
+   좌우 패딩이 두 번 겹치지 않도록 줄이고, 구분선을 넣어 "보조 경로"임을
+   드러낸다 */
+.bkm-claim-subpanel {
+  width: 100%;
+  margin-top: 0.5208vw;
+  padding: 0.8333vw 0 0;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+
+.bkm-legacy-claim-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .bkm-inline-create {

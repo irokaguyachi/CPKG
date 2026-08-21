@@ -640,3 +640,6 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .bkm-share-link {
   color: #5c9aff;
 }
+[data-theme="dark"] .bkm-claim-subpanel {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}

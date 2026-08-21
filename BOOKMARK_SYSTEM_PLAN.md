@@ -12,8 +12,10 @@
 [브라우저 localStorage]                    [Cloudflare Worker]              [Cloudflare R2]
   chokaguya_bookmarks      --공개하기-->   chokaguya-favorites-share  --put/get-->  chokaguya-assets
   { version:1, bookmarks:[...] }           (worker/favoritesShareWorker.js)        (library/<code>.json)
-  chokaguya_library_tokens
+  chokaguya_library_tokens                                                         (owners/<indexHash>.json)
   { "<code>": { editToken, bookmarkId } }
+  chokaguya_personal_code
+  "<20자 개인 복구 코드>"
 ```
 
 - **기본은 로컬 저장.** 내 북마크를 만들고 담는 동작은 서버 없이 완전히 동작합니다.
@@ -30,9 +32,9 @@
 | `src/js/bookmarks.js` | 로컬 저장소 core. `getAllBookmarks()` / `getBookmark(id)` / `createBookmark(name)` / `renameBookmark(id,name)` / `deleteBookmark(id)` / `isInBookmark(bookmarkId,type,id)` / `isInAnyBookmark(type,id)` / `getBookmarksContaining(type,id)` / `addItemToBookmark` / `removeItemFromBookmark` / `toggleItemInBookmark` |
 | `src/js/bookmarkPicker.js` | 카드에 붙는 북마크 리본 아이콘 버튼 + 클릭 시 뜨는 "담을 북마크 고르기" 팝오버(체크리스트 + 인라인 "새 북마크 만들기"). `document.body`에 append하는 싱글턴 팝오버(`position: fixed` + `getBoundingClientRect()` 좌표 계산) — `.series-card { overflow: hidden; }`가 카드 밖으로 나가는 절대배치 자식을 잘라버려서 상대배치로는 불가능했음 |
 | `src/js/bookmarksPage.js` + `src/page/bookmarksPage.html` | 북마크 탭. 쿼리 파라미터로 4개 모드를 한 페이지가 처리 — 없으면 내 북마크 목록, `?tab=library` 라이브러리 목록, `?id=` 내 북마크 상세, `?libraryId=` 공개 북마크 상세 |
-| `src/js/bookmarkLibrary.js` | 라이브러리 Worker 클라이언트 (5번 참고) |
+| `src/js/bookmarkLibrary.js` | 라이브러리 Worker 클라이언트, 개인 복구 코드 관리 포함 (5번 참고) |
 | `src/js/gridPage.js` | 시리즈/명예관/공식/문학 그리드 카드에 북마크 버튼 연결 (`global.BookmarkPicker.createButton(config.favType, favId)`) |
-| `worker/favoritesShareWorker.js` + `worker/wrangler.toml` | Cloudflare Worker. `/library` 라우트만 들고 있습니다(옛 `/share` 는 제거). 파일명은 이력상 그대로입니다 — 바꾸면 `wrangler.toml` 의 `main` 도 같이 고쳐야 합니다 |
+| `worker/favoritesShareWorker.js` + `worker/wrangler.toml` | Cloudflare Worker. `/library`, `/library/<code>/claim-owner`, `/owner/lookup` 라우트를 들고 있습니다(옛 `/share` 는 제거). 파일명은 이력상 그대로입니다 — 바꾸면 `wrangler.toml` 의 `main` 도 같이 고쳐야 합니다 |
 
 **삭제됨:** `favorites.js`, `favoritesPage.js`, `favoritesPage.html`, `FAVORITES_SYSTEM.md`
 
@@ -85,34 +87,70 @@
 ### 파일
 | 파일 | 역할 |
 |---|---|
-| `src/js/bookmarkLibrary.js` | Worker 클라이언트. `publish` / `update` / `unpublish` / `list` / `getOne` / `getPublishedInfo` / `claimToken` |
-| `worker/favoritesShareWorker.js` | `/library` 라우트 (아래 표) |
+| `src/js/bookmarkLibrary.js` | Worker 클라이언트. `publish` / `update` / `unpublish` / `list` / `getOne` / `getPublishedInfo` / `claimToken` (예전 방식) / `getPersonalCode` / `claimAllByPersonalCode` / `migrateExistingToPersonalCode` / `linkLocalBookmark` / `getLocalLinkForCode` (개인 복구 코드, 5-1번 참고) |
+| `worker/favoritesShareWorker.js` | `/library`, `/library/<code>/claim-owner`, `/owner/lookup` 라우트 (아래 표) |
 
 ### Worker API
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| `POST` | `/library` | body `{name, items}` → `{code, editToken}` 반환. editToken은 **이 응답에서 딱 한 번만** 나옴 |
+| `POST` | `/library` | body `{name, items, personalCode?}` → `{code, editToken}` 반환. editToken은 **이 응답에서 딱 한 번만** 나옴. `personalCode`를 같이 보내면 그 자리에서 이 레코드를 그 개인 코드에 연결함 |
 | `GET` | `/library?sort=&q=&offset=&limit=` | 목록. `sort`는 `new`(기본, 공개 최신순)/`updated`/`name`, `q`는 이름 부분검색. R2 `customMetadata`에 이름·개수·생성시각을 같이 저장해둬서 항목마다 GET 하지 않음 |
 | `GET` | `/library/<code>` | 상세 `{code, name, items, createdAt, updatedAt}` |
-| `PUT` | `/library/<code>` | body `{editToken, name?, items?}` → 갱신 |
-| `DELETE` | `/library/<code>` | body `{editToken}` → 삭제 |
+| `PUT` | `/library/<code>` | body `{editToken?, personalCode?, name?, items?}` → 갱신. 인증은 둘 중 하나만 맞으면 통과(`verifyLibraryAuth`) |
+| `DELETE` | `/library/<code>` | body `{editToken?, personalCode?}` → 삭제. 인증 규칙은 위와 동일 |
+| `POST` | `/library/<code>/claim-owner` | body `{editToken, personalCode}` → 기존 editToken으로 소유권을 증명해 그 레코드를 개인 코드에 연결(5-1번, "1회성 마이그레이션") |
+| `POST` | `/owner/lookup` | body `{personalCode}` → `{items:[{code,name,itemCount,createdAt,updatedAt}], total}`. 그 개인 코드에 연결된 공개 북마크 전부의 요약(5-1번, "전체 되찾기") |
 
 ### 소유권 (로그인 없이)
-로그인 시스템이 없으므로 "내가 올린 것"이라는 증명은 게시 시 서버가 한 번 돌려주는 `editToken`을 브라우저가 들고 있는 것으로 대신합니다 (pastebin류의 삭제 키 패턴). `localStorage['chokaguya_library_tokens']` → `{ "<code>": { editToken, bookmarkId } }`.
+로그인 시스템이 없으므로 "내가 올린 것"이라는 증명은 게시 시 서버가 한 번 돌려주는 `editToken`을 브라우저가 들고 있는 것으로 대신합니다 (pastebin류의 삭제 키 패턴). `localStorage['chokaguya_library_tokens']` → `{ "<code>": { editToken, bookmarkId } }`. `editToken`은 이 브라우저·이 북마크 하나에만 묶이는 값이라, 여러 개를 공개할수록 코드를 여러 벌 관리해야 하는 문제가 있었습니다 — 이를 해결한 것이 아래 5-1번 개인 복구 코드입니다.
 
-> 🔐 **이 R2 버킷은 `pub-*.r2.dev`로 전체 공개 read이므로, editToken 원문은 절대 저장하지 않고 SHA-256 해시(`editTokenHash`)만 저장합니다.** `GET /library/<code>` 응답을 만들 때도 이 필드는 반드시 빠져야 합니다 — R2 body 를 그대로 프록시하면 안 되고, `libraryPublicView()` 가 내려줄 필드만 골라 담는 화이트리스트 방식이라 새 필드를 추가해도 실수로 새지 않습니다.
+> 🔐 **이 R2 버킷은 `pub-*.r2.dev`로 전체 공개 read이므로, editToken 원문은 절대 저장하지 않고 SHA-256 해시(`editTokenHash`)만 저장합니다.** `GET /library/<code>` 응답을 만들 때도 이 필드는 반드시 빠져야 합니다 — R2 body 를 그대로 프록시하면 안 되고, `libraryPublicView()` 가 내려줄 필드만 골라 담는 화이트리스트 방식이라 새 필드를 추가해도 실수로 새지 않습니다. 아래 5-1번의 `ownerHash`도 같은 이유로 이 화이트리스트에서 제외해 공개 응답에 실리지 않습니다.
 
-토큰을 잃으면(브라우저 데이터 삭제, 기기 변경) 그 게시물은 수정·삭제할 수 없습니다. 그래서 게시 직후 관리 코드를 한 번 보여주고 백업을 권합니다.
+토큰을 잃으면(브라우저 데이터 삭제, 기기 변경) 그 게시물은 수정·삭제할 수 없습니다. 그래서 게시 직후 관리 코드를 한 번 보여주고 백업을 권합니다 — 다만 이제는 같은 화면에서 "이 북마크는 개인 코드에도 자동으로 연결됐다"고 함께 안내하므로, 보통은 이 코드를 따로 적어둘 필요 없이 개인 코드 하나로 충분합니다.
+
+---
+
+## 5-1. 개인 복구 코드 (여러 북마크를 코드 하나로)
+
+**배경**: editToken 방식은 공개한 북마크마다 code+editToken 한 쌍이 따로 생기기 때문에, 다른 기기에서 여러 개를 되찾으려면 그 쌍을 북마크 수만큼 반복 입력해야 했습니다. 정식 로그인(이메일/비밀번호, OAuth)도 검토했지만, 이 프로젝트엔 계정·세션·이메일 발송 같은 인증 인프라가 전혀 없어 사이트 규모에 비해 과한 작업이라 판단해 만들지 않았습니다. 대신 **비밀번호 없는 브라우저 단위 "계정"** 역할을 하는 개인 복구 코드를 추가했습니다.
+
+### 클라이언트: 개인 코드 발급·저장
+`src/js/bookmarkLibrary.js`가 브라우저마다 한 번, 헷갈리기 쉬운 글자(`0/O`, `1/I/L`)를 뺀 알파벳으로 20자 코드를 생성해 `localStorage['chokaguya_personal_code']`에 저장합니다(`getPersonalCode()` — 없으면 그 자리에서 생성). 이후 이 브라우저에서 나가는 모든 `POST/PUT/DELETE /library` 요청에 이 코드가 자동으로 실립니다. 표시할 때는 5자씩 대시로 묶어(`formatPersonalCodeForDisplay`) 가독성을 높이고, 사용자가 입력할 땐 대시·공백·대소문자를 정규화(`normalizePersonalCode`)해서 원래 저장 형태(대시 없는 대문자 20자)와 항상 같은 값으로 비교합니다.
+
+### 서버: ownerHash와 owners/ 인덱스
+개인 코드도 editToken과 같은 보안 패턴을 따릅니다 — 서버엔 원문이 저장되지 않고, `ownerHash = sha256('owner:'+code+':'+personalCode)`만 레코드에 저장됩니다. 레코드 자신의 공개 코드(`code`)를 해시에 함께 섞어 넣은 게 핵심으로, 같은 사람이 올린 북마크 두 개라도 `ownerHash` 값이 서로 달라집니다 — 공개 버킷(`pub-*.r2.dev`)을 통째로 긁어봐도 이 값들만으로는 "같은 사람 것"이라는 상관관계가 드러나지 않습니다.
+
+R2 `list()`는 키(프리픽스) 순서로만 훑을 수 있고 임의 필드로 조회할 수 없어서("이 개인 코드가 가진 code 목록"을 바로 질의할 방법이 없음), 대신 인덱스 오브젝트를 둡니다:
+```
+owners/<sha256('owner-index:'+personalCode)>.json
+{ "v": 1, "codes": ["ABC12345", "XyZ98765", ...] }
+```
+게시(`personalCode` 포함)나 `/claim-owner` 성공 시 이 인덱스에 code를 추가합니다. **이 인덱스는 조회 편의용일 뿐 권한 증명의 근거가 아닙니다** — `PUT`/`DELETE`의 실제 인증은 항상 레코드 자신의 `ownerHash`를 확인하므로, 인덱스 갱신이 실패해도(베스트 에포트) 그 레코드는 personalCode로 여전히 정상 인증됩니다. 인덱스가 없으면 그 레코드가 "전체 되찾기" 목록에만 안 뜰 뿐입니다. 이미 삭제된 code가 인덱스에 남아 있으면 `/owner/lookup` 조회 시 `head()`가 404를 반환하는 걸 신호로 그때 정리합니다(별도 배치 작업 없음).
+
+### 흐름 1 — 이후 공개하는 것은 자동으로 연결됨
+`publish()`가 매번 `personalCode`를 실어 보내므로, 이 기능이 추가된 뒤 공개하는 북마크는 별도 조작 없이 전부 이 브라우저의 개인 코드에 연결됩니다.
+
+### 흐름 2 — 다른 기기에서 개인 코드 하나로 전체 되찾기
+`claimAllByPersonalCode(rawCode)`가 `POST /owner/lookup`으로 요약 목록을 받아온 뒤, 성공하면 **이 브라우저도 그 개인 코드를 채택**합니다(`adoptPersonalCode` — 앞으로 이 기기에서 공개하는 것도 같은 코드로 이어지도록). UI(`bookmarksPage.js`)는 받아온 항목마다 `getOne(code)`로 실제 내용을 가져와 로컬 북마크로 복원하고(`restorePublished`), `linkLocalBookmark`로 그 code에 연결합니다 — 이미 로컬에 연결된 북마크가 있으면 재사용해서, 같은 개인 코드로 반복 실행해도 중복 폴더가 생기지 않습니다. 이렇게 되찾은 북마크는 이 브라우저에 `editToken`을 모른 채로 남지만(`{ editToken: null, bookmarkId }`), 서버 인증이 personalCode만으로도 통과하므로 이후 수정·공개취소에 문제가 없습니다.
+
+### 흐름 3 — 기존(이 기능 이전) 공개물 1회성 마이그레이션
+이 기능 추가 전에 이미 공개된 북마크들은 `ownerHash`가 없어 개인 코드로 안 잡힙니다. `migrateExistingToPersonalCode()`가 이 브라우저에 남아있는 `editToken` 보유 항목을 모두 훑어 `POST /library/<code>/claim-owner`를 순차 호출, 성공/실패를 모아 돌려줍니다. UI의 "내 개인 코드" 패널에서 "이 브라우저의 기존 코드들을 여기 연결하기" 버튼으로 실행합니다.
+
+### 흐름 4 — 예전 방식(공유 코드+관리 코드)도 계속 지원, 자동 승격
+`claimToken(code, editToken)`(북마크 하나짜리 되찾기)은 그대로 남아 있고, 성공하면 그 자리에서 같은 code를 이 브라우저의 개인 코드에도 연결합니다(`linkToPersonalCode`, 베스트 에포트). 개인 코드를 몰라도 예전처럼 코드 하나만으로 복구할 수 있고, 복구하고 나면 다음부터는 개인 코드로도 관리할 수 있게 자동 승격되는 셈입니다.
 
 ### 레이트리밋
 공개 목록이 생기면서 스팸 유인이 커졌기 때문에, 라이브러리 기능과 **같이** 추가했습니다 (`TRAFFIC_LAG_AUDIT.md` 3항에서 지적한 문제). `RATE_LIMIT_KV` 바인딩을 써서 IP당 고정 윈도우로 제한:
-- 쓰기(`POST`/`PUT`/`DELETE /library`): 시간당 20회
+- 쓰기(`POST`/`PUT`/`DELETE /library`, `POST /library/<code>/claim-owner`): 시간당 20회 (같은 `lib-write` 버킷 공유)
 - 목록 조회(`GET /library`): 시간당 120회
+- 개인 코드 조회(`POST /owner/lookup`): 시간당 60회 (`owner-lookup` 버킷)
 
 KV는 최종 일관성이라 완벽한 원자성은 아니지만(동시 요청 시 약간의 오차 가능) 스팸 억제엔 충분합니다. **`RATE_LIMIT_KV`가 바인딩되지 않으면 Worker는 레이트리밋을 건너뛰고 동작하므로(fail open), 운영 배포 전에 반드시 네임스페이스를 만들어 `wrangler.toml`의 `id`를 채워야 합니다.**
 
 ### UI
 북마크 탭 목록 모드 상단에 **내 북마크 | 북마크 라이브러리** 알약 토글 (`?tab=library`). 내 북마크의 폴더 카드 좌상단 공유 버튼을 누르면 공개/업데이트/공개취소 패널이 뜹니다(공개 중이면 아이콘이 초록색). 라이브러리 카드를 클릭하면 `?libraryId=<code>` 상세로 가고, 거기 카드들의 북마크 버튼이 그대로 살아있어서 마음에 드는 항목을 바로 내 북마크에 담을 수 있습니다.
+
+같은 툴바에 **내 개인 코드** / **이 코드로 되찾기** 버튼이 나란히 있습니다(5-1번). "내 개인 코드"는 이 브라우저의 코드를 보여주고 복사하며, 기존 공개물을 한 번에 연결하는 마이그레이션 버튼도 여기 있습니다. "이 코드로 되찾기"는 다른 기기에서 받은 개인 코드를 입력해 그 코드에 연결된 북마크 전부를 한 번에 되찾는 흐름이고, 그 안에 접힌 "공유 코드 하나만 따로 되찾을래요" 링크를 누르면 예전 방식(공유 코드+관리 코드 두 칸)도 그대로 쓸 수 있습니다.
 
 ### 목록 정렬·검색
 R2 `list()`는 키(랜덤 코드) 순서로만 반환하기 때문에 커서 페이지 하나만 읽어서는 최신순 정렬도 이름 검색도 할 수 없습니다. 그래서 목록 라우트는 `library/` 프리픽스 전체를 훑어(`scanLibrary`) 정렬·필터한 뒤 잘라서 돌려줍니다. 정렬이 바뀌면 커서가 의미를 잃으므로 **offset 페이징**을 씁니다.
@@ -122,9 +160,7 @@ R2 `list()`는 키(랜덤 코드) 순서로만 반환하기 때문에 커서 페
 이름순은 `localeCompare(b, 'ko')`로 로케일을 못박았습니다 — 런타임 기본 로케일에 기대지 않기 위함이고, 한국어 콜레이션에서는 한글이 라틴 문자보다 앞에 옵니다(가나다 → ABC).
 
 ### 관리 코드 복구
-브라우저 데이터를 지웠거나 기기를 옮겨 `editToken`이 없는 공개물의 권한을 되찾는 흐름입니다. 내 북마크 탭 상단 "관리 코드로 되찾기" 버튼에서 공유 코드와 관리 코드를 입력합니다.
-
-토큰 검증 전용 라우트는 따로 만들지 않고, **아무것도 바꾸지 않는 PUT**으로 확인합니다(`bookmarkLibrary.js`의 `claimToken`). Worker가 토큰 해시를 먼저 대조하므로 틀리면 403이고, 맞으면 `name`/`items`를 건드리지 않은 채 성공합니다. 성공하면 `getOne`으로 공개된 내용을 받아 **로컬 북마크로 복원한 뒤 그 북마크 id에 토큰을 연결**해서, 곧바로 업데이트·공개취소를 쓸 수 있게 합니다.
+브라우저 데이터를 지웠거나 기기를 옮겨 권한을 되찾는 흐름은 이제 개인 복구 코드가 기본입니다 — 자세한 설계는 **5-1번**을 보세요. 공유 코드 하나짜리 예전 방식(`claimToken`)도 그대로 남아 있습니다: 토큰 검증 전용 라우트를 따로 만들지 않고 **아무것도 바꾸지 않는 PUT**으로 확인하며(Worker가 토큰 해시를 먼저 대조하므로 틀리면 403, 맞으면 `name`/`items`를 안 건드리고 성공), 성공하면 `getOne`으로 공개된 내용을 받아 로컬 북마크로 복원한 뒤 그 id에 토큰을 연결합니다. 이 방식으로 되찾으면 그 자리에서 개인 코드에도 자동으로 연결됩니다(5-1번 흐름 4).
 
 ---
 
@@ -147,6 +183,8 @@ KV 네임스페이스는 **이미 만들어져 `wrangler.toml` 에 id 가 채워
 ⚠️ `wrangler` 는 `login` 을 포함해 거의 모든 명령에서 `wrangler.toml` 을 먼저 검증합니다. 그래서 `id` 가 비어 있는 상태에서는 `worker/` 안에서 `login` 조차 설정 오류로 막힙니다 — **로그인은 `wrangler.toml` 이 없는 저장소 루트에서** 실행하세요(계정 단위라 위치와 무관하게 적용됩니다).
 Worker 주소는 이미 `src/js/bookmarkLibrary.js`의 `WORKER_BASE`에 박혀 있어서(`chokaguya-favorites-share.nwb10102.workers.dev`) `wrangler.toml`의 `name`이 그대로면 주소가 안 바뀌므로 손댈 필요 없습니다.
 
+> ⚠️ **개인 복구 코드(5-1번) 배포 안 됨.** 이 코드가 작성된 시점 기준 실서버엔 옛 버전 Worker가 떠 있어서, `personalCode`/`/library/<code>/claim-owner`/`/owner/lookup`이 아직 반영되지 않았습니다. 클라이언트(`bookmarkLibrary.js`)는 이미 매 게시마다 `personalCode`를 보내지만, 옛 서버는 이를 그냥 무시하고 게시 자체는 정상 처리합니다 — `/owner/lookup`처럼 새 라우트가 아예 없는 요청만 404가 납니다. 즉 **재배포 전까지는 "개인 코드로 되찾기"가 실제로 동작하지 않습니다.** 위 배포 명령(`cd worker && npx wrangler deploy`)으로 반영하세요.
+
 ---
 
 ## 7. 검증 상태
@@ -163,26 +201,43 @@ Worker 주소는 이미 `src/js/bookmarkLibrary.js`의 `WORKER_BASE`에 박혀 �
 - 정렬(`new`/`name`)·검색(`q`, 대소문자 무시)·offset 페이징·`total`/`hasMore` 정상
 - `/share` 라우트 제거 후에도 라이브러리 라우트 회귀 없음
 
+**개인 복구 코드 — Worker 로직 (2026-08-21, R2/KV 목)**
+- `personalCode` 없이 게시 → `ownerHash: null`, personalCode로 인증 시도하면 403 (연결 안 된 레코드는 개인 코드로 못 건드림)
+- `personalCode`와 함께 게시 → 그 즉시 personalCode만으로(editToken 없이) `PUT` 성공
+- 연결 전인 레코드에 `personalCode`로 `PUT` 시도 → 403, `/claim-owner`로 연결한 뒤 재시도 → 성공
+- `/owner/lookup`이 그 개인 코드에 연결된 레코드만 정확히 반환, 다른 개인 코드로 조회하면 빈 목록
+- personalCode로 `DELETE` 성공 후 `/owner/lookup`에서 그 code가 사라짐(삭제된 code가 인덱스에 남아도 다음 조회에서 스스로 정리됨)
+- 짧은/형식이 안 맞는 personalCode → 400
+- `GET`/목록 응답 어디에도 `ownerHash` 미노출
+
 **브라우저 (fetch 스텁으로 Worker 응답을 흉내내어 UI 흐름 확인)**
 - 탭 토글, 공개 → 링크·관리코드 표시 → 새로고침 후에도 "업데이트/공개취소" 상태 유지
 - 라이브러리 목록 → 상세 → 실제 카드 렌더 + 북마크 버튼으로 내 북마크에 담기
 - 공유 패널이 `.series-card`의 `overflow:hidden`에 안 잘림 (이 설계의 핵심 검증 포인트)
 - 검색·정렬 전환 시 목록/개수 갱신, `더 보기` 진행 표시, 검색 결과 없음 문구
-- 관리 코드 복구: 틀린 토큰은 안내 문구와 함께 거부되고 **토큰이 저장되지 않음**, 맞는 토큰은 공개 내용을 로컬 북마크로 복원하고 토큰까지 연결
+- 관리 코드 복구(예전 방식): 틀린 토큰은 안내 문구와 함께 거부되고 **토큰이 저장되지 않음**, 맞는 토큰은 공개 내용을 로컬 북마크로 복원하고 토큰까지 연결
 - 다크/라이트 양쪽 확인 — 다크모드에서 주요 버튼이 파란색을 잃는 CSS 특이도 문제를 발견해 `theme.css`에 `.is-primary` 재지정으로 수정
+
+**개인 복구 코드 — 브라우저 (2026-08-21, 실제 UI 클릭 + in-page fetch 스텁)**
+- 게시 시 개인 코드가 자동으로 실리고, 공개 직후 패널에 "개인 코드에도 자동 연결됐다"는 안내가 뜸
+- localStorage 전체 초기화("다른 기기" 시뮬레이션) → "이 코드로 되찾기"에 원래 개인 코드 입력 → 공개했던 북마크가 로컬로 복원되고 카드가 곧바로 "공개됨" 상태(초록 아이콘)로 표시됨
+- 위 상태에서 `editToken`을 전혀 모르는 채로(로컬에 없음) "최신 내용으로 업데이트" 클릭 → personalCode만으로 서버 인증 통과, "업데이트 완료!" 표시
+- 되찾기에 성공한 브라우저가 그 개인 코드를 스스로 채택함(`localStorage['chokaguya_personal_code']`가 원래 코드와 일치) 확인
+- "내 개인 코드"/"이 코드로 되찾기"/그 안의 "공유 코드 하나만 따로 되찾기" 세 패널 모두 토글 정상 동작
 
 **검증 중 발견해 고친 것**
 - 라이브러리 검색을 빠르게 입력하면 요청이 겹쳐 "더 보기" 버튼이 중복 생성되고 늦게 도착한 응답이 목록을 덮어썼습니다 → 세대 번호(`loadSeq`) 가드로 낡은 응답을 버리고, 버튼은 매번 전부 정리하도록 수정
 - 이름순 정렬이 런타임 기본 로케일에 의존 → `'ko'` 명시
+- (2026-08-21) `.bkm-claim-panel`이 자기 클래스에 `display:flex`를 직접 지정하고 있어서, `hidden` 속성(브라우저 기본 `[hidden]{display:none}`)이 같은 특이도의 author 규칙에 밀려 무시되는 버그를 발견 — 패널이 하나(관리 코드 복구)일 때는 안 드러났지만 개인 코드 추가로 패널이 세 개가 되며 토글이 전혀 안 먹는 형태로 표면화됨. `pageCommon.css`에 전역 `[hidden]{display:none!important;}` 가드를 추가해 해결(이 사이트의 `hidden` 속성 사용 전체에 적용되는 근본 수정)
 
-**실서버 검증 (2026-08-21 배포 후)**
+**실서버 검증 (2026-08-21 배포 후, 개인 복구 코드 이전 버전)**
 - `GET /library` 200 + `total`/`hasMore`/`sort` 필드 정상
 - 게시 → 상세 조회에서 `editTokenHash` 미노출 → 목록 반영 → 올바른 토큰으로 삭제까지 왕복 성공
 - 잘못된 editToken `DELETE` → 403
 - CORS 프리플라이트 `OPTIONS /library/<code>` → 204 + `Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
 - 레이트리밋이 실제 KV 에 `rl:lib-write:<ip>:<window>` / `rl:lib-list:...` 카운터를 만료시각과 함께 기록하는 것 확인 (한도를 소진하면 한 시간 동안 게시가 막히므로 429 자체는 일부러 유발하지 않음)
 
-**아직 검증 못 한 것**: 항목이 많을 때 `scanLibrary` 의 다중 페이지 순회(현재 공개물이 0건이라 단일 페이지만 탐), 실제 KV 최종 일관성 하에서의 429 경계 정확도.
+**아직 검증 못 한 것**: 항목이 많을 때 `scanLibrary` 의 다중 페이지 순회(현재 공개물이 0건이라 단일 페이지만 탐), 실제 KV 최종 일관성 하에서의 429 경계 정확도. **개인 복구 코드는 아직 실서버(`chokaguya-favorites-share.nwb10102.workers.dev`)에 배포되지 않았습니다** — 코드 작성 시점 기준 실서버는 이전 버전(`/library`만 있고 `personalCode`/`/claim-owner`/`/owner/lookup` 없음)이 떠 있는 상태라, 위 "실서버 검증"은 개인 복구 코드 이전 항목만 해당됩니다. 위 개인 복구 코드 검증은 전부 목/스텁으로 한 것이며, `cd worker && npx wrangler deploy`로 배포한 뒤에는 실제 R2 `head()`/`list()` 동작(특히 `/owner/lookup`의 순차 `head()` 다건 조회, `owners/*.json` 인덱스 오브젝트 크기)까지 실서버로 한 번 더 확인하는 걸 권합니다.
 
 > 참고: 위 목 테스트는 임시로 돌린 것이라 저장소에 커밋돼 있지 않습니다. 재현하려면 `worker/favoritesShareWorker.js`를 ESM으로 import 하고 R2/KV를 Map 기반 목으로 주입하면 됩니다.
 
@@ -201,6 +256,7 @@ Worker 주소는 이미 `src/js/bookmarkLibrary.js`의 `WORKER_BASE`에 박혀 �
 - ~~`wrangler.toml` 의 `RATE_LIMIT_KV` id 비어 있음~~ → 기입 완료. KV 에 `rl:lib-write` / `rl:lib-list` 카운터가 실제로 쌓이는 것 확인
 - ~~라이브러리 목록 정렬~~ → `sort=new|updated|name` 구현 (5번 참고)
 - ~~검색·필터~~ → `q` 이름 부분검색 구현
-- ~~관리 코드 복구~~ → "관리 코드로 되찾기" UI + `claimToken` 구현
+- ~~관리 코드 복구~~ → "관리 코드로 되찾기" UI + `claimToken` 구현 (이후 개인 복구 코드로 대체·보완, 아래 항목)
 - ~~옛 즐겨찾기 공유 인프라 삭제~~ → 파일 5개 + Worker `/share` 라우트 제거
 - ~~`/share`에 레이트리밋 미적용~~ → 라우트 자체를 없애서 해소
+- ~~북마크마다 따로 코드를 관리해야 하는 문제~~ → 개인 복구 코드 추가(5-1번). 브라우저마다 코드 하나로 이후 공개물 전부 자동 연결, 다른 기기에서 그 코드 하나로 전체 되찾기, 기존 공개물 1회성 마이그레이션, 예전 코드+토큰 방식도 계속 지원(성공 시 자동 연결). **코드 작성만 했고 실서버엔 미배포** — 배포는 사용자 판단에 맡김(6번 참고)

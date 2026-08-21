@@ -233,7 +233,7 @@
       tokenInput.addEventListener('focus', function () { tokenInput.select(); });
       panel.appendChild(tokenInput);
 
-      panel.appendChild(sharePanelNote('이 브라우저에는 자동 저장됐어요. 다른 기기에서도 관리하려면 이 코드를 따로 보관해주세요 — 다시 볼 수 없어요.'));
+      panel.appendChild(sharePanelNote('이 브라우저에는 자동 저장됐어요. 다시 볼 수 없으니 백업이 필요하면 지금 따로 보관해두세요 — 다만 이 북마크는 이 브라우저의 "내 개인 코드"에도 자동으로 연결됐으니, 다른 기기에서는 보통 이 관리 코드 대신 개인 코드 하나로 되찾을 수 있어요(목록 상단 "이 코드로 되찾기").'));
     }
   }
 
@@ -348,26 +348,138 @@
     form.appendChild(newBtn);
     toolbar.appendChild(form);
 
-    // 관리 코드 복구 — 브라우저 데이터를 지웠거나 다른 기기라 editToken 이
-    // 없는 공개물의 수정·삭제 권한을 코드 입력으로 되찾는다
-    var claimBtn = document.createElement('button');
-    claimBtn.type = 'button';
-    claimBtn.className = 'bkm-inline-create-btn bkm-claim-toggle';
-    claimBtn.textContent = '관리 코드로 되찾기';
-    toolbar.appendChild(claimBtn);
+    // 이 브라우저의 개인 코드 보기/복사 — 이후 공개하는 모든 북마크가
+    // 자동으로 이 코드에 연결되므로, 다른 기기에서 이 코드 하나만 입력하면
+    // 연결된 북마크 전부의 수정 권한을 한 번에 되찾을 수 있다.
+    var personalBtn = document.createElement('button');
+    personalBtn.type = 'button';
+    personalBtn.className = 'bkm-inline-create-btn bkm-claim-toggle';
+    personalBtn.textContent = '내 개인 코드';
+    toolbar.appendChild(personalBtn);
+
+    // 다른 기기에서 개인 코드로 전체 되찾기 (필요하면 공유 코드 하나만
+    // 따로 되찾는 예전 방식도 안에서 고를 수 있음)
+    var recoverBtn = document.createElement('button');
+    recoverBtn.type = 'button';
+    recoverBtn.className = 'bkm-inline-create-btn bkm-claim-toggle';
+    recoverBtn.textContent = '이 코드로 되찾기';
+    toolbar.appendChild(recoverBtn);
+
     contentEl.appendChild(toolbar);
 
-    var claimPanel = document.createElement('div');
-    claimPanel.className = 'bkm-claim-panel';
-    claimPanel.hidden = true;
+    // ---- 내 개인 코드 패널 ----
+    var personalPanel = document.createElement('div');
+    personalPanel.className = 'bkm-claim-panel';
+    personalPanel.hidden = true;
 
-    var claimDesc = document.createElement('p');
-    claimDesc.className = 'bkm-share-note';
-    claimDesc.textContent = '공개할 때 받은 공유 코드와 관리 코드를 넣으면, 이 기기에서도 수정·공개취소를 할 수 있어요. 공개된 내용은 내 북마크로 함께 가져옵니다.';
-    claimPanel.appendChild(claimDesc);
+    personalPanel.appendChild(sharePanelNote('이 브라우저에서 앞으로 공개하는 북마크는 모두 이 코드에 자동으로 연결돼요. 다른 기기에서 이 코드 하나만 입력하면 연결된 북마크 전부를 한 번에 관리할 수 있어요. 코드를 잃어버리면 되찾을 방법이 없으니 안전한 곳에 따로 적어두세요.'));
 
-    var claimRow = document.createElement('div');
-    claimRow.className = 'bkm-inline-create';
+    var personalCodeRow = document.createElement('div');
+    personalCodeRow.className = 'bkm-inline-create';
+    var personalCodeInput = document.createElement('input');
+    personalCodeInput.type = 'text';
+    personalCodeInput.className = 'bkm-inline-create-input bkm-personal-code-display';
+    personalCodeInput.readOnly = true;
+    personalCodeInput.value = global.BookmarkLibrary.formatPersonalCodeForDisplay(global.BookmarkLibrary.getPersonalCode());
+    personalCodeInput.addEventListener('focus', function () { personalCodeInput.select(); });
+    var personalCopyBtn = document.createElement('button');
+    personalCopyBtn.type = 'button';
+    personalCopyBtn.className = 'bkm-inline-create-btn';
+    personalCopyBtn.textContent = '복사';
+    personalCopyBtn.addEventListener('click', function () {
+      personalCodeInput.focus();
+      personalCodeInput.select();
+      var text = personalCodeInput.value;
+      var showCopied = function () {
+        personalCopyBtn.textContent = '복사됨!';
+        setTimeout(function () { personalCopyBtn.textContent = '복사'; }, 1500);
+      };
+      if (global.navigator && global.navigator.clipboard && global.navigator.clipboard.writeText) {
+        global.navigator.clipboard.writeText(text).then(showCopied).catch(function () {});
+      } else {
+        try { document.execCommand('copy'); showCopied(); } catch (e) {}
+      }
+    });
+    personalCodeRow.appendChild(personalCodeInput);
+    personalCodeRow.appendChild(personalCopyBtn);
+    personalPanel.appendChild(personalCodeRow);
+
+    // 이 기능 추가 전에 이미 공개된 것들은 개인 코드와 연결이 안 되어 있어
+    // 한 번에 연결해주는 1회성 마이그레이션
+    var migrateBtn = document.createElement('button');
+    migrateBtn.type = 'button';
+    migrateBtn.className = 'bkm-inline-create-btn';
+    migrateBtn.textContent = '이 브라우저의 기존 코드들을 여기 연결하기';
+    personalPanel.appendChild(migrateBtn);
+    var migrateMsg = sharePanelNote('');
+    personalPanel.appendChild(migrateMsg);
+
+    migrateBtn.addEventListener('click', function () {
+      migrateBtn.disabled = true;
+      migrateMsg.textContent = '연결하는 중...';
+      global.BookmarkLibrary.migrateExistingToPersonalCode()
+        .then(function (result) {
+          migrateBtn.disabled = false;
+          if (!result.linked.length && !result.failed.length) {
+            migrateMsg.textContent = '이 브라우저에 연결할 만한 기존 코드가 없어요.';
+            return;
+          }
+          var msg = result.linked.length + '개 연결 완료';
+          if (result.failed.length) msg += ' (' + result.failed.length + '개 실패, 잠시 후 다시 시도해주세요)';
+          migrateMsg.textContent = msg + '!';
+        })
+        .catch(function (err) {
+          migrateBtn.disabled = false;
+          migrateMsg.textContent = err.message || '연결에 실패했어요.';
+        });
+    });
+
+    contentEl.appendChild(personalPanel);
+    personalBtn.addEventListener('click', function () {
+      personalPanel.hidden = !personalPanel.hidden;
+    });
+
+    // ---- 되찾기 패널 (개인 코드 하나로 전체 되찾기) ----
+    var recoverPanel = document.createElement('div');
+    recoverPanel.className = 'bkm-claim-panel';
+    recoverPanel.hidden = true;
+
+    recoverPanel.appendChild(sharePanelNote('다른 기기에서 발급받은 개인 코드를 넣으면, 그 코드에 연결된 북마크 전부를 이 브라우저로 불러오고 이 브라우저에서도 같은 코드로 관리할 수 있게 돼요.'));
+
+    var recoverRow = document.createElement('div');
+    recoverRow.className = 'bkm-inline-create';
+    var recoverInput = document.createElement('input');
+    recoverInput.type = 'text';
+    recoverInput.className = 'bkm-inline-create-input bkm-claim-token';
+    recoverInput.placeholder = '개인 코드 (20자리)';
+    recoverInput.autocomplete = 'off';
+    var recoverGo = document.createElement('button');
+    recoverGo.type = 'button';
+    recoverGo.className = 'bkm-inline-create-btn is-primary';
+    recoverGo.textContent = '되찾기';
+    recoverRow.appendChild(recoverInput);
+    recoverRow.appendChild(recoverGo);
+    recoverPanel.appendChild(recoverRow);
+
+    var recoverMsg = sharePanelNote('');
+    recoverPanel.appendChild(recoverMsg);
+
+    // 개인 코드를 모르고, 북마크 하나의 공유 코드+관리 코드만 알고 있는
+    // 드문 경우를 위한 예전 방식 — 기본적으로는 접혀 있다
+    var legacyToggle = document.createElement('button');
+    legacyToggle.type = 'button';
+    legacyToggle.className = 'bkm-back-link bkm-legacy-claim-toggle';
+    legacyToggle.textContent = '공유 코드 하나만 따로 되찾을래요';
+    recoverPanel.appendChild(legacyToggle);
+
+    var legacyPanel = document.createElement('div');
+    legacyPanel.className = 'bkm-claim-panel bkm-claim-subpanel';
+    legacyPanel.hidden = true;
+
+    legacyPanel.appendChild(sharePanelNote('공개할 때 받은 공유 코드와 관리 코드를 넣으면, 그 북마크 하나만 이 기기에서도 관리할 수 있게 돼요. 이 방법으로 되찾으면 그 북마크도 이 브라우저의 개인 코드에 자동으로 연결돼요.'));
+
+    var legacyRow = document.createElement('div');
+    legacyRow.className = 'bkm-inline-create';
     var codeInput = document.createElement('input');
     codeInput.type = 'text';
     codeInput.className = 'bkm-inline-create-input';
@@ -378,55 +490,96 @@
     tokenInput2.className = 'bkm-inline-create-input bkm-claim-token';
     tokenInput2.placeholder = '관리 코드';
     tokenInput2.autocomplete = 'off';
-    var claimGo = document.createElement('button');
-    claimGo.type = 'button';
-    claimGo.className = 'bkm-inline-create-btn is-primary';
-    claimGo.textContent = '되찾기';
-    claimRow.appendChild(codeInput);
-    claimRow.appendChild(tokenInput2);
-    claimRow.appendChild(claimGo);
-    claimPanel.appendChild(claimRow);
+    var legacyGo = document.createElement('button');
+    legacyGo.type = 'button';
+    legacyGo.className = 'bkm-inline-create-btn is-primary';
+    legacyGo.textContent = '되찾기';
+    legacyRow.appendChild(codeInput);
+    legacyRow.appendChild(tokenInput2);
+    legacyRow.appendChild(legacyGo);
+    legacyPanel.appendChild(legacyRow);
 
-    var claimMsg = document.createElement('p');
-    claimMsg.className = 'bkm-share-note';
-    claimPanel.appendChild(claimMsg);
-    contentEl.appendChild(claimPanel);
+    var legacyMsg = sharePanelNote('');
+    legacyPanel.appendChild(legacyMsg);
 
-    claimBtn.addEventListener('click', function () {
-      claimPanel.hidden = !claimPanel.hidden;
-      if (!claimPanel.hidden) codeInput.focus();
+    recoverPanel.appendChild(legacyPanel);
+    contentEl.appendChild(recoverPanel);
+
+    recoverBtn.addEventListener('click', function () {
+      recoverPanel.hidden = !recoverPanel.hidden;
+      if (!recoverPanel.hidden) recoverInput.focus();
+    });
+    legacyToggle.addEventListener('click', function () {
+      legacyPanel.hidden = !legacyPanel.hidden;
+      if (!legacyPanel.hidden) codeInput.focus();
     });
 
-    function runClaim() {
+    // 공개된 북마크 하나를 로컬 북마크로 복원 — 이미 이 code로 연결된 로컬
+    // 북마크가 있으면 새로 만들지 않고 그대로 재사용한다("전체 되찾기"를
+    // 반복 실행해도 중복 폴더가 안 생기게).
+    function restorePublished(code) {
+      var link = global.BookmarkLibrary.getLocalLinkForCode(code);
+      if (link && link.bookmarkId && global.Bookmarks.getBookmark(link.bookmarkId)) {
+        return Promise.resolve(link.bookmarkId);
+      }
+      return global.BookmarkLibrary.getOne(code).then(function (pub) {
+        var newId = global.Bookmarks.createBookmark(pub.name || '되찾은 북마크');
+        (pub.items || []).forEach(function (it) {
+          global.Bookmarks.addItemToBookmark(newId, it.type, it.id);
+        });
+        global.BookmarkLibrary.linkLocalBookmark(code, newId);
+        return newId;
+      });
+    }
+
+    function runRecoverAll() {
+      recoverMsg.textContent = '확인 중...';
+      recoverGo.disabled = true;
+
+      global.BookmarkLibrary.claimAllByPersonalCode(recoverInput.value)
+        .then(function (items) {
+          if (!items.length) {
+            recoverGo.disabled = false;
+            recoverMsg.textContent = '이 코드에 연결된 공개 북마크가 없어요.';
+            return;
+          }
+          recoverMsg.textContent = items.length + '개를 불러오는 중...';
+          var chain = Promise.resolve();
+          items.forEach(function (entry) {
+            chain = chain.then(function () { return restorePublished(entry.code); });
+          });
+          return chain.then(function () {
+            recoverMsg.textContent = items.length + '개를 되찾았어요! 목록을 새로 불러옵니다.';
+            setTimeout(function () { renderList('mine'); }, 600);
+          });
+        })
+        .catch(function (err) {
+          recoverGo.disabled = false;
+          recoverMsg.textContent = err.message || '되찾기에 실패했어요.';
+        });
+    }
+    recoverGo.addEventListener('click', runRecoverAll);
+    recoverInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') runRecoverAll(); });
+
+    function runLegacyClaim() {
       var code = codeInput.value.trim();
       var token = tokenInput2.value.trim();
-      claimMsg.textContent = '확인 중...';
-      claimGo.disabled = true;
+      legacyMsg.textContent = '확인 중...';
+      legacyGo.disabled = true;
 
       global.BookmarkLibrary.claimToken(code, token)
+        .then(function () { return restorePublished(code); })
         .then(function () {
-          return global.BookmarkLibrary.getOne(code);
-        })
-        .then(function (pub) {
-          var newId = global.Bookmarks.createBookmark(pub.name || '되찾은 북마크');
-          (pub.items || []).forEach(function (it) {
-            global.Bookmarks.addItemToBookmark(newId, it.type, it.id);
-          });
-          // 새로 만든 로컬 북마크에 코드를 다시 연결해 공유 패널이 인식하게 함
-          return global.BookmarkLibrary.claimToken(code, token, newId);
-        })
-        .then(function () {
-          claimMsg.textContent = '되찾았어요! 목록을 새로 불러옵니다.';
+          legacyMsg.textContent = '되찾았어요! 목록을 새로 불러옵니다.';
           setTimeout(function () { renderList('mine'); }, 600);
         })
         .catch(function (err) {
-          claimGo.disabled = false;
-          claimMsg.textContent = err.message || '되찾기에 실패했어요.';
+          legacyGo.disabled = false;
+          legacyMsg.textContent = err.message || '되찾기에 실패했어요.';
         });
     }
-
-    claimGo.addEventListener('click', runClaim);
-    tokenInput2.addEventListener('keydown', function (e) { if (e.key === 'Enter') runClaim(); });
+    legacyGo.addEventListener('click', runLegacyClaim);
+    tokenInput2.addEventListener('keydown', function (e) { if (e.key === 'Enter') runLegacyClaim(); });
 
     var grid = document.createElement('div');
     grid.className = 'series-grid';

@@ -20,12 +20,56 @@
  *     first, because R2 only lists in key order (see LIBRARY_SCAN_MAX).
  * - GET  /library/<code>           -> full { code, name, items, ... }
  *     (editTokenHash is stripped before responding).
- * - PUT  /library/<code>           body: { editToken, name?, items? } -> update.
- * - DELETE /library/<code>         body: { editToken } -> delete.
+ * - PUT  /library/<code>           body: { editToken?, personalCode?, name?, items? } -> update.
+ * - DELETE /library/<code>         body: { editToken?, personalCode? } -> delete.
+ *     PUT/DELETE need at least one of editToken/personalCode, and only one of
+ *     them has to match (see verifyLibraryAuth) — that's what lets a personal
+ *     code alone recover edit rights without ever knowing the editToken.
  * All /library GET routes have to go through this Worker too, not the raw
  * pub-*.r2.dev URL: that bucket serves GET with no Access-Control-Allow-Origin
  * header, which blocks a cross-origin fetch() from reading the JSON body in JS.
- * GET /library/<code> additionally needs server-side redaction of editTokenHash.
+ * GET /library/<code> additionally needs server-side redaction of editTokenHash
+ * and ownerHash.
+ *
+ * ---- Personal recovery code (no login, browser-wide "account") ----
+ * A real login (email/password, OAuth) was considered and rejected — this
+ * project has no account/session/email infrastructure at all, and it would
+ * be a lot of new surface for a hobby archive. Instead each browser keeps one
+ * random "personal code" (src/js/bookmarkLibrary.js), sent as `personalCode`
+ * on every publish/update/delete. Entering that one code on another device
+ * recovers edit rights over *every* bookmark ever published from the
+ * original browser, instead of juggling a code/editToken pair per bookmark.
+ * - Every /library write may include `personalCode`. On create it links the
+ *   new record to that code; on update/delete it's accepted as an
+ *   alternative to editToken.
+ * - Ownership proof is `ownerHash = sha256('owner:'+code+':'+personalCode)`,
+ *   stored on the record (never the plaintext code, same reasoning as
+ *   editTokenHash). Hashing the record's own `code` in too means two
+ *   bookmarks owned by the same person don't share a recoverable value even
+ *   if someone scrapes the whole public bucket — you can't tell they're
+ *   linked without already knowing the personal code.
+ * - POST /library/<code>/claim-owner   body: { editToken, personalCode }
+ *     -> links a bookmark published *before* this feature (or from a
+ *     session that skipped personalCode) to a personal code. Proves
+ *     ownership via the existing editToken, one bookmark at a time. This is
+ *     what the client's one-shot "이 브라우저의 기존 코드들을 내 개인 코드로
+ *     가져오기" migration calls for each locally-remembered editToken.
+ * - POST /owner/lookup   body: { personalCode }
+ *     -> { items:[{code,name,itemCount,createdAt,updatedAt}], total } for
+ *     every bookmark linked to that code — this is what "이 코드로 전체
+ *     되찾기" shows on another device. Backed by an index object at
+ *     owners/<sha256('owner-index:'+personalCode)>.json holding just the
+ *     list of codes (R2 list() can't be queried by arbitrary field, so this
+ *     index stands in for a lookup-by-owner query). Each code's
+ *     name/itemCount/timestamps come from R2 head() + customMetadata, same
+ *     as the library listing, so lookup never reads record bodies. A code
+ *     already deleted from library/ is dropped from the index the next time
+ *     someone looks it up (best-effort GC, not a background job).
+ * - The index is a convenience for discovery only, not the source of
+ *   authorization — PUT/DELETE always check ownerHash on the record itself.
+ *   If an index write ever fails (e.g. right after create), the record is
+ *   still fully usable via personalCode; it just won't surface in a lookup
+ *   until claim-owner or another publish repairs the index.
  *
  * ---- Rate limiting ----
  * Every /library write (POST/PUT/DELETE) and the list GET are throttled per
@@ -57,8 +101,19 @@ const LIBRARY_SCAN_PAGE = 1000;
 const LIBRARY_SCAN_MAX = 4000;
 const LIBRARY_MAX_QUERY = 40;
 
+// 클라이언트가 생성하는 개인 코드는 20자 커스텀 알파벳(chokaguya_personal_code)을
+// 기대하지만, 서버 검증은 형태만 넉넉하게 확인한다(길이 16~64, URL-safe 문자) —
+// 클라이언트 쪽 알파벳/길이가 나중에 바뀌어도 서버를 같이 고칠 필요가 없도록.
+const PERSONAL_CODE_RE = /^[A-Za-z0-9_-]{16,64}$/;
+// 개인 코드 하나에 연결할 수 있는 공개 북마크 수 상한 — 이 인덱스는 조회
+// 편의용일 뿐 권한 증명 자체는 레코드의 ownerHash가 하므로, 상한을 넘긴
+// 코드도 직접 알고 있으면 여전히 PUT/DELETE는 정상 동작한다(조회 목록에만
+// 안 뜬다).
+const OWNER_MAX_CODES = 500;
+
 const RATE_LIMIT_WRITE_PER_HOUR = 20;
 const RATE_LIMIT_LIST_PER_HOUR = 120;
+const RATE_LIMIT_OWNER_LOOKUP_PER_HOUR = 60;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +149,85 @@ async function sha256Hex(str) {
 
 function clientIp(request) {
   return request.headers.get('CF-Connecting-IP') || 'unknown';
+}
+
+// ---- 개인 복구 코드 ----
+// code(레코드 자신의 공개 코드)를 해시에 함께 섞어서, 같은 사람이 올린
+// 북마크 두 개라도 ownerHash 값이 서로 달라지게 한다 — 공개 버킷을 통째로
+// 긁어봐도 이 값들만으로는 "같은 사람 것"이라는 상관관계가 드러나지 않는다.
+async function ownerHashFor(personalCode, code) {
+  return sha256Hex('owner:' + code + ':' + personalCode);
+}
+
+// 개인 코드 → 소유한 공개 코드 목록을 찾기 위한 인덱스 오브젝트 키.
+// R2 list()는 프리픽스로만 훑을 수 있고 임의 필드로 조회할 수 없어서,
+// "이 개인 코드가 어떤 code들을 소유하는지"를 이 인덱스 오브젝트가 대신한다.
+async function ownerIndexKey(personalCode) {
+  return 'owners/' + (await sha256Hex('owner-index:' + personalCode)) + '.json';
+}
+
+function cleanPersonalCode(raw) {
+  if (typeof raw !== 'string') return null;
+  var trimmed = raw.trim();
+  if (!PERSONAL_CODE_RE.test(trimmed)) return null;
+  return trimmed;
+}
+
+// 인덱스는 조회 편의용일 뿐이라 실패해도 삼켜서 게시/연결 자체를 막지 않는다
+// (문서 상단 주석 참고 — 권한 증명은 항상 레코드 자신의 ownerHash가 한다).
+async function addToOwnerIndex(env, personalCode, code) {
+  try {
+    var key = await ownerIndexKey(personalCode);
+    var object = await env.FAVORITES_BUCKET.get(key);
+    var codes = [];
+    if (object) {
+      var data = await object.json();
+      if (data && Array.isArray(data.codes)) {
+        codes = data.codes.filter(function (c) { return typeof c === 'string'; });
+      }
+    }
+    if (codes.indexOf(code) === -1) {
+      if (codes.length >= OWNER_MAX_CODES) return;
+      codes.push(code);
+      await env.FAVORITES_BUCKET.put(key, JSON.stringify({ v: 1, codes: codes }), {
+        httpMetadata: { contentType: 'application/json' }
+      });
+    }
+  } catch (e) {
+    // 인덱스 갱신 실패 — 개별 레코드는 여전히 personalCode로 정상 인증된다
+  }
+}
+
+// PUT/DELETE 공용 인증: editToken 또는 personalCode 중 하나만 record와
+// 맞으면 통과한다. personalCode는 record.ownerHash가 세팅돼 있을 때만
+// (즉 이 코드로 연결된 적이 있을 때만) 통할 수 있다.
+async function verifyLibraryAuth(record, code, auth) {
+  if (auth.editToken) {
+    var providedHash = await sha256Hex(auth.editToken);
+    if (providedHash === record.editTokenHash) return true;
+  }
+  if (auth.personalCode && record.ownerHash) {
+    var providedOwnerHash = await ownerHashFor(auth.personalCode, code);
+    if (providedOwnerHash === record.ownerHash) return true;
+  }
+  return false;
+}
+
+// PUT body와 DELETE body가 공유하는 인증 필드 파싱 — editToken/personalCode
+// 중 최소 하나는 있어야 하고, personalCode가 있으면 형태를 검증한다.
+function validateLibraryAuth(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  var hasEditToken = typeof raw.editToken === 'string' && raw.editToken;
+  var hasPersonalCode = typeof raw.personalCode === 'string' && raw.personalCode;
+  if (!hasEditToken && !hasPersonalCode) return null;
+  var result = {};
+  if (hasEditToken) result.editToken = raw.editToken;
+  if (hasPersonalCode) {
+    var personalCode = cleanPersonalCode(raw.personalCode);
+    if (personalCode === null) return null;
+    result.personalCode = personalCode;
+  }
+  return result;
 }
 
 // Fixed-window counter in KV, keyed per IP/bucket/hour. Fails open (allows
@@ -140,12 +274,21 @@ function validateLibraryCreate(raw) {
   var name = cleanLibraryName(raw.name);
   var items = cleanLibraryItems(raw.items);
   if (name === null || items === null) return null;
-  return { name: name, items: items };
+  var result = { name: name, items: items };
+  // personalCode는 선택 — 없어도 게시는 되지만(옛 클라이언트/개인 코드
+  // 생성 실패 등 대비), 있으면 형태가 맞아야 한다.
+  if (typeof raw.personalCode === 'string' && raw.personalCode) {
+    var personalCode = cleanPersonalCode(raw.personalCode);
+    if (personalCode === null) return null;
+    result.personalCode = personalCode;
+  }
+  return result;
 }
 
 function validateLibraryUpdate(raw) {
-  if (!raw || typeof raw !== 'object' || typeof raw.editToken !== 'string' || !raw.editToken) return null;
-  var result = { editToken: raw.editToken };
+  var auth = validateLibraryAuth(raw);
+  if (!auth) return null;
+  var result = auth;
   if (raw.name !== undefined) {
     var name = cleanLibraryName(raw.name);
     if (name === null) return null;
@@ -201,12 +344,14 @@ async function handleLibraryCreate(request, env) {
 
   var editToken = generateEditToken();
   var editTokenHash = await sha256Hex(editToken);
+  var ownerHash = clean.personalCode ? await ownerHashFor(clean.personalCode, code) : null;
   var now = Date.now();
   var record = {
     v: 1,
     name: clean.name,
     items: clean.items,
     editTokenHash: editTokenHash,
+    ownerHash: ownerHash,
     createdAt: now,
     updatedAt: now
   };
@@ -220,6 +365,10 @@ async function handleLibraryCreate(request, env) {
       updatedAt: String(now)
     }
   });
+
+  if (clean.personalCode) {
+    await addToOwnerIndex(env, clean.personalCode, code);
+  }
 
   return jsonResponse({ code: code, editToken: editToken }, 201);
 }
@@ -330,8 +479,8 @@ async function handleLibraryUpdate(code, request, env) {
   var clean = validateLibraryUpdate(body.value);
   if (!clean) return jsonResponse({ error: 'invalid payload shape' }, 400);
 
-  var providedHash = await sha256Hex(clean.editToken);
-  if (providedHash !== record.editTokenHash) {
+  var authorized = await verifyLibraryAuth(record, code, clean);
+  if (!authorized) {
     return jsonResponse({ error: 'invalid edit token' }, 403);
   }
 
@@ -365,17 +514,130 @@ async function handleLibraryDelete(code, request, env) {
 
   var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
   if (body.error) return body.error;
+  var auth = validateLibraryAuth(body.value);
+  if (!auth) return jsonResponse({ error: 'invalid payload shape' }, 400);
+
+  var authorized = await verifyLibraryAuth(record, code, auth);
+  if (!authorized) {
+    return jsonResponse({ error: 'invalid edit token' }, 403);
+  }
+
+  await env.FAVORITES_BUCKET.delete('library/' + code + '.json');
+  // 인덱스에서 이 code를 빼는 건 베스트 에포트로만 한다: 인증이 editToken을
+  // 통해 이뤄졌다면 서버는 personalCode 평문을 모르므로 인덱스 키(해시)를
+  // 계산할 수 없다 — 이런 잔여 항목은 owner/lookup 조회 시 head()가 404를
+  // 반환하면 그때 정리된다(handleOwnerLookup 참고).
+  if (auth.personalCode) {
+    try {
+      var indexKey = await ownerIndexKey(auth.personalCode);
+      var indexObject = await env.FAVORITES_BUCKET.get(indexKey);
+      if (indexObject) {
+        var indexData = await indexObject.json();
+        var codes = (indexData && Array.isArray(indexData.codes)) ? indexData.codes : [];
+        var next = codes.filter(function (c) { return c !== code; });
+        if (next.length !== codes.length) {
+          await env.FAVORITES_BUCKET.put(indexKey, JSON.stringify({ v: 1, codes: next }), {
+            httpMetadata: { contentType: 'application/json' }
+          });
+        }
+      }
+    } catch (e) {}
+  }
+  return jsonResponse({ ok: true });
+}
+
+async function handleLibraryClaimOwner(code, request, env) {
+  var ip = clientIp(request);
+  if (!(await checkRateLimit(env, ip, 'lib-write', RATE_LIMIT_WRITE_PER_HOUR))) {
+    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  }
+  if (!CODE_RE.test(code)) return jsonResponse({ error: 'invalid code' }, 400);
+
+  var object = await env.FAVORITES_BUCKET.get('library/' + code + '.json');
+  if (!object) return jsonResponse({ error: 'not found' }, 404);
+  var record = await object.json();
+
+  var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
+  if (body.error) return body.error;
   if (!body.value || typeof body.value.editToken !== 'string' || !body.value.editToken) {
     return jsonResponse({ error: 'invalid payload shape' }, 400);
   }
+  var personalCode = cleanPersonalCode(body.value.personalCode);
+  if (personalCode === null) return jsonResponse({ error: 'invalid payload shape' }, 400);
 
   var providedHash = await sha256Hex(body.value.editToken);
   if (providedHash !== record.editTokenHash) {
     return jsonResponse({ error: 'invalid edit token' }, 403);
   }
 
-  await env.FAVORITES_BUCKET.delete('library/' + code + '.json');
+  // 이미 공개된 내용을 그대로 둔 채 소유권 표지만 붙인다 — name/items는 물론
+  // updatedAt도 건드리지 않는다(연결 자체는 "수정"이 아니므로 목록 정렬
+  // 순서에 영향을 주면 안 된다).
+  record.ownerHash = await ownerHashFor(personalCode, code);
+  await env.FAVORITES_BUCKET.put('library/' + code + '.json', JSON.stringify(record), {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: {
+      name: record.name,
+      itemCount: String(record.items.length),
+      createdAt: String(record.createdAt || record.updatedAt),
+      updatedAt: String(record.updatedAt)
+    }
+  });
+  await addToOwnerIndex(env, personalCode, code);
+
   return jsonResponse({ ok: true });
+}
+
+async function handleOwnerLookup(request, env) {
+  var ip = clientIp(request);
+  if (!(await checkRateLimit(env, ip, 'owner-lookup', RATE_LIMIT_OWNER_LOOKUP_PER_HOUR))) {
+    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  }
+
+  var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
+  if (body.error) return body.error;
+  var personalCode = cleanPersonalCode(body.value && body.value.personalCode);
+  if (personalCode === null) return jsonResponse({ error: 'invalid payload shape' }, 400);
+
+  var indexKey = await ownerIndexKey(personalCode);
+  var indexObject = await env.FAVORITES_BUCKET.get(indexKey);
+  if (!indexObject) return jsonResponse({ items: [], total: 0 });
+
+  var indexData = await indexObject.json();
+  var codes = (indexData && Array.isArray(indexData.codes))
+    ? indexData.codes.filter(function (c) { return typeof c === 'string'; })
+    : [];
+
+  var items = [];
+  var staleFound = false;
+  for (var i = 0; i < codes.length; i++) {
+    var libCode = codes[i];
+    var head = await env.FAVORITES_BUCKET.head('library/' + libCode + '.json');
+    if (!head) { staleFound = true; continue; }
+    var meta = head.customMetadata || {};
+    items.push({
+      code: libCode,
+      name: meta.name || '',
+      itemCount: parseInt(meta.itemCount || '0', 10) || 0,
+      createdAt: parseInt(meta.createdAt || meta.updatedAt || '0', 10) || 0,
+      updatedAt: parseInt(meta.updatedAt || '0', 10) || 0
+    });
+  }
+
+  items.sort(function (a, b) { return b.updatedAt - a.updatedAt; });
+
+  if (staleFound) {
+    // 이미 삭제된 코드가 인덱스에 남아 있었다 — 다음 조회가 깨끗하도록
+    // 정리해둔다(베스트 에포트, 실패해도 이번 응답에는 영향 없음).
+    try {
+      var liveCodes = items.map(function (it) { return it.code; });
+      await env.FAVORITES_BUCKET.put(indexKey, JSON.stringify({ v: 1, codes: liveCodes }), {
+        httpMetadata: { contentType: 'application/json' }
+      });
+    } catch (e) {}
+  }
+
+  return jsonResponse({ items: items, total: items.length });
 }
 
 export default {
@@ -392,11 +654,20 @@ export default {
     if (url.pathname === '/library' && request.method === 'GET') {
       return handleLibraryList(url, request, env);
     }
+    if (url.pathname === '/owner/lookup' && request.method === 'POST') {
+      return handleOwnerLookup(request, env);
+    }
     if (url.pathname.indexOf('/library/') === 0) {
-      var libCode = url.pathname.slice('/library/'.length);
-      if (request.method === 'GET') return handleLibraryGet(libCode, env);
-      if (request.method === 'PUT') return handleLibraryUpdate(libCode, request, env);
-      if (request.method === 'DELETE') return handleLibraryDelete(libCode, request, env);
+      var libRest = url.pathname.slice('/library/'.length);
+      var claimSuffix = '/claim-owner';
+      if (request.method === 'POST' && libRest.length > claimSuffix.length &&
+          libRest.slice(-claimSuffix.length) === claimSuffix) {
+        var claimCode = libRest.slice(0, libRest.length - claimSuffix.length);
+        return handleLibraryClaimOwner(claimCode, request, env);
+      }
+      if (request.method === 'GET') return handleLibraryGet(libRest, env);
+      if (request.method === 'PUT') return handleLibraryUpdate(libRest, request, env);
+      if (request.method === 'DELETE') return handleLibraryDelete(libRest, request, env);
     }
 
     return jsonResponse({ error: 'not found' }, 404);
