@@ -1,0 +1,124 @@
+/* ChoKaguya Sidebar (Figma "개인 공간" 파일의 SideBar, node #2223:24)
+ * - 2026-08-22, 예전 가로 헤더의 .header-nav(네비게이션·다크모드 토글·
+ *   로그인 버튼)를 화면 오른쪽 세로 사이드바로 옮겼다. 로고는 그대로
+ *   src/css/layout/header.css 의 .header/.header-logo 에 남아있다.
+ * - .header-nav 라는 클래스명은 그대로 유지했다 — src/js/theme.js 의
+ *   injectThemeToggle(), src/js/auth.js 의 renderHeaderButton(),
+ *   src/js/loading.js 가 전부 `.header-nav` 를 클래스 셀렉터로 찾아
+ *   동작하므로, 컨테이너를 <header><nav> 에서 <aside><nav> 로 옮겨도
+ *   클래스명만 유지하면 이 JS들은 무수정으로 그대로 동작한다.
+ * - 처음엔 항상 떠 있는 고정 사이드바로 만들었다가, 오른쪽 위 메뉴
+ *   버튼(.sidebar-toggle-btn)을 눌러야 옆에서 슬라이드인 되는 오프캔버스
+ *   방식으로 바꿨다(src/js/sidebar.js 가 열고 닫는 로직을 맡는다). 평소엔
+ *   숨어 있으므로 본문에 여백을 미리 비워두지 않는다.
+ * - 사이드바는 스크롤 위치(body.is-top)와 무관하게 항상 같은 모습이다 —
+ *   예전엔 맨 위에서 네비 링크를 숨기는 연출이 있었지만(header.css 참고)
+ *   사이드바에는 그 연출을 넣지 않았다. 로고만 계속 커진다.
+ */
+
+/* 오른쪽 위 메뉴 버튼 — 처음엔 로고(top:48px)와 같은 높이로 뒀는데, 사이드바가
+   열렸을 때 그 자리가 첫 네비 링크("공식")와 겹쳐서 좀 더 아래(top:64px)로
+   내렸다. 로고와 세로 정렬이 완전히 맞진 않지만, 사이드바 쪽 여백을 넉넉히
+   확보하는 쪽을 우선했다. */
+.sidebar-toggle-btn {
+  position: fixed;
+  top: 64px;
+  right: 50px;
+  transform: translateY(-50%);
+  z-index: 26;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  color: #000000;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar-toggle-btn:hover {
+  transform: translateY(-50%) translateY(-3px) scale(1.05);
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+.sidebar-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 사이드바 뒤에 까는 딤 배경 — src/js/postDetailSeries.js 의 .pds-overlay
+   패턴(진짜 화면 중앙 모달)과 같은 뼈대를 오프캔버스 사이드바에 맞게
+   썼다: 바깥(오버레이 자체) 클릭이나 Escape 로 닫힌다(sidebar.js). */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.sidebar-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 15px;
+  width: 286px;
+  height: 100vh;
+  /* 위쪽만 넉넉히 비워서 .sidebar-toggle-btn(fixed, top:64px, 지름 42px) 이
+     사이드바가 열렸을 때도 네비 링크와 안 겹치게 한다 — 버튼이 이 빈 여백
+     위에 자연스럽게 얹힌다. */
+  padding: 140px 30px 50px;
+  background: #ffffff;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar.is-open {
+  transform: translateX(0);
+}
+
+.sidebar .header-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 15px;
+  width: 100%;
+}
+
+/* 다크모드 토글(JS가 여기 주입) 위에 고정 여백을 둬서 네비 링크 목록과
+   눈에 띄게 떨어뜨린다 — 위쪽은 네비게이션, 아래쪽은 설정·계정이라는 흔한
+   사이드바 구성과 맞고, "auto"로 하단에 딱 붙이는 것보다 실제 화면에서
+   간격이 더 뚜렷하게 보인다. */
+.sidebar .header-nav .theme-toggle-btn {
+  margin-top: 60px;
+}
+
+/* Figma 의 로그인 버튼(민트 알약)을 반영 — 로그인된 뒤의 "개인 코드 관리"
+   상태(.is-logged-in)는 Figma에 없는 화면이라 기존 파란 배색을 그대로
+   쓴다. :not(.is-logged-in) 으로 한정해서, 이 규칙과 auth.css 의
+   .auth-header-btn.is-logged-in 규칙이 같은 특이도라도 로드 순서와
+   무관하게 항상 올바른 색이 나오게 했다(다크모드 특이도 함정과 같은
+   부류의 문제를 애초에 피하는 방법 — BOOKMARK_SYSTEM_PLAN.md 참고). */
+.sidebar .header-nav .auth-header-btn:not(.is-logged-in) {
+  background: #00ffcc;
+  border-color: transparent;
+  color: #000000;
+}
+.sidebar .header-nav .auth-header-btn:not(.is-logged-in):hover {
+  background: #00e6b8;
+}

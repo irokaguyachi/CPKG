@@ -36,30 +36,13 @@ body.is-top .header-logo {
   cursor: default;
 }
 
-.header-nav {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 100px;
-  height: 100%;
-  padding: 0 10px;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.35s ease 0.15s, transform 0.35s ease 0.15s;
-}
-
-body.is-top .header-nav {
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-body.is-top .header-nav a,
-body.is-top .header-nav a[data-locked] {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
+/* .header-nav 컨테이너 자체의 배치(세로/사이드바)는 sidebar.css 로 옮김 —
+   이 파일엔 헤더에 남은 로고 관련 규칙과, 사이드바에서도 그대로 쓰는 링크
+   텍스트 스타일(아래)만 남긴다. 예전엔 여기서 body.is-top 상태일 때
+   .header-nav 전체를 숨기고 토글/로그인 버튼만 !important 로 다시 보이게
+   하는 예외 처리가 있었는데(2026-08-22 이전), 사이드바는 스크롤 위치와
+   무관하게 항상 보이는 게 사이드바다운 동작이라 이제 그 숨김 로직 자체를
+   없앴다 — 로고만 계속 body.is-top 에 반응해서 커진다(위 .header-logo). */
 
 .header-nav a {
   display: inline-block;

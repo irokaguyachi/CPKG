@@ -25,7 +25,6 @@ html.theme-transitioning *:after {
   min-width: 32px;
   min-height: 32px;
   padding: 0;
-  margin-left: -38px;
   background: rgba(0, 0, 0, 0.05);
   border: 0.5px solid rgba(0, 0, 0, 0.15);
   border-radius: 50%;
@@ -58,26 +57,10 @@ html.theme-transitioning *:after {
   transform: rotate(45deg);
 }
 
-/* When at page top, keep theme toggle button interactive */
-body.is-top .header-nav {
-  opacity: 1 !important;
-  transform: none !important;
-  pointer-events: none !important;
-}
-
-body.is-top .header-nav a,
-body.is-top .header-nav a[data-locked] {
-  opacity: 0 !important;
-  transform: translateY(-6px) !important;
-  pointer-events: none !important;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-body.is-top .theme-toggle-btn,
-body.is-top .auth-header-btn {
-  opacity: 1 !important;
-  pointer-events: auto !important;
-}
+/* body.is-top 상태에서 .header-nav/.theme-toggle-btn/.auth-header-btn 을
+   숨겼다 다시 보이던 예외 규칙(2026-08-22 이전)은 사이드바 도입으로
+   제거함 — 사이드바는 스크롤 위치와 무관하게 항상 그대로 보인다.
+   src/css/layout/sidebar.css, src/css/layout/header.css 참고. */
 
 /* ==========================================================================
    Dark Mode Theme Rules ([data-theme="dark"])
@@ -106,6 +89,22 @@ body.is-top .auth-header-btn {
 /* Header & Navigation in dark mode */
 [data-theme="dark"] .header {
   background: #121316;
+}
+
+[data-theme="dark"] .sidebar {
+  background: #121316;
+  border-left: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .sidebar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .header-nav a {
