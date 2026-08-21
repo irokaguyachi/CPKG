@@ -1,12 +1,16 @@
 /**
  * ChoKaguya Bookmarks Page
- * - 목록 모드(URL 에 ?id= 없음): 내가 만든 북마크(이름 있는 모음)들을
- *   폴더 카드로 보여줌.
+ * - 목록 모드(URL 에 ?id= 없음): 탭 두 개.
+ *   · 내 북마크: 내가 만든 북마크(이름 있는 모음)들을 폴더 카드로 보여줌.
+ *   · 북마크 라이브러리(?tab=library): 다른 사람이 공개한 북마크 목록.
  * - 상세 모드(?id=<북마크id>): Novel/Series/HOF/Official.json 을 모두
  *   불러와 그 북마크에 담긴 항목들을 담은 순서 그대로 하나의 그리드로
  *   보여줌 — 타입별로 안 나눔(유저가 문학/시리즈를 섞어 담을 수 있어서).
- * - 옛 favoritesPage.js 의 "공유 링크 만들기" 위젯은 이번엔 안 옮김
- *   (BOOKMARK_SYSTEM_PLAN.md 참고 — 공유 기능은 나중에 다시 설계).
+ * - 라이브러리 상세(?libraryId=<code>): 공개된 북마크 하나를 같은 방식으로
+ *   보여줌. 카드의 북마크 버튼은 그대로 살아있어서 마음에 드는 항목을
+ *   바로 내 북마크에 담을 수 있음.
+ * - 공개/수정/삭제는 bookmarkLibrary.js 를 통해 Worker 로 나감
+ *   (BOOKMARK_SYSTEM_PLAN.md 참고).
  */
 (function (global) {
   var SECTIONS = [
@@ -19,6 +23,8 @@
   var PENCIL_ICON = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
   var DELETE_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
   var FOLDER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h12a.5.5 0 0 1 .5.5v16.2a.5.5 0 0 1-.77.42L12 16.4l-5.73 4.22A.5.5 0 0 1 5.5 20.2V4a.5.5 0 0 1 .5-.5z"/></svg>';
+  var SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>';
+  var GLOBE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.4 3.4 8.5S14.2 18.2 12 20.5c-2.2-2.3-3.4-5.4-3.4-8.5S9.8 5.8 12 3.5z"/></svg>';
 
   var contentEl = document.getElementById('bkm-content');
   var countEl = document.getElementById('bkm-count');
@@ -32,6 +38,49 @@
     p.className = 'series-empty';
     p.textContent = text;
     contentEl.appendChild(p);
+  }
+
+  // 상세 모드(내 북마크 / 라이브러리)가 공통으로 쓰는 조회맵 로더 —
+  // PageData 4개를 병렬로 받아 { type: { 대표게시물id: 항목 } } 로 만든다.
+  function loadItemLookup() {
+    var fetches = SECTIONS.map(function (section) {
+      return fetch(DATA(section.dataUrl)).then(function (r) { return r.json(); }).catch(function () { return []; });
+    });
+
+    return Promise.all(fetches).then(function (results) {
+      var byId = {};
+      SECTIONS.forEach(function (section, i) {
+        var items = Array.isArray(results[i]) ? results[i] : [];
+        SeriesUtil.assignPostNumbers(items, section.numberPrefix);
+        SeriesUtil.assignSeriesNumbers(items, section.numberPrefix);
+        var map = {};
+        items.forEach(function (s) {
+          var pid = s.posts && s.posts[0] && s.posts[0].id;
+          if (pid != null) map[pid] = s;
+        });
+        byId[section.type] = map;
+      });
+      return byId;
+    });
+  }
+
+  // 목록 모드 상단의 "내 북마크 | 북마크 라이브러리" 알약 토글
+  function createTabs(active) {
+    var tabs = document.createElement('div');
+    tabs.className = 'bkm-tabs';
+
+    [
+      { key: 'mine', label: '내 북마크', href: 'bookmarksPage.html' },
+      { key: 'library', label: '북마크 라이브러리', href: 'bookmarksPage.html?tab=library' }
+    ].forEach(function (t) {
+      var link = document.createElement('a');
+      link.className = 'bkm-tab' + (active === t.key ? ' is-active' : '');
+      link.href = t.href;
+      link.textContent = t.label;
+      tabs.appendChild(link);
+    });
+
+    return tabs;
   }
 
   // ---- 항목 카드 (상세 모드에서 씀 — gridPage.js/favoritesPage.js 의
@@ -92,8 +141,187 @@
     return card;
   }
 
+  // ---- 공개(공유) 패널 ----
+  // bookmarkPicker.js 의 팝오버와 같은 이유로 body 싱글턴 + position:fixed 다
+  // (.series-card 의 overflow:hidden 이 카드 밖 절대배치 자식을 잘라버림).
+  // 다만 내용이 체크리스트가 아니라 버튼 두어 개뿐이라 그 모듈을 재사용하지
+  // 않고 여기서 최소한으로 구현한다.
+  var sharePanelEl = null;
+  var sharePanelBound = false;
+
+  function ensureSharePanel() {
+    if (sharePanelEl) return sharePanelEl;
+    sharePanelEl = document.createElement('div');
+    sharePanelEl.className = 'bkm-picker bkm-share-panel';
+    sharePanelEl.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.body.appendChild(sharePanelEl);
+    if (!sharePanelBound) {
+      document.addEventListener('click', closeSharePanel);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSharePanel();
+      });
+      sharePanelBound = true;
+    }
+    return sharePanelEl;
+  }
+
+  function closeSharePanel() {
+    if (sharePanelEl) sharePanelEl.classList.remove('is-open');
+  }
+
+  function positionSharePanel(anchorEl) {
+    var rect = anchorEl.getBoundingClientRect();
+    var panelW = sharePanelEl.offsetWidth || 280;
+    var left = Math.max(8, Math.min(rect.right - panelW, global.innerWidth - panelW - 8));
+    var top = Math.min(rect.bottom + 8, global.innerHeight - 8);
+    sharePanelEl.style.left = Math.round(left) + 'px';
+    sharePanelEl.style.top = Math.round(top) + 'px';
+  }
+
+  function sharePanelHeader(text) {
+    var header = document.createElement('div');
+    header.className = 'sfp-header';
+    header.textContent = text;
+    return header;
+  }
+
+  function sharePanelButton(label, variant) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bkm-share-btn' + (variant ? ' ' + variant : '');
+    btn.textContent = label;
+    return btn;
+  }
+
+  function sharePanelNote(text) {
+    var p = document.createElement('p');
+    p.className = 'bkm-share-note';
+    p.textContent = text;
+    return p;
+  }
+
+  // 게시 직후 한 번만 보여주는 관리 코드 — 이 브라우저엔 이미 저장됐지만
+  // 기기를 바꾸면 복구할 방법이 없어서 백업을 권한다.
+  function renderPublishedResult(panel, code, editToken) {
+    panel.innerHTML = '';
+    panel.appendChild(sharePanelHeader('라이브러리에 공개했어요!'));
+
+    var linkLabel = document.createElement('p');
+    linkLabel.className = 'bkm-share-note';
+    linkLabel.textContent = '공개 링크';
+    panel.appendChild(linkLabel);
+
+    var linkInput = document.createElement('input');
+    linkInput.type = 'text';
+    linkInput.className = 'bkm-share-code';
+    linkInput.readOnly = true;
+    linkInput.value = global.location.origin + global.location.pathname + '?libraryId=' + code;
+    linkInput.addEventListener('focus', function () { linkInput.select(); });
+    panel.appendChild(linkInput);
+
+    if (editToken) {
+      var tokenLabel = document.createElement('p');
+      tokenLabel.className = 'bkm-share-note';
+      tokenLabel.textContent = '관리 코드 (수정·삭제에 필요해요)';
+      panel.appendChild(tokenLabel);
+
+      var tokenInput = document.createElement('input');
+      tokenInput.type = 'text';
+      tokenInput.className = 'bkm-share-code';
+      tokenInput.readOnly = true;
+      tokenInput.value = editToken;
+      tokenInput.addEventListener('focus', function () { tokenInput.select(); });
+      panel.appendChild(tokenInput);
+
+      panel.appendChild(sharePanelNote('이 브라우저에는 자동 저장됐어요. 다른 기기에서도 관리하려면 이 코드를 따로 보관해주세요 — 다시 볼 수 없어요.'));
+    }
+  }
+
+  function openSharePanel(anchorEl, bookmark, onStateChange) {
+    var panel = ensureSharePanel();
+    panel.innerHTML = '';
+
+    var published = global.BookmarkLibrary.getPublishedInfo(bookmark.id);
+
+    if (!published) {
+      panel.appendChild(sharePanelHeader('이 북마크를 라이브러리에 공개할까요?'));
+      panel.appendChild(sharePanelNote(bookmark.items.length + '개의 항목이 함께 공개돼요. 누구나 볼 수 있어요.'));
+
+      var publishBtn = sharePanelButton('라이브러리에 공개하기', 'is-primary');
+      publishBtn.addEventListener('click', function () {
+        publishBtn.disabled = true;
+        publishBtn.textContent = '공개하는 중...';
+        global.BookmarkLibrary.publish(bookmark.name, bookmark.items, bookmark.id)
+          .then(function (data) {
+            renderPublishedResult(panel, data.code, data.editToken);
+            positionSharePanel(anchorEl);
+            if (onStateChange) onStateChange();
+          })
+          .catch(function (err) {
+            panel.innerHTML = '';
+            panel.appendChild(sharePanelHeader('공개하지 못했어요'));
+            panel.appendChild(sharePanelNote(err.message));
+            positionSharePanel(anchorEl);
+          });
+      });
+      panel.appendChild(publishBtn);
+    } else {
+      panel.appendChild(sharePanelHeader('이미 라이브러리에 공개된 북마크예요'));
+
+      var viewLink = document.createElement('a');
+      viewLink.className = 'bkm-share-link';
+      viewLink.href = 'bookmarksPage.html?libraryId=' + encodeURIComponent(published.code);
+      viewLink.textContent = '공개된 모습 보기 →';
+      panel.appendChild(viewLink);
+
+      var updateBtn = sharePanelButton('최신 내용으로 업데이트', 'is-primary');
+      updateBtn.addEventListener('click', function () {
+        updateBtn.disabled = true;
+        updateBtn.textContent = '업데이트 중...';
+        global.BookmarkLibrary.update(published.code, { name: bookmark.name, items: bookmark.items })
+          .then(function () {
+            updateBtn.textContent = '업데이트 완료!';
+          })
+          .catch(function (err) {
+            updateBtn.disabled = false;
+            updateBtn.textContent = '최신 내용으로 업데이트';
+            panel.appendChild(sharePanelNote(err.message));
+            positionSharePanel(anchorEl);
+          });
+      });
+      panel.appendChild(updateBtn);
+
+      var unpublishBtn = sharePanelButton('공개 취소', 'is-danger');
+      unpublishBtn.addEventListener('click', function () {
+        if (!global.confirm('"' + bookmark.name + '" 북마크의 공개를 취소할까요? 라이브러리에서 사라져요.')) return;
+        unpublishBtn.disabled = true;
+        unpublishBtn.textContent = '취소하는 중...';
+        global.BookmarkLibrary.unpublish(published.code)
+          .then(function () {
+            closeSharePanel();
+            if (onStateChange) onStateChange();
+          })
+          .catch(function (err) {
+            unpublishBtn.disabled = false;
+            unpublishBtn.textContent = '공개 취소';
+            panel.appendChild(sharePanelNote(err.message));
+            positionSharePanel(anchorEl);
+          });
+      });
+      panel.appendChild(unpublishBtn);
+    }
+
+    positionSharePanel(anchorEl);
+    panel.classList.add('is-open');
+  }
+
   // ---- 목록 모드 ----
-  function renderList() {
+  function renderList(tab) {
+    if (tab === 'library') {
+      renderLibraryList();
+      return;
+    }
+
     titleEl.textContent = '북마크';
     subEl.textContent = '내가 만든 북마크들을 모아봤어요';
 
@@ -101,6 +329,7 @@
     countEl.textContent = bookmarks.length + '개의 북마크가 있습니다!';
 
     contentEl.innerHTML = '';
+    contentEl.appendChild(createTabs('mine'));
 
     var toolbar = document.createElement('div');
     toolbar.className = 'bkm-list-toolbar';
@@ -148,12 +377,30 @@
       deleteBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         if (!global.confirm('"' + bookmark.name + '" 북마크를 삭제할까요?')) return;
+        var published = global.BookmarkLibrary.getPublishedInfo(bookmark.id);
+        if (published) global.BookmarkLibrary.unpublish(published.code).catch(function () {});
         global.Bookmarks.deleteBookmark(bookmark.id);
         card.remove();
         countEl.textContent = global.Bookmarks.getAllBookmarks().length + '개의 북마크가 있습니다!';
         showEmptyIfNeeded();
       });
       image.appendChild(deleteBtn);
+
+      var shareBtn = document.createElement('button');
+      shareBtn.type = 'button';
+      shareBtn.className = 'series-card-fav bkm-folder-share';
+      shareBtn.innerHTML = SHARE_ICON;
+      shareBtn.setAttribute('aria-label', '라이브러리에 공개하기');
+      function syncShareState() {
+        shareBtn.classList.toggle('is-published', !!global.BookmarkLibrary.getPublishedInfo(bookmark.id));
+      }
+      syncShareState();
+      shareBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openSharePanel(shareBtn, bookmark, syncShareState);
+      });
+      image.appendChild(shareBtn);
+
       card.appendChild(image);
 
       var info = document.createElement('div');
@@ -237,6 +484,141 @@
     });
   }
 
+  // ---- 라이브러리 목록 모드 ----
+  function renderLibraryList() {
+    titleEl.textContent = '북마크 라이브러리';
+    subEl.textContent = '다른 사람들이 공개한 북마크를 둘러보세요';
+    countEl.textContent = '불러오는 중...';
+
+    contentEl.innerHTML = '';
+    contentEl.appendChild(createTabs('library'));
+
+    var grid = document.createElement('div');
+    grid.className = 'series-grid';
+    contentEl.appendChild(grid);
+
+    var total = 0;
+
+    function createLibraryCard(entry) {
+      var card = document.createElement('article');
+      card.className = 'series-card bkm-folder-card bkm-library-card';
+
+      var image = document.createElement('div');
+      image.className = 'series-card-image bkm-folder-image';
+      image.innerHTML = GLOBE_ICON;
+      card.appendChild(image);
+
+      var info = document.createElement('div');
+      info.className = 'series-card-info';
+
+      var title = document.createElement('p');
+      title.className = 'series-card-title';
+      title.textContent = entry.name || '(이름 없음)';
+      info.appendChild(title);
+
+      var count = document.createElement('p');
+      count.className = 'series-card-count';
+      count.textContent = entry.itemCount + '개 | ' + entry.code;
+      info.appendChild(count);
+
+      card.appendChild(info);
+
+      card.addEventListener('click', function () {
+        global.location.href = 'bookmarksPage.html?libraryId=' + encodeURIComponent(entry.code);
+      });
+
+      return card;
+    }
+
+    // R2 list() 는 키(랜덤 코드) 순으로만 정렬되므로 서버 정렬은 없다.
+    // 커서 기반으로 한 페이지씩 이어붙인다.
+    function loadPage(cursor, loadMoreBtn) {
+      return global.BookmarkLibrary.list(cursor)
+        .then(function (data) {
+          (data.items || []).forEach(function (entry) {
+            grid.appendChild(createLibraryCard(entry));
+          });
+          total += (data.items || []).length;
+          countEl.textContent = total + '개의 공개 북마크를 불러왔어요!';
+
+          if (loadMoreBtn) loadMoreBtn.remove();
+          if (data.cursor) {
+            var moreBtn = document.createElement('button');
+            moreBtn.type = 'button';
+            moreBtn.className = 'bkm-load-more';
+            moreBtn.textContent = '더 보기';
+            moreBtn.addEventListener('click', function () {
+              moreBtn.disabled = true;
+              moreBtn.textContent = '불러오는 중...';
+              loadPage(data.cursor, moreBtn);
+            });
+            contentEl.appendChild(moreBtn);
+          } else if (!total) {
+            var empty = document.createElement('p');
+            empty.className = 'series-empty';
+            empty.textContent = '아직 공개된 북마크가 없어요. 내 북마크 탭에서 공유 버튼을 눌러 처음으로 공개해보세요!';
+            grid.appendChild(empty);
+          }
+        })
+        .catch(function (err) {
+          countEl.textContent = '불러오기 실패';
+          if (loadMoreBtn) loadMoreBtn.remove();
+          var msg = document.createElement('p');
+          msg.className = 'series-empty';
+          msg.textContent = err.message;
+          grid.appendChild(msg);
+        });
+    }
+
+    loadPage(null, null);
+  }
+
+  // ---- 라이브러리 상세 모드 ----
+  function renderLibraryDetail(code) {
+    titleEl.textContent = '북마크 라이브러리';
+    subEl.innerHTML = '';
+    var backLink = document.createElement('a');
+    backLink.className = 'bkm-back-link';
+    backLink.href = 'bookmarksPage.html?tab=library';
+    backLink.textContent = '‹ 라이브러리로';
+    subEl.appendChild(backLink);
+    countEl.textContent = '불러오는 중...';
+
+    contentEl.innerHTML = '';
+    var grid = document.createElement('div');
+    grid.className = 'series-grid';
+    contentEl.appendChild(grid);
+
+    Promise.all([global.BookmarkLibrary.getOne(code), loadItemLookup()])
+      .then(function (results) {
+        var shared = results[0];
+        var byId = results[1];
+
+        titleEl.textContent = shared.name;
+        countEl.textContent = (shared.items || []).length + '개의 항목이 공개돼 있어요!';
+
+        // 카드의 북마크 버튼은 opts 없이 붙는다 — 그러면 BookmarkPicker 가
+        // 기본 동작(내 북마크에 담기)을 하므로, 라이브러리에서 마음에 드는
+        // 항목을 바로 내 북마크로 가져올 수 있다.
+        (shared.items || []).forEach(function (entry) {
+          var s = byId[entry.type] && byId[entry.type][entry.id];
+          if (!s) return;
+          grid.appendChild(createItemCard(entry.type, s));
+        });
+
+        if (!grid.children.length) {
+          var empty = document.createElement('p');
+          empty.className = 'series-empty';
+          empty.textContent = '이 북마크에는 볼 수 있는 항목이 없어요.';
+          grid.appendChild(empty);
+        }
+      })
+      .catch(function (err) {
+        countEl.textContent = '불러오기 실패';
+        showMessage(err.message);
+      });
+  }
+
   // ---- 상세 모드 ----
   function renderDetail(bookmarkId) {
     var bookmark = global.Bookmarks.getBookmark(bookmarkId);
@@ -263,24 +645,7 @@
     grid.className = 'series-grid';
     contentEl.appendChild(grid);
 
-    var fetches = SECTIONS.map(function (section) {
-      return fetch(DATA(section.dataUrl)).then(function (r) { return r.json(); }).catch(function () { return []; });
-    });
-
-    Promise.all(fetches).then(function (results) {
-      var byId = {};
-      SECTIONS.forEach(function (section, i) {
-        var items = Array.isArray(results[i]) ? results[i] : [];
-        SeriesUtil.assignPostNumbers(items, section.numberPrefix);
-        SeriesUtil.assignSeriesNumbers(items, section.numberPrefix);
-        var map = {};
-        items.forEach(function (s) {
-          var pid = s.posts && s.posts[0] && s.posts[0].id;
-          if (pid != null) map[pid] = s;
-        });
-        byId[section.type] = map;
-      });
-
+    loadItemLookup().then(function (byId) {
       function showEmptyIfNeeded() {
         if (grid.children.length) return;
         var empty = document.createElement('p');
@@ -307,7 +672,10 @@
     });
   }
 
-  var bkmId = new URLSearchParams(global.location.search).get('id');
+  var params = new URLSearchParams(global.location.search);
+  var bkmId = params.get('id');
+  var libId = params.get('libraryId');
   if (bkmId) renderDetail(bkmId);
-  else renderList();
+  else if (libId) renderLibraryDetail(libId);
+  else renderList(params.get('tab') === 'library' ? 'library' : 'mine');
 })(window);

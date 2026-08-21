@@ -1107,6 +1107,131 @@ body.is-top .site-info {
 }
 .bkm-picker-new-btn:hover { background: #2058c9; }
 
+/* 내 북마크 / 북마크 라이브러리 알약 토글 */
+.bkm-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.2083vw;
+  width: fit-content;
+  margin: 0 auto 1.5625vw;
+  padding: 0.2083vw;
+  background: #f0f0f0;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+
+.bkm-tab {
+  padding: 0.4167vw 1.4583vw;
+  font-size: 0.8333vw;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  text-decoration: none;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.bkm-tab:hover { color: rgba(0, 0, 0, 0.8); }
+.bkm-tab.is-active {
+  color: #000000;
+  background: #ffffff;
+  box-shadow: 0 0.1042vw 0.3125vw rgba(0, 0, 0, 0.12);
+}
+
+/* 공유 버튼 — 삭제 버튼(.series-card-fav 기본 위치인 우상단)과 겹치지
+   않도록 좌상단에 둔다 */
+.bkm-folder-share {
+  right: auto;
+  left: 0.5208vw;
+}
+.bkm-folder-share.is-published {
+  color: #6ee7a8;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.bkm-library-card .bkm-folder-image {
+  color: rgba(47, 111, 237, 0.35);
+}
+
+.bkm-load-more {
+  display: block;
+  margin: 1.5625vw auto 0;
+  padding: 0.5208vw 1.875vw;
+  font-family: inherit;
+  font-size: 0.8333vw;
+  font-weight: 700;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bkm-load-more:hover { background: #f0f0f0; }
+.bkm-load-more:disabled { opacity: 0.6; cursor: default; }
+
+/* 라이브러리 공개 패널 — .bkm-picker 뼈대를 그대로 쓰고 내용만 다름
+   (src/js/bookmarksPage.js 의 openSharePanel) */
+.bkm-share-panel {
+  width: 18.75vw;
+}
+
+.bkm-share-note {
+  margin: 0.3125vw 0;
+  font-size: 0.6771vw;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.bkm-share-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.4167vw;
+  padding: 0.4688vw 0.5208vw;
+  font-family: inherit;
+  font-size: 0.7292vw;
+  font-weight: 700;
+  color: #000000;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bkm-share-btn:hover { background: #e8e8e8; }
+.bkm-share-btn:disabled { opacity: 0.6; cursor: default; }
+.bkm-share-btn.is-primary {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: transparent;
+}
+.bkm-share-btn.is-primary:hover { background: #2058c9; }
+.bkm-share-btn.is-danger {
+  color: #d64545;
+  border-color: rgba(214, 69, 69, 0.35);
+}
+.bkm-share-btn.is-danger:hover { background: rgba(214, 69, 69, 0.08); }
+
+.bkm-share-code {
+  width: 100%;
+  margin-top: 0.1563vw;
+  padding: 0.3646vw 0.5208vw;
+  font-family: inherit;
+  font-size: 0.6771vw;
+  color: #000000;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.3125vw;
+}
+
+.bkm-share-link {
+  display: inline-block;
+  margin: 0.2083vw 0 0.3125vw;
+  font-size: 0.7292vw;
+  font-weight: 600;
+  color: #2f6fed;
+  text-decoration: none;
+}
+.bkm-share-link:hover { text-decoration: underline; }
+
 @keyframes loader-caret-blink {
   50% { opacity: 0; }
 }

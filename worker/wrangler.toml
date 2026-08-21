@@ -9,9 +9,21 @@ compatibility_date = "2026-08-20"
 binding = "FAVORITES_BUCKET"
 bucket_name = "chokaguya-assets"
 
+# 북마크 라이브러리(/library) 쓰기·목록 조회의 IP당 요청 횟수 제한에 씁니다.
+# 아래 id 는 아직 비어 있습니다 — 배포 전에 네임스페이스를 만들고 채워주세요:
+#   cd worker
+#   npx wrangler kv namespace create RATE_LIMIT_KV
+# 출력된 id 를 그대로 아래 id = "" 안에 붙여넣으면 됩니다.
+# (id 가 비어있거나 바인딩이 없으면 Worker 는 레이트리밋을 건너뛰고 동작합니다 —
+#  favoritesShareWorker.js 의 checkRateLimit 참고. 운영 배포 전엔 반드시 채우세요.)
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = ""
+
 # 배포 절차:
 #   cd worker
 #   wrangler login
 #   wrangler deploy
 # 배포가 끝나면 출력되는 workers.dev 주소를
-# src/js/favoritesShareRemote.js 의 WORKER_URL 에 넣어주세요.
+# src/js/favoritesShareRemote.js 와 src/js/bookmarkLibrary.js 의
+# WORKER_URL 에 넣어주세요.

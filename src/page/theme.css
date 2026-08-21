@@ -560,3 +560,65 @@ body.is-top .theme-toggle-btn {
   border-color: rgba(255, 255, 255, 0.15);
   color: #f1f3f5;
 }
+[data-theme="dark"] .bkm-tabs {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .bkm-tab {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .bkm-tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+[data-theme="dark"] .bkm-tab.is-active {
+  color: #f1f3f5;
+  background: #2c2e35;
+  box-shadow: 0 0.1042vw 0.3125vw rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .bkm-library-card .bkm-folder-image {
+  color: rgba(92, 154, 255, 0.3);
+}
+[data-theme="dark"] .bkm-load-more {
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .bkm-load-more:hover {
+  background: #2c2e35;
+}
+[data-theme="dark"] .bkm-share-note {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .bkm-share-btn {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .bkm-share-btn:hover {
+  background: #2c2e35;
+}
+/* 위 .bkm-share-btn 다크 규칙과 특이도가 같아서, 다시 지정해주지 않으면
+   나중에 로드되는 이쪽이 이겨 주요 버튼이 파란색을 잃는다 */
+[data-theme="dark"] .bkm-share-btn.is-primary {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: transparent;
+}
+[data-theme="dark"] .bkm-share-btn.is-primary:hover {
+  background: #2058c9;
+}
+[data-theme="dark"] .bkm-share-btn.is-danger {
+  color: #ff8b8b;
+  border-color: rgba(255, 139, 139, 0.35);
+}
+[data-theme="dark"] .bkm-share-btn.is-danger:hover {
+  background: rgba(255, 139, 139, 0.12);
+}
+[data-theme="dark"] .bkm-share-code {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f3f5;
+}
+[data-theme="dark"] .bkm-share-link {
+  color: #5c9aff;
+}
