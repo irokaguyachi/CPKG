@@ -5,13 +5,19 @@
  * - 로그인이 없으므로 "내가 올린 것"이라는 증명은 게시할 때 서버가 한 번만
  *   돌려주는 editToken 을 이 브라우저 localStorage 에 들고 있는 것으로 대신함
  *   (pastebin 류의 삭제 키 패턴). 토큰을 잃으면 그 게시물은 수정/삭제 불가.
- * - 정식 로그인은 만들지 않았음(계정/세션/이메일 인프라가 전혀 없어 사이트
- *   규모에 비해 과함). 대신 브라우저마다 한 번 생성해 저장하는 "개인 복구
- *   코드"(personalCode)가 비밀번호 없는 브라우저 단위 계정 역할을 함 —
- *   이 브라우저에서 공개하는 모든 북마크가 자동으로 이 코드에 연결되고,
- *   다른 기기에서 그 코드 하나만 입력하면 연결된 북마크 전부의 수정 권한을
- *   한 번에 되찾을 수 있음. editToken 과 마찬가지로 서버엔 원문이 저장되지
- *   않고 SHA-256 해시로만 남음.
+ * - 계정/세션/이메일 인프라를 새로 두지 않고, 브라우저마다 한 번 생성해
+ *   저장하는 20자 개인 코드(personalCode)를 "로그인"으로 취급함 —
+ *   localStorage 에 코드가 있으면 로그인 상태, 없으면 비로그인. 회원가입은
+ *   순수 로컬 동작(코드를 만들어 저장할 뿐, 서버는 코드 발급 API가 없음)이고,
+ *   로그인은 그 코드로 이미 공개한 게 있으면 서버(/owner/lookup)에서 목록을
+ *   받아와 로컬로 복원함. 로그인 상태의 북마크는 자동으로 이 코드에
+ *   연결되고, 다른 기기에서 같은 코드로 로그인하면 전부 되찾을 수 있음.
+ *   editToken 과 마찬가지로 서버엔 원문이 저장되지 않고 SHA-256 해시로만
+ *   남음. UI는 src/js/authModal.js(로그인/회원가입 모달), src/js/auth.js
+ *   (헤더 로그인 버튼/상태 패널) 참고.
+ * - 로그인 상태가 바뀌면(adoptPersonalCode/logout) window 에
+ *   'chokaguya:auth-change' 커스텀 이벤트가 발생함 — 헤더 등 다른 UI가
+ *   새로고침 없이 상태를 동기화하는 데 씀.
  * - 서버 라우트와 저장 형식은 worker/favoritesShareWorker.js 참고.
  */
 (function (global) {
@@ -50,15 +56,33 @@
     return groups ? groups.join('-') : code;
   }
 
-  // 이 브라우저의 개인 코드 — 없으면 처음 호출될 때 한 번 생성해서 저장.
+  // 이 브라우저가 로그인(회원가입)된 상태인지 — 개인 코드가 저장돼 있으면
+  // 로그인, 없으면 비로그인. 예전엔 없으면 그 자리에서 자동 생성했지만,
+  // 그러면 "로그아웃"이 성립할 수 없어서(지우자마자 다음 호출에서 새로
+  // 생기므로) 이제 순수 조회만 한다 — 코드 발급은 회원가입 흐름
+  // (issueNewPersonalCode + confirmPersonalCode)에서만 일어난다.
   function getPersonalCode() {
     try {
-      var existing = localStorage.getItem(PERSONAL_CODE_KEY);
-      if (existing) return existing;
+      return localStorage.getItem(PERSONAL_CODE_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function isLoggedIn() {
+    return !!getPersonalCode();
+  }
+
+  // 회원가입 화면이 "확인"을 누르기 전에 보여줄 후보 코드 — 아직 저장하지
+  // 않는다(순수 함수). 실제 저장은 confirmPersonalCode 가 한다.
+  function issueNewPersonalCode() {
+    return generatePersonalCode();
+  }
+
+  function dispatchAuthChange(loggedIn) {
+    try {
+      global.dispatchEvent(new CustomEvent('chokaguya:auth-change', { detail: { loggedIn: loggedIn } }));
     } catch (e) {}
-    var fresh = generatePersonalCode();
-    try { localStorage.setItem(PERSONAL_CODE_KEY, fresh); } catch (e) {}
-    return fresh;
   }
 
   // 다른 기기에서 되찾기에 성공했을 때, 이 기기도 그 개인 코드를 쓰도록
@@ -66,6 +90,24 @@
   // 코드 하나로 계속 관리된다.
   function adoptPersonalCode(code) {
     try { localStorage.setItem(PERSONAL_CODE_KEY, code); } catch (e) {}
+    dispatchAuthChange(true);
+  }
+
+  // 회원가입 "확인" 버튼 — issueNewPersonalCode 가 보여준 후보 코드를
+  // 실제로 채택한다. 서버는 코드 발급/등록 API가 따로 없으므로(개인 코드는
+  // 그 코드로 뭔가를 공개해야만 서버에 흔적이 남는다) 순수 로컬 동작이고
+  // 네트워크 호출이 없다.
+  function confirmPersonalCode(code) {
+    adoptPersonalCode(code);
+  }
+
+  // 진짜 로그아웃 — 이 브라우저의 개인 코드를 지운다. chokaguya_library_tokens
+  // (editToken 맵)는 건드리지 않으므로, 이 브라우저가 직접 editToken 을 쥐고
+  // 있는 게시물은 로그아웃 후에도 여전히 수정·삭제할 수 있다(개인 코드
+  // 로그인과 editToken 소유권은 서로 다른 층이라 생기는 당연한 결과).
+  function logout() {
+    try { localStorage.removeItem(PERSONAL_CODE_KEY); } catch (e) {}
+    dispatchAuthChange(false);
   }
 
   // { "<code>": { editToken, bookmarkId } } — bookmarkId 는 어느 로컬
@@ -143,10 +185,13 @@
   }
 
   function publish(name, items, bookmarkId) {
+    var body = { name: name, items: items };
+    var personalCode = getPersonalCode();
+    if (personalCode) body.personalCode = personalCode;
     return fetch(LIBRARY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, items: items, personalCode: getPersonalCode() })
+      body: JSON.stringify(body)
     }).then(function (res) {
       if (!res.ok) return parseError(res);
       return res.json();
@@ -162,7 +207,9 @@
   // verifyLibraryAuth), 개인 코드로 되찾아 editToken 이 없는 항목도 그대로
   // 수정·공개취소할 수 있다.
   function authBody(code) {
-    var body = { personalCode: getPersonalCode() };
+    var body = {};
+    var personalCode = getPersonalCode();
+    if (personalCode) body.personalCode = personalCode;
     var editToken = getEditToken(code);
     if (editToken) body.editToken = editToken;
     return body;
@@ -220,10 +267,14 @@
   // 호출부는 보통 이미 끝난 되찾기를 무효화할 필요가 없어 무시 가능하도록
   // 별도 함수로 뺐다.
   function linkToPersonalCode(code, editToken) {
+    var personalCode = getPersonalCode();
+    if (!personalCode) {
+      return Promise.reject(new Error('로그인이 필요해요.'));
+    }
     return fetch(LIBRARY_URL + '/' + encodeURIComponent(code) + '/claim-owner', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ editToken: editToken, personalCode: getPersonalCode() })
+      body: JSON.stringify({ editToken: editToken, personalCode: personalCode })
     }).then(function (res) {
       if (!res.ok) return parseError(res);
       return res.json();
@@ -288,6 +339,9 @@
   // 한 번에 개인 코드로 연결하는 1회성 마이그레이션. code별로 순차 처리하고
   // 성공/실패를 모두 모아서 돌려준다(하나 실패해도 나머지는 계속 진행).
   function migrateExistingToPersonalCode() {
+    if (!isLoggedIn()) {
+      return Promise.reject(new Error('로그인이 필요해요.'));
+    }
     var map = readTokens();
     var codes = Object.keys(map).filter(function (code) { return !!map[code].editToken; });
     if (!codes.length) return Promise.resolve({ linked: [], failed: [] });
@@ -312,6 +366,30 @@
     });
   }
 
+  // 공개된 북마크 하나를 로컬 북마크로 복원 — 로그인(회원가입/되찾기)
+  // 직후 "내 데이터를 이 기기로 가져오는" 동작에 씀. bookmarks.js(Bookmarks
+  // 전역)가 로드된 페이지에서만 가능하고, 없는 페이지(mainPage.html 등)에서
+  // 로그인하면 이 복원만 조용히 건너뛴다 — 로그인 자체는 그래도 성공한다.
+  // 이미 이 code에 연결된 로컬 북마크가 있으면(살아있으면) 재사용해서
+  // 반복 호출해도 중복 폴더가 안 생기게 한다.
+  function restorePublishedToLocal(code) {
+    if (typeof global.Bookmarks === 'undefined') {
+      return Promise.reject(new Error('이 페이지에서는 로컬 북마크를 지원하지 않아요.'));
+    }
+    var link = getLocalLinkForCode(code);
+    if (link && link.bookmarkId && global.Bookmarks.getBookmark(link.bookmarkId)) {
+      return Promise.resolve(link.bookmarkId);
+    }
+    return getOne(code).then(function (pub) {
+      var newId = global.Bookmarks.createBookmark(pub.name || '되찾은 북마크');
+      (pub.items || []).forEach(function (it) {
+        global.Bookmarks.addItemToBookmark(newId, it.type, it.id);
+      });
+      linkLocalBookmark(code, newId);
+      return newId;
+    });
+  }
+
   global.BookmarkLibrary = {
     publish: publish,
     update: update,
@@ -326,6 +404,11 @@
     claimAllByPersonalCode: claimAllByPersonalCode,
     migrateExistingToPersonalCode: migrateExistingToPersonalCode,
     linkLocalBookmark: linkLocalBookmark,
-    getLocalLinkForCode: getLocalLinkForCode
+    getLocalLinkForCode: getLocalLinkForCode,
+    isLoggedIn: isLoggedIn,
+    issueNewPersonalCode: issueNewPersonalCode,
+    confirmPersonalCode: confirmPersonalCode,
+    logout: logout,
+    restorePublishedToLocal: restorePublishedToLocal
   };
 })(window);

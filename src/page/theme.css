@@ -20,12 +20,12 @@ html.theme-transitioning *:after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1875vw;
-  height: 2.1875vw;
+  width: 42px;
+  height: 42px;
   min-width: 32px;
   min-height: 32px;
   padding: 0;
-  margin-left: -2vw;
+  margin-left: -38px;
   background: rgba(0, 0, 0, 0.05);
   border: 0.5px solid rgba(0, 0, 0, 0.15);
   border-radius: 50%;
@@ -41,14 +41,14 @@ html.theme-transitioning *:after {
 }
 
 .theme-toggle-btn:hover {
-  transform: translateY(-0.15vw) scale(1.05);
+  transform: translateY(-3px) scale(1.05);
   background: rgba(0, 0, 0, 0.1);
   border-color: rgba(0, 0, 0, 0.3);
 }
 
 .theme-toggle-btn svg {
-  width: 1.0417vw;
-  height: 1.0417vw;
+  width: 20px;
+  height: 20px;
   min-width: 16px;
   min-height: 16px;
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -73,7 +73,8 @@ body.is-top .header-nav a[data-locked] {
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-body.is-top .theme-toggle-btn {
+body.is-top .theme-toggle-btn,
+body.is-top .auth-header-btn {
   opacity: 1 !important;
   pointer-events: auto !important;
 }
@@ -142,7 +143,7 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .series-toolbar-row {
   background: #1c1d22;
   border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 [data-theme="dark"] .series-search {
@@ -179,7 +180,7 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .series-filter-panel {
   background: #1c1d22;
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 [data-theme="dark"] .sfp-header {
@@ -207,10 +208,10 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .report-button {
   background: #1c1d22;
   border: 0.5px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0.2083vw 0.2083vw rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.4);
 }
 [data-theme="dark"] .report-button:hover {
-  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
   border-color: rgba(255, 255, 255, 0.14);
 }
 [data-theme="dark"] .report-button-label {
@@ -224,12 +225,12 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .series-card {
   background: #1c1d22;
   border: 0.5px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0.625vw 1.0417vw rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .post-card:hover,
 [data-theme="dark"] .series-card:hover {
-  box-shadow: 0 0.8333vw 1.5625vw rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
   border-color: rgba(255, 255, 255, 0.14);
 }
 
@@ -384,7 +385,7 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .post-detail-series {
   background: #1c1d22;
   border: 0.5px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1vw 3vw rgba(0, 0, 0, 0.8);
+  box-shadow: 0 19px 58px rgba(0, 0, 0, 0.8);
 }
 
 [data-theme="dark"] .pds-image {
@@ -440,14 +441,14 @@ body.is-top .theme-toggle-btn {
 
 [data-theme="dark"] .pds-episode-item {
   background: #25272e;
-  border: 0.1042vw solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0.2vw 0.5vw rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="dark"] .pds-episode-item:hover {
   background: #2d3038;
   border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0.4167vw 0.8333vw rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 [data-theme="dark"] .pds-episode-title {
@@ -556,7 +557,7 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .bkm-picker {
   background: #1c1d22;
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0.4167vw 1.25vw rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 [data-theme="dark"] .bkm-picker-new {
   border-top-color: rgba(255, 255, 255, 0.08);
@@ -591,7 +592,7 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .bkm-tab.is-active {
   color: #f1f3f5;
   background: #2c2e35;
-  box-shadow: 0 0.1042vw 0.3125vw rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 [data-theme="dark"] .bkm-library-card .bkm-folder-image {
   color: rgba(92, 154, 255, 0.3);
@@ -642,4 +643,58 @@ body.is-top .theme-toggle-btn {
 }
 [data-theme="dark"] .bkm-claim-subpanel {
   border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+/* 로그인/회원가입 모달 다크 모드 — .pds-overlay/.post-detail-series 다크
+   대응(위 379~389행)을 그대로 본떴다 */
+[data-theme="dark"] .auth-overlay {
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+}
+[data-theme="dark"] .auth-card {
+  background: #1c1d22;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 19px 58px rgba(0, 0, 0, 0.8);
+}
+[data-theme="dark"] .auth-title,
+[data-theme="dark"] .auth-desc,
+[data-theme="dark"] .auth-code-display,
+[data-theme="dark"] .auth-switch {
+  color: #f1f3f5;
+}
+[data-theme="dark"] .auth-reason {
+  background: #151619;
+  color: rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .auth-input {
+  background: #151619;
+  color: #f1f3f5;
+}
+[data-theme="dark"] .auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+/* 민트 버튼은 라이트/다크 공통으로 고정색 — 다크에서도 별도 규칙 없이
+   그대로 유지(BOOKMARK_SYSTEM_PLAN.md 의 다크모드 특이도 함정 사례를 참고,
+   여기선 같은 특이도의 다크 규칙을 아예 안 만들어서 애초에 문제가
+   생기지 않게 함) */
+[data-theme="dark"] .auth-switch-link {
+  color: #5c9aff;
+}
+
+[data-theme="dark"] .auth-header-btn {
+  color: #f1f3f5;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+[data-theme="dark"] .auth-header-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+[data-theme="dark"] .auth-header-btn.is-logged-in {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: transparent;
+}
+[data-theme="dark"] .auth-header-btn.is-logged-in:hover {
+  background: #2058c9;
 }

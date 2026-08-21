@@ -33,6 +33,8 @@
 | `src/js/bookmarkPicker.js` | 카드에 붙는 북마크 리본 아이콘 버튼 + 클릭 시 뜨는 "담을 북마크 고르기" 팝오버(체크리스트 + 인라인 "새 북마크 만들기"). `document.body`에 append하는 싱글턴 팝오버(`position: fixed` + `getBoundingClientRect()` 좌표 계산) — `.series-card { overflow: hidden; }`가 카드 밖으로 나가는 절대배치 자식을 잘라버려서 상대배치로는 불가능했음 |
 | `src/js/bookmarksPage.js` + `src/page/bookmarksPage.html` | 북마크 탭. 쿼리 파라미터로 4개 모드를 한 페이지가 처리 — 없으면 내 북마크 목록, `?tab=library` 라이브러리 목록, `?id=` 내 북마크 상세, `?libraryId=` 공개 북마크 상세 |
 | `src/js/bookmarkLibrary.js` | 라이브러리 Worker 클라이언트, 개인 복구 코드 관리 포함 (5번 참고) |
+| `src/js/authModal.js` | 로그인/회원가입 모달(사이트 전역, Figma SignInFrame/SignUpFrame 반영, 5-2번 참고) |
+| `src/js/auth.js` | 헤더의 로그인/개인 코드 관리 버튼 주입 + 관리 패널(사이트 전역, 5-2번 참고) |
 | `src/js/gridPage.js` | 시리즈/명예관/공식/문학 그리드 카드에 북마크 버튼 연결 (`global.BookmarkPicker.createButton(config.favType, favId)`) |
 | `worker/favoritesShareWorker.js` + `worker/wrangler.toml` | Cloudflare Worker. `/library`, `/library/<code>/claim-owner`, `/owner/lookup` 라우트를 들고 있습니다(옛 `/share` 는 제거). 파일명은 이력상 그대로입니다 — 바꾸면 `wrangler.toml` 의 `main` 도 같이 고쳐야 합니다 |
 
@@ -130,14 +132,44 @@ owners/<sha256('owner-index:'+personalCode)>.json
 ### 흐름 1 — 이후 공개하는 것은 자동으로 연결됨
 `publish()`가 매번 `personalCode`를 실어 보내므로, 이 기능이 추가된 뒤 공개하는 북마크는 별도 조작 없이 전부 이 브라우저의 개인 코드에 연결됩니다.
 
-### 흐름 2 — 다른 기기에서 개인 코드 하나로 전체 되찾기
-`claimAllByPersonalCode(rawCode)`가 `POST /owner/lookup`으로 요약 목록을 받아온 뒤, 성공하면 **이 브라우저도 그 개인 코드를 채택**합니다(`adoptPersonalCode` — 앞으로 이 기기에서 공개하는 것도 같은 코드로 이어지도록). UI(`bookmarksPage.js`)는 받아온 항목마다 `getOne(code)`로 실제 내용을 가져와 로컬 북마크로 복원하고(`restorePublished`), `linkLocalBookmark`로 그 code에 연결합니다 — 이미 로컬에 연결된 북마크가 있으면 재사용해서, 같은 개인 코드로 반복 실행해도 중복 폴더가 생기지 않습니다. 이렇게 되찾은 북마크는 이 브라우저에 `editToken`을 모른 채로 남지만(`{ editToken: null, bookmarkId }`), 서버 인증이 personalCode만으로도 통과하므로 이후 수정·공개취소에 문제가 없습니다.
+### 흐름 2 — 다른 기기에서 개인 코드 하나로 전체 되찾기(=로그인)
+`claimAllByPersonalCode(rawCode)`가 `POST /owner/lookup`으로 요약 목록을 받아온 뒤, 성공하면 **이 브라우저도 그 개인 코드를 채택**합니다(`adoptPersonalCode` — 앞으로 이 기기에서 공개하는 것도 같은 코드로 이어지도록, 동시에 `chokaguya:auth-change` 이벤트도 쏨). 받아온 항목마다 `getOne(code)`로 실제 내용을 가져와 로컬 북마크로 복원하고 `linkLocalBookmark`로 그 code에 연결하는 로직은 `bookmarkLibrary.js`의 `restorePublishedToLocal(code)`로 옮겨졌습니다(5-2번 UI가 이걸 씀) — 이미 로컬에 연결된 북마크가 있으면 재사용해서, 같은 개인 코드로 반복 실행해도 중복 폴더가 생기지 않습니다. 이렇게 되찾은 북마크는 이 브라우저에 `editToken`을 모른 채로 남지만(`{ editToken: null, bookmarkId }`), 서버 인증이 personalCode만으로도 통과하므로 이후 수정·공개취소에 문제가 없습니다.
 
 ### 흐름 3 — 기존(이 기능 이전) 공개물 1회성 마이그레이션
-이 기능 추가 전에 이미 공개된 북마크들은 `ownerHash`가 없어 개인 코드로 안 잡힙니다. `migrateExistingToPersonalCode()`가 이 브라우저에 남아있는 `editToken` 보유 항목을 모두 훑어 `POST /library/<code>/claim-owner`를 순차 호출, 성공/실패를 모아 돌려줍니다. UI의 "내 개인 코드" 패널에서 "이 브라우저의 기존 코드들을 여기 연결하기" 버튼으로 실행합니다.
+이 기능 추가 전에 이미 공개된 북마크들은 `ownerHash`가 없어 개인 코드로 안 잡힙니다. `migrateExistingToPersonalCode()`가 이 브라우저에 남아있는 `editToken` 보유 항목을 모두 훑어 `POST /library/<code>/claim-owner`를 순차 호출, 성공/실패를 모아 돌려줍니다. 로그인 상태일 때 헤더의 "개인 코드 관리" 패널(`auth.js`)에서 "이 브라우저의 기존 코드들을 여기 연결하기" 버튼으로 실행합니다.
 
 ### 흐름 4 — 예전 방식(공유 코드+관리 코드)도 계속 지원, 자동 승격
-`claimToken(code, editToken)`(북마크 하나짜리 되찾기)은 그대로 남아 있고, 성공하면 그 자리에서 같은 code를 이 브라우저의 개인 코드에도 연결합니다(`linkToPersonalCode`, 베스트 에포트). 개인 코드를 몰라도 예전처럼 코드 하나만으로 복구할 수 있고, 복구하고 나면 다음부터는 개인 코드로도 관리할 수 있게 자동 승격되는 셈입니다.
+`claimToken(code, editToken)`(북마크 하나짜리 되찾기)은 그대로 남아 있고, 성공하면 그 자리에서 같은 code를 이 브라우저의 개인 코드에도 연결합니다(`linkToPersonalCode`, 베스트 에포트). 다만 5-2번(사이트 전역 로그인) 도입 후 이 경로는 전용 UI가 없어졌습니다 — `bookmarkLibrary.js`에 함수와 export는 그대로 남겨뒀지만(아주 오래된 게시물을 코드+토큰만으로 복구해야 하는 드문 경우의 안전망), 지금 UI 어디서도 호출하지 않는 죽은 경로입니다. 필요해지면 관리 패널이나 로그인 모달에 다시 노출하면 됩니다.
+
+## 5-2. 사이트 전역 로그인 (Figma SignInFrame/SignUpFrame)
+
+5-1번의 개인 코드를 "로그인"이라는 UX 은유로 사이트 전역(모든 페이지 헤더)에 노출한 것입니다. 실제 인프라(계정/세션/이메일)는 추가되지 않았고, 여전히 5-1번의 개인 코드 그대로입니다 — 이름과 화면만 로그인/회원가입으로 재구성했습니다. Figma 파일 "개인 공간"(node #2222, SignInFrame/SignUpFrame)의 디자인을 반영했습니다.
+
+### "로그인 상태"의 정의가 바뀜
+이전에는 `getPersonalCode()`가 코드가 없으면 그 자리에서 자동 생성했습니다 — 즉 전원이 암묵적으로 "로그인"된 상태였고 로그아웃이 성립할 수 없었습니다. 이제 `getPersonalCode()`는 `localStorage['chokaguya_personal_code']`를 순수 조회만 하고(없으면 `null`), 코드 발급은 회원가입 흐름에서만 명시적으로 일어납니다. 기존에 이미 코드를 발급받았던 브라우저는 그대로 로그인 상태로 보이므로 재가입을 강요하지 않습니다.
+
+### 새 API (`bookmarkLibrary.js`)
+- `isLoggedIn()` — `!!getPersonalCode()`.
+- `issueNewPersonalCode()` — 회원가입 화면이 "확인" 누르기 전 보여줄 후보 코드(순수 함수, 미저장).
+- `confirmPersonalCode(code)` — 회원가입 확정(`adoptPersonalCode` 호출). **서버 호출 없음** — Worker에 코드 발급/등록 API가 따로 없고, personalCode는 그 코드로 뭔가를 공개해야만 서버에 흔적이 남기 때문입니다.
+- `logout()` — `chokaguya_personal_code`만 삭제(**`chokaguya_library_tokens`는 안 건드림** — 이 브라우저가 직접 editToken을 쥔 게시물은 로그아웃 후에도 여전히 관리 가능, 개인 코드 로그인과 editToken 소유권은 서로 다른 층이라 생기는 당연한 결과).
+- `restorePublishedToLocal(code)` — 옛 `bookmarksPage.js`의 `restorePublished`를 옮겨온 것. `Bookmarks` 전역(로컬 북마크 저장소, `bookmarks.js`)이 없는 페이지(`mainPage.html`)에서는 reject되고 호출부가 조용히 무시합니다 — 로그인 자체는 그래도 성공합니다.
+- 로그인 상태가 바뀌는 두 지점(`adoptPersonalCode`, `logout`)에서 `window`에 `chokaguya:auth-change` 커스텀 이벤트를 쏩니다 — 헤더 버튼이 새로고침 없이 상태를 동기화하는 데 씀.
+
+### `authModal.js` — 로그인/회원가입 모달
+`postDetailSeries.js`의 싱글턴 오버레이 패턴(`position:fixed;inset:0` 딤 배경 + 중앙 카드 + `.is-open` 토글 + scale 팝인, ESC/바깥클릭 닫힘)을 그대로 본떠 `.auth-overlay`/`.auth-card`로 새로 만들었습니다. `global.AuthModal = { openSignIn(opts), openSignUp(opts), close() }` — `opts.reason`(상단 안내문), `opts.onSuccess(code)`(완료 콜백).
+- **SignIn**: 코드 입력 → `claimAllByPersonalCode` → 성공하면 반환된 항목마다 `restorePublishedToLocal`을 순차 실행(있으면) → `onSuccess`. `items.length === 0`이면(코드가 틀렸는지, 맞는데 아직 공개한 게 없는지 서버가 구분 못 함 — Worker 한계, 문구로만 완화) 안내 문구를 보여줍니다. "새로 발급받으세요!" 링크로 SignUp 전환.
+- **SignUp**: `issueNewPersonalCode()`로 후보 코드 표시(Figma와 동일한 `00000-00000-00000-00000` 형식, `formatPersonalCodeForDisplay` 재사용) → "확인" → `confirmPersonalCode` → `onSuccess`. "이미 코드가 있으신가요? 로그인하기" 링크로 SignIn 전환(Figma에는 없지만, 실수로 새 코드를 또 만드는 걸 막는 안전장치로 추가).
+- 카드 자체 클릭에 `e.stopPropagation()`이 걸려 있습니다 — 없으면 이 안의 버튼 클릭이 `document`까지 버블링되어, 다른 UI가 "바깥 클릭하면 닫기"용으로 걸어둔 `document` 클릭 리스너(예: `bookmarksPage.js`의 공유 패널)를 엉뚱하게 트리거해 그 패널이 같이 닫혀버리는 문제가 있었습니다.
+
+### `auth.js` — 헤더 버튼 + 관리 패널
+`theme.js`의 `injectThemeToggle()` 패턴(`.header-nav`를 찾아 버튼 append)을 그대로 따라, 모든 페이지 로드 시 헤더에 `.auth-header-btn`을 주입합니다.
+- **비로그인**: "로그인" 버튼 → `AuthModal.openSignIn()`(코드 입력창이 먼저 뜸).
+- **로그인**: "개인 코드 관리" 버튼(파란색) → 버튼 옆에 뜨는 작은 팝오버(`bookmarkPicker.js`/`openSharePanel`과 같은 앵커 팝오버 패턴, 딤 없음) — 코드 보기·복사, "이 브라우저의 기존 코드들을 여기 연결하기"(마이그레이션, 흐름 3), "로그아웃".
+- **북마크 공개하기 게이트**: `bookmarksPage.js`의 `openSharePanel`에서 "라이브러리에 공개하기" 클릭 시 `isLoggedIn()`이 false면 `AuthModal.openSignUp()`을 먼저 띄우고(이번엔 SignUp이 기본 — "북마크 기능을 쓰려면 회원가입부터"), 완료되면 `doPublish()`를 이어서 호출합니다. 게시 게이트는 서버 쓰기가 실제로 일어나는 지점(`publish()`)에만 걸려 있고, 목록/상세 열람(`list`/`getOne`)은 비로그인이어도 그대로 볼 수 있습니다.
+
+### 어느 페이지에 로드되는가
+`bookmarkLibrary.js` → `authModal.js` → `auth.js` 순서(뒤 파일이 앞 파일의 전역을 참조)로 **6개 페이지 전부**(`mainPage.html`, `novelPage.html`, `seriesPage.html`, `OfficialPage.html`, `HOFPage.html`, `bookmarksPage.html`)에 로드됩니다. `mainPage.html`은 `pageCommon.css`가 아니라 별도 `mainPage.css`를 쓰는 예외적인 페이지라, `.auth-*`/`.bkm-picker` 계열 CSS를 `mainPage.css`에도 그대로 복제해뒀습니다(두 파일을 같이 고쳐야 함 — 아래 "검증 중 발견해 고친 것" 참고).
 
 ### 레이트리밋
 공개 목록이 생기면서 스팸 유인이 커졌기 때문에, 라이브러리 기능과 **같이** 추가했습니다 (`TRAFFIC_LAG_AUDIT.md` 3항에서 지적한 문제). `RATE_LIMIT_KV` 바인딩을 써서 IP당 고정 윈도우로 제한:
@@ -150,7 +182,7 @@ KV는 최종 일관성이라 완벽한 원자성은 아니지만(동시 요청 �
 ### UI
 북마크 탭 목록 모드 상단에 **내 북마크 | 북마크 라이브러리** 알약 토글 (`?tab=library`). 내 북마크의 폴더 카드 좌상단 공유 버튼을 누르면 공개/업데이트/공개취소 패널이 뜹니다(공개 중이면 아이콘이 초록색). 라이브러리 카드를 클릭하면 `?libraryId=<code>` 상세로 가고, 거기 카드들의 북마크 버튼이 그대로 살아있어서 마음에 드는 항목을 바로 내 북마크에 담을 수 있습니다.
 
-같은 툴바에 **내 개인 코드** / **이 코드로 되찾기** 버튼이 나란히 있습니다(5-1번). "내 개인 코드"는 이 브라우저의 코드를 보여주고 복사하며, 기존 공개물을 한 번에 연결하는 마이그레이션 버튼도 여기 있습니다. "이 코드로 되찾기"는 다른 기기에서 받은 개인 코드를 입력해 그 코드에 연결된 북마크 전부를 한 번에 되찾는 흐름이고, 그 안에 접힌 "공유 코드 하나만 따로 되찾을래요" 링크를 누르면 예전 방식(공유 코드+관리 코드 두 칸)도 그대로 쓸 수 있습니다.
+> 개인 코드를 다루는 UI(코드 보기·복사, 다른 기기에서 되찾기, 마이그레이션, 로그아웃)는 더 이상 이 북마크 탭 안에 있지 않고, 사이트 전역 헤더로 옮겨졌습니다 — **5-2번** 참고. "라이브러리에 공개하기" 버튼은 비로그인 상태면 그 자리에서 회원가입 모달을 띄우고, 완료되면 원래 게시를 이어서 진행합니다.
 
 ### 목록 정렬·검색
 R2 `list()`는 키(랜덤 코드) 순서로만 반환하기 때문에 커서 페이지 하나만 읽어서는 최신순 정렬도 이름 검색도 할 수 없습니다. 그래서 목록 라우트는 `library/` 프리픽스 전체를 훑어(`scanLibrary`) 정렬·필터한 뒤 잘라서 돌려줍니다. 정렬이 바뀌면 커서가 의미를 잃으므로 **offset 페이징**을 씁니다.
@@ -237,6 +269,19 @@ Worker 주소는 이미 `src/js/bookmarkLibrary.js`의 `WORKER_BASE`에 박혀 �
 - CORS 프리플라이트 `OPTIONS /library/<code>` → 204 + `Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
 - 레이트리밋이 실제 KV 에 `rl:lib-write:<ip>:<window>` / `rl:lib-list:...` 카운터를 만료시각과 함께 기록하는 것 확인 (한도를 소진하면 한 시간 동안 게시가 막히므로 429 자체는 일부러 유발하지 않음)
 
+**사이트 전역 로그인 — 브라우저 (2026-08-22, 실제 UI 클릭 + in-page fetch 스텁, 6개 페이지)**
+- 6개 페이지 모두 헤더에 로그인 버튼이 뜨고, 페이지 최상단(히어로 상태)에서도 클릭 가능 확인
+- 회원가입(SignUp) → 코드 확인 → 헤더가 새로고침 없이 "개인 코드 관리"로 즉시 전환(`chokaguya:auth-change` 이벤트 확인), `localStorage`에 코드 저장 확인
+- 로그아웃 → 헤더가 "로그인"으로 복귀, `chokaguya_personal_code`만 삭제되고 `chokaguya_library_tokens`는 그대로 남음 확인
+- 비로그인 상태에서 "라이브러리에 공개하기" 클릭 → 회원가입 모달이 뜨고("북마크를 공개하려면 먼저 회원가입해주세요" 안내 문구 포함) → 확인 → 공유 패널이 다시 열리며 게시가 자동으로 이어져 "라이브러리에 공개했어요!" 결과까지 표시됨
+- 로그인 모달(SignIn)이 Figma SignInFrame과, 회원가입 모달(SignUp)이 SignUpFrame과 시각적으로 일치하는 것을 스크린샷으로 확인. 다크모드 전환 후에도 재확인(카드 배경/텍스트/민트 버튼 색 유지)
+
+**검증 중 발견해 고친 것 (2026-08-22, 사이트 전역 로그인)**
+- `mainPage.html`은 `pageCommon.css`가 아니라 별도 `mainPage.css`를 쓰는 예외적인 페이지라는 걸 처음엔 놓쳐서, 로그인 모달이 완전히 스타일 없이(투명/좌상단) 렌더링되는 문제가 있었음 → `mainPage.css`에 `.auth-*`/`.bkm-picker` 계열 CSS 전체를 복제해 해결
+- `mainPage.css`에 추가한 CSS 블록 주석 안에 `.auth-*/.bkm-picker`라는 표현을 썼는데, 이 안의 `*/`가 CSS 주석을 조기 종료시켜서 그 뒤 텍스트가 깨진 CSS로 파싱되고, 결국 `.auth-overlay` 규칙 자체가 통째로 무시되는 문제를 발견 → 주석 문구를 `*/`가 안 생기게 수정. (교훈: CSS 주석 안에 클래스명을 나열할 때 `.a/.b` 같은 슬래시 구분을 쓰면 `*/`가 우연히 만들어질 수 있음 — 주석엔 `및`/쉼표로 구분하는 게 안전)
+- `authModal.js`의 로그인/회원가입 카드 클릭이 `stopPropagation` 없이 `document`까지 버블링되어, `bookmarksPage.js`가 "바깥 클릭하면 공유 패널 닫기"용으로 걸어둔 `document` 클릭 리스너를 엉뚱하게 트리거 — 회원가입 완료 직후 공유 패널이 도로 닫혀버려 게시 결과가 안 보이는 문제가 있었음 → `.auth-card`에 `e.stopPropagation()` 추가로 해결
+- 위 두 CSS 버그를 디버깅하며 겪은 것: 정적 서버(`python -m http.server`)로 서빙되는 CSS/JS를 브라우저가 디스크 캐시로 재사용해서, 파일을 고쳐도 `navigate`만으로는 반영이 안 될 때가 있었음 — `<link>`/`<script>`의 `src`에 캐시버스팅 쿼리(`?cb=Date.now()`)를 붙여 강제로 다시 로드해야 확인 가능했음. 이후 세션에서 "분명히 고쳤는데 반영이 안 된다"고 느껴지면 캐시부터 의심할 것
+
 **아직 검증 못 한 것**: 항목이 많을 때 `scanLibrary` 의 다중 페이지 순회(현재 공개물이 0건이라 단일 페이지만 탐), 실제 KV 최종 일관성 하에서의 429 경계 정확도. **개인 복구 코드는 아직 실서버(`chokaguya-favorites-share.nwb10102.workers.dev`)에 배포되지 않았습니다** — 코드 작성 시점 기준 실서버는 이전 버전(`/library`만 있고 `personalCode`/`/claim-owner`/`/owner/lookup` 없음)이 떠 있는 상태라, 위 "실서버 검증"은 개인 복구 코드 이전 항목만 해당됩니다. 위 개인 복구 코드 검증은 전부 목/스텁으로 한 것이며, `cd worker && npx wrangler deploy`로 배포한 뒤에는 실제 R2 `head()`/`list()` 동작(특히 `/owner/lookup`의 순차 `head()` 다건 조회, `owners/*.json` 인덱스 오브젝트 크기)까지 실서버로 한 번 더 확인하는 걸 권합니다.
 
 > 참고: 위 목 테스트는 임시로 돌린 것이라 저장소에 커밋돼 있지 않습니다. 재현하려면 `worker/favoritesShareWorker.js`를 ESM으로 import 하고 R2/KV를 Map 기반 목으로 주입하면 됩니다.
@@ -244,7 +289,7 @@ Worker 주소는 이미 `src/js/bookmarkLibrary.js`의 `WORKER_BASE`에 박혀 �
 ## 8. 아직 안 된 것 / 향후 과제
 
 ### 기능적으로 안 만든 것
-- **게시자 표시**: 누가 올렸는지 표시할 방법이 없습니다(로그인이 없어서). 이름만 보입니다.
+- **게시자 표시**: 누가 올렸는지 표시할 방법이 없습니다(닉네임·프로필 개념이 없는 익명 코드 기반이라). 이름만 보입니다.
 - **신고·모더레이션**: 공개 목록에 부적절한 게시물이 올라와도 지울 방법이 게시자의 editToken뿐입니다. 관리자용 삭제 경로가 없습니다.
 - **만료/정리**: `library/*.json`은 자동으로 안 지워집니다. 필요하면 R2 대시보드에서 lifecycle rule을 걸면 됩니다(코드 변경 불필요).
 - **이름 변경 동기화**: 내 북마크 이름을 바꿔도 이미 공개된 사본은 그대로입니다 — 공유 패널에서 "최신 내용으로 업데이트"를 눌러야 반영됩니다(의도된 동작).
@@ -260,3 +305,6 @@ Worker 주소는 이미 `src/js/bookmarkLibrary.js`의 `WORKER_BASE`에 박혀 �
 - ~~옛 즐겨찾기 공유 인프라 삭제~~ → 파일 5개 + Worker `/share` 라우트 제거
 - ~~`/share`에 레이트리밋 미적용~~ → 라우트 자체를 없애서 해소
 - ~~북마크마다 따로 코드를 관리해야 하는 문제~~ → 개인 복구 코드 추가(5-1번). 브라우저마다 코드 하나로 이후 공개물 전부 자동 연결, 다른 기기에서 그 코드 하나로 전체 되찾기, 기존 공개물 1회성 마이그레이션, 예전 코드+토큰 방식도 계속 지원(성공 시 자동 연결). **코드 작성만 했고 실서버엔 미배포** — 배포는 사용자 판단에 맡김(6번 참고)
+
+### 2026-08-22 완료
+- ~~북마크 페이지에 흩어진 개인 코드 UI~~ → Figma "개인 공간" 파일(SignInFrame/SignUpFrame)을 반영해 사이트 전역 로그인/회원가입으로 통합(5-2번). 헤더에 로그인 상태 버튼, 딤 처리된 중앙 모달, 북마크 공개 시 자동 회원가입 게이트까지 6개 페이지 전체 적용. **여전히 실서버 미배포**(personalCode 관련 라우트 전부 포함, 6번 참고)
