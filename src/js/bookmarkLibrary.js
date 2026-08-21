@@ -120,11 +120,46 @@
     });
   }
 
-  function list(cursor) {
-    var url = LIBRARY_URL + (cursor ? '?cursor=' + encodeURIComponent(cursor) : '');
+  // opts: { sort: 'new'|'updated'|'name', q: string, offset: number, limit: number }
+  // Server sorts/filters across the whole prefix, so paging is by offset —
+  // a cursor can't survive a re-sort (see worker/favoritesShareWorker.js).
+  function list(opts) {
+    opts = opts || {};
+    var params = [];
+    if (opts.sort) params.push('sort=' + encodeURIComponent(opts.sort));
+    if (opts.q) params.push('q=' + encodeURIComponent(opts.q));
+    if (opts.offset) params.push('offset=' + encodeURIComponent(opts.offset));
+    if (opts.limit) params.push('limit=' + encodeURIComponent(opts.limit));
+    var url = LIBRARY_URL + (params.length ? '?' + params.join('&') : '');
     return fetch(url).then(function (res) {
       if (!res.ok) return parseError(res);
       return res.json();
+    });
+  }
+
+  // Recover management rights for a published bookmark on a device that never
+  // held its editToken (browser data cleared, different machine). There's no
+  // dedicated verify route, so this does a no-op PUT: the Worker checks the
+  // token hash before touching anything, so a wrong token 403s and a right one
+  // succeeds without changing name or items.
+  function claimToken(code, editToken, bookmarkId) {
+    code = (code || '').trim();
+    editToken = (editToken || '').trim();
+    if (!code || !editToken) {
+      return Promise.reject(new Error('공유 코드와 관리 코드를 모두 입력해주세요.'));
+    }
+    return fetch(LIBRARY_URL + '/' + encodeURIComponent(code), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ editToken: editToken })
+    }).then(function (res) {
+      if (res.status === 403) throw new Error('관리 코드가 이 공유 코드와 맞지 않아요.');
+      if (res.status === 404) throw new Error('존재하지 않는 공유 코드예요.');
+      if (!res.ok) return parseError(res);
+      return res.json();
+    }).then(function (data) {
+      rememberToken(code, editToken, bookmarkId || null);
+      return data;
     });
   }
 
@@ -141,6 +176,7 @@
     unpublish: unpublish,
     list: list,
     getOne: getOne,
+    claimToken: claimToken,
     getPublishedInfo: getPublishedInfo
   };
 })(window);

@@ -7,48 +7,40 @@
  *   holds an R2 binding instead (no secret key needed) and exposes narrow
  *   write endpoints.
  *
- * ---- Legacy 1:1 favorites share (kept as-is, not used by the bookmark
- *      library below — see BOOKMARK_SYSTEM_PLAN.md) ----
- * - POST /share       body: { v: 1, novel, series, hof, official } (each an
- *   encodeFavorites() string from src/js/favoritesCodec.js) -> stores it at
- *   share/<code>.json and returns { code, url }.
- * - GET /share/<code>  reads it back.
- *
  * ---- Bookmark library (public, browsable, per-bookmark share) ----
  * - POST /library                body: { name, items:[{type,id}] }
  *     -> stores at library/<code>.json, returns { code, editToken } once.
  *     editToken is never stored in plaintext — only its SHA-256 hash is
  *     saved, because this whole bucket is public-read via pub-*.r2.dev, so
  *     anything written to the object body is effectively public.
- * - GET  /library?cursor=&limit=   -> paginated listing (name/itemCount only,
+ * - GET  /library?sort=&q=&offset=&limit=  -> listing (name/itemCount only,
  *     backed by R2 list() + customMetadata so no per-item GET is needed).
+ *     sort: new (default, newest published) | updated | name. q filters on
+ *     name. Offset paging, not cursor: the whole prefix is scanned and sorted
+ *     first, because R2 only lists in key order (see LIBRARY_SCAN_MAX).
  * - GET  /library/<code>           -> full { code, name, items, ... }
  *     (editTokenHash is stripped before responding).
  * - PUT  /library/<code>           body: { editToken, name?, items? } -> update.
  * - DELETE /library/<code>         body: { editToken } -> delete.
- * All /library GET routes have to go through this Worker too (not the raw
- * pub-*.r2.dev URL) for the same CORS reason as /share, plus GET /library/<code>
- * needs server-side redaction of editTokenHash.
+ * All /library GET routes have to go through this Worker too, not the raw
+ * pub-*.r2.dev URL: that bucket serves GET with no Access-Control-Allow-Origin
+ * header, which blocks a cross-origin fetch() from reading the JSON body in JS.
+ * GET /library/<code> additionally needs server-side redaction of editTokenHash.
  *
  * ---- Rate limiting ----
  * Every /library write (POST/PUT/DELETE) and the list GET are throttled per
  * client IP via the RATE_LIMIT_KV binding (see wrangler.toml) — a public
- * write endpoint with a browsable public listing is a much more attractive
- * spam target than the old link-only /share, so this was added alongside the
- * library feature rather than left for later (see TRAFFIC_LAG_AUDIT.md).
+ * write endpoint with a browsable public listing is an attractive spam
+ * target, so this was added alongside the library feature rather than left
+ * for later (see TRAFFIC_LAG_AUDIT.md).
  * KV is only eventually consistent, so this is a best-effort deterrent, not a
  * hard guarantee — good enough for this use case.
  */
 
-const R2_CDN_BASE = 'https://pub-908f4390549649fbbdff99353f22c6d4.r2.dev';
 const CODE_RE = /^[A-Za-z0-9_-]{1,32}$/;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 const CODE_LENGTH = 8;
 const EDIT_TOKEN_LENGTH = 24;
-
-const MAX_BODY_BYTES = 4096;
-const MAX_FIELD_LENGTH = 2000;
-const FIELDS = ['novel', 'series', 'hof', 'official'];
 
 const LIBRARY_ITEM_TYPES = ['novel', 'series', 'hof', 'official'];
 const LIBRARY_MAX_NAME = 40;
@@ -56,6 +48,14 @@ const LIBRARY_MAX_ITEMS = 300;
 const LIBRARY_MAX_BODY_BYTES = 20480;
 const LIBRARY_LIST_DEFAULT_LIMIT = 20;
 const LIBRARY_LIST_MAX_LIMIT = 50;
+// R2 list() only ever returns key (= random code) order, so newest-first and
+// name search can't be done with a cursor page. The listing instead scans the
+// whole prefix, sorts, then slices. Capped so a runaway bucket can't turn one
+// request into unbounded list() calls; past the cap the ordering is partial
+// and `truncated` says so.
+const LIBRARY_SCAN_PAGE = 1000;
+const LIBRARY_SCAN_MAX = 4000;
+const LIBRARY_MAX_QUERY = 40;
 
 const RATE_LIMIT_WRITE_PER_HOUR = 20;
 const RATE_LIMIT_LIST_PER_HOUR = 120;
@@ -112,68 +112,6 @@ async function checkRateLimit(env, ip, bucket, limit) {
 }
 
 // ---- Legacy 1:1 favorites share ----
-
-// Only known fields make it into the stored object — anything else in the
-// request body is dropped rather than stored verbatim.
-function validatePayload(raw) {
-  if (!raw || typeof raw !== 'object' || raw.v !== 1) return null;
-  var clean = { v: 1 };
-  for (var i = 0; i < FIELDS.length; i++) {
-    var key = FIELDS[i];
-    var value = raw[key];
-    if (typeof value !== 'string' || value.length > MAX_FIELD_LENGTH) return null;
-    clean[key] = value;
-  }
-  return clean;
-}
-
-async function handleShare(request, env) {
-  var text;
-  try {
-    text = await request.text();
-  } catch (e) {
-    return jsonResponse({ error: 'invalid body' }, 400);
-  }
-  if (text.length > MAX_BODY_BYTES) {
-    return jsonResponse({ error: 'payload too large' }, 413);
-  }
-
-  var raw;
-  try {
-    raw = JSON.parse(text);
-  } catch (e) {
-    return jsonResponse({ error: 'invalid json' }, 400);
-  }
-
-  var payload = validatePayload(raw);
-  if (!payload) return jsonResponse({ error: 'invalid payload shape' }, 400);
-
-  var code = null;
-  for (var attempt = 0; attempt < 3; attempt++) {
-    var candidate = generateCode();
-    var existing = await env.FAVORITES_BUCKET.head('share/' + candidate + '.json');
-    if (!existing) { code = candidate; break; }
-  }
-  if (!code) return jsonResponse({ error: 'could not allocate code, try again' }, 500);
-
-  await env.FAVORITES_BUCKET.put('share/' + code + '.json', JSON.stringify(payload), {
-    httpMetadata: { contentType: 'application/json' }
-  });
-
-  return jsonResponse({ code: code, url: R2_CDN_BASE + '/share/' + code + '.json' }, 201);
-}
-
-async function handleGetShare(code, env) {
-  if (!CODE_RE.test(code)) return jsonResponse({ error: 'invalid code' }, 400);
-
-  var object = await env.FAVORITES_BUCKET.get('share/' + code + '.json');
-  if (!object) return jsonResponse({ error: 'not found' }, 404);
-
-  return new Response(object.body, {
-    status: 200,
-    headers: Object.assign({ 'Content-Type': 'application/json' }, CORS_HEADERS)
-  });
-}
 
 // ---- Bookmark library ----
 
@@ -278,11 +216,44 @@ async function handleLibraryCreate(request, env) {
     customMetadata: {
       name: clean.name,
       itemCount: String(clean.items.length),
+      createdAt: String(now),
       updatedAt: String(now)
     }
   });
 
   return jsonResponse({ code: code, editToken: editToken }, 201);
+}
+
+async function scanLibrary(env) {
+  var all = [];
+  var cursor = undefined;
+  var truncated = false;
+  while (true) {
+    var page = await env.FAVORITES_BUCKET.list({
+      prefix: 'library/',
+      cursor: cursor,
+      limit: LIBRARY_SCAN_PAGE,
+      include: ['customMetadata']
+    });
+    for (var i = 0; i < page.objects.length; i++) {
+      var obj = page.objects[i];
+      var meta = obj.customMetadata || {};
+      var updatedAt = parseInt(meta.updatedAt || '0', 10) || 0;
+      all.push({
+        code: obj.key.slice('library/'.length, obj.key.length - '.json'.length),
+        name: meta.name || '',
+        itemCount: parseInt(meta.itemCount || '0', 10) || 0,
+        // objects published before createdAt was recorded fall back to
+        // updatedAt so they still sort sensibly instead of sinking to 0
+        createdAt: parseInt(meta.createdAt || meta.updatedAt || '0', 10) || 0,
+        updatedAt: updatedAt
+      });
+    }
+    if (!page.truncated) break;
+    if (all.length >= LIBRARY_SCAN_MAX) { truncated = true; break; }
+    cursor = page.cursor;
+  }
+  return { all: all, truncated: truncated };
 }
 
 async function handleLibraryList(url, request, env) {
@@ -291,29 +262,45 @@ async function handleLibraryList(url, request, env) {
     return jsonResponse({ error: 'too many requests, try again later' }, 429);
   }
 
-  var cursor = url.searchParams.get('cursor') || undefined;
   var limit = parseInt(url.searchParams.get('limit'), 10);
   if (!limit || limit < 1 || limit > LIBRARY_LIST_MAX_LIMIT) limit = LIBRARY_LIST_DEFAULT_LIMIT;
+  var offset = parseInt(url.searchParams.get('offset'), 10);
+  if (!offset || offset < 0) offset = 0;
 
-  var listed = await env.FAVORITES_BUCKET.list({
-    prefix: 'library/',
-    cursor: cursor,
+  var sort = url.searchParams.get('sort') || 'new';
+  if (sort !== 'new' && sort !== 'updated' && sort !== 'name') sort = 'new';
+
+  var q = (url.searchParams.get('q') || '').trim().slice(0, LIBRARY_MAX_QUERY).toLowerCase();
+
+  var scanned = await scanLibrary(env);
+  var rows = scanned.all;
+
+  if (q) {
+    rows = rows.filter(function (r) { return r.name.toLowerCase().indexOf(q) !== -1; });
+  }
+
+  rows.sort(function (a, b) {
+    // 'ko' is pinned rather than relying on the runtime default locale —
+    // Korean collation sorts Hangul ahead of Latin, which is what a Korean
+    // reader expects from 가나다순
+    if (sort === 'name') return a.name.localeCompare(b.name, 'ko') || b.createdAt - a.createdAt;
+    if (sort === 'updated') return b.updatedAt - a.updatedAt;
+    return b.createdAt - a.createdAt;
+  });
+
+  var total = rows.length;
+  var items = rows.slice(offset, offset + limit);
+
+  return jsonResponse({
+    items: items,
+    total: total,
+    offset: offset,
     limit: limit,
-    include: ['customMetadata']
+    hasMore: offset + items.length < total,
+    sort: sort,
+    q: q,
+    truncated: scanned.truncated
   });
-
-  var items = listed.objects.map(function (obj) {
-    var meta = obj.customMetadata || {};
-    var code = obj.key.slice('library/'.length, obj.key.length - '.json'.length);
-    return {
-      code: code,
-      name: meta.name || '',
-      itemCount: parseInt(meta.itemCount || '0', 10),
-      updatedAt: parseInt(meta.updatedAt || '0', 10)
-    };
-  });
-
-  return jsonResponse({ items: items, cursor: listed.truncated ? listed.cursor : null });
 }
 
 async function handleLibraryGet(code, env) {
@@ -357,6 +344,7 @@ async function handleLibraryUpdate(code, request, env) {
     customMetadata: {
       name: record.name,
       itemCount: String(record.items.length),
+      createdAt: String(record.createdAt || record.updatedAt),
       updatedAt: String(record.updatedAt)
     }
   });
@@ -396,13 +384,6 @@ export default {
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
-
-    if (url.pathname === '/share' && request.method === 'POST') {
-      return handleShare(request, env);
-    }
-    if (url.pathname.indexOf('/share/') === 0 && request.method === 'GET') {
-      return handleGetShare(url.pathname.slice('/share/'.length), env);
     }
 
     if (url.pathname === '/library' && request.method === 'POST') {

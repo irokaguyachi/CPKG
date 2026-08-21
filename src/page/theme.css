@@ -528,6 +528,12 @@ body.is-top .theme-toggle-btn {
 [data-theme="dark"] .bkm-back-link {
   color: #5c9aff;
 }
+[data-theme="dark"] .bkm-library-sort {
+  background: #1c1d22;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
 [data-theme="dark"] .bkm-inline-create-input {
   background: #151619;
   border-color: rgba(255, 255, 255, 0.15);
@@ -560,6 +566,18 @@ body.is-top .theme-toggle-btn {
   border-color: rgba(255, 255, 255, 0.15);
   color: #f1f3f5;
 }
+[data-theme="dark"] .bkm-chip {
+  color: rgba(255, 255, 255, 0.5);
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .bkm-chip:hover { color: rgba(255, 255, 255, 0.8); }
+[data-theme="dark"] .bkm-chip.is-active {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: #2f6fed;
+}
+
 [data-theme="dark"] .bkm-tabs {
   background: #151619;
   border-color: rgba(255, 255, 255, 0.12);

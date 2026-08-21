@@ -347,7 +347,86 @@
     form.appendChild(newInput);
     form.appendChild(newBtn);
     toolbar.appendChild(form);
+
+    // 관리 코드 복구 — 브라우저 데이터를 지웠거나 다른 기기라 editToken 이
+    // 없는 공개물의 수정·삭제 권한을 코드 입력으로 되찾는다
+    var claimBtn = document.createElement('button');
+    claimBtn.type = 'button';
+    claimBtn.className = 'bkm-inline-create-btn bkm-claim-toggle';
+    claimBtn.textContent = '관리 코드로 되찾기';
+    toolbar.appendChild(claimBtn);
     contentEl.appendChild(toolbar);
+
+    var claimPanel = document.createElement('div');
+    claimPanel.className = 'bkm-claim-panel';
+    claimPanel.hidden = true;
+
+    var claimDesc = document.createElement('p');
+    claimDesc.className = 'bkm-share-note';
+    claimDesc.textContent = '공개할 때 받은 공유 코드와 관리 코드를 넣으면, 이 기기에서도 수정·공개취소를 할 수 있어요. 공개된 내용은 내 북마크로 함께 가져옵니다.';
+    claimPanel.appendChild(claimDesc);
+
+    var claimRow = document.createElement('div');
+    claimRow.className = 'bkm-inline-create';
+    var codeInput = document.createElement('input');
+    codeInput.type = 'text';
+    codeInput.className = 'bkm-inline-create-input';
+    codeInput.placeholder = '공유 코드';
+    codeInput.autocomplete = 'off';
+    var tokenInput2 = document.createElement('input');
+    tokenInput2.type = 'text';
+    tokenInput2.className = 'bkm-inline-create-input bkm-claim-token';
+    tokenInput2.placeholder = '관리 코드';
+    tokenInput2.autocomplete = 'off';
+    var claimGo = document.createElement('button');
+    claimGo.type = 'button';
+    claimGo.className = 'bkm-inline-create-btn is-primary';
+    claimGo.textContent = '되찾기';
+    claimRow.appendChild(codeInput);
+    claimRow.appendChild(tokenInput2);
+    claimRow.appendChild(claimGo);
+    claimPanel.appendChild(claimRow);
+
+    var claimMsg = document.createElement('p');
+    claimMsg.className = 'bkm-share-note';
+    claimPanel.appendChild(claimMsg);
+    contentEl.appendChild(claimPanel);
+
+    claimBtn.addEventListener('click', function () {
+      claimPanel.hidden = !claimPanel.hidden;
+      if (!claimPanel.hidden) codeInput.focus();
+    });
+
+    function runClaim() {
+      var code = codeInput.value.trim();
+      var token = tokenInput2.value.trim();
+      claimMsg.textContent = '확인 중...';
+      claimGo.disabled = true;
+
+      global.BookmarkLibrary.claimToken(code, token)
+        .then(function () {
+          return global.BookmarkLibrary.getOne(code);
+        })
+        .then(function (pub) {
+          var newId = global.Bookmarks.createBookmark(pub.name || '되찾은 북마크');
+          (pub.items || []).forEach(function (it) {
+            global.Bookmarks.addItemToBookmark(newId, it.type, it.id);
+          });
+          // 새로 만든 로컬 북마크에 코드를 다시 연결해 공유 패널이 인식하게 함
+          return global.BookmarkLibrary.claimToken(code, token, newId);
+        })
+        .then(function () {
+          claimMsg.textContent = '되찾았어요! 목록을 새로 불러옵니다.';
+          setTimeout(function () { renderList('mine'); }, 600);
+        })
+        .catch(function (err) {
+          claimGo.disabled = false;
+          claimMsg.textContent = err.message || '되찾기에 실패했어요.';
+        });
+    }
+
+    claimGo.addEventListener('click', runClaim);
+    tokenInput2.addEventListener('keydown', function (e) { if (e.key === 'Enter') runClaim(); });
 
     var grid = document.createElement('div');
     grid.className = 'series-grid';
@@ -530,39 +609,115 @@
       return card;
     }
 
-    // R2 list() 는 키(랜덤 코드) 순으로만 정렬되므로 서버 정렬은 없다.
-    // 커서 기반으로 한 페이지씩 이어붙인다.
-    function loadPage(cursor, loadMoreBtn) {
-      return global.BookmarkLibrary.list(cursor)
+    // 서버가 전체를 훑어 정렬·검색한 뒤 잘라주므로 offset 페이징을 쓴다
+    // (정렬이 바뀌면 커서가 의미를 잃는다 — worker/favoritesShareWorker.js 참고).
+    var LIB_PAGE = 20;
+    var libSort = 'new';
+    var libQuery = '';
+    var libOffset = 0;
+    var searchTimer = null;
+    // 빠르게 입력하면 이전 요청이 늦게 도착해 목록을 덮어쓰거나 '더 보기'
+    // 버튼을 중복으로 붙일 수 있어, 세대 번호로 낡은 응답을 버린다
+    var loadSeq = 0;
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'bkm-list-toolbar bkm-library-toolbar';
+
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'bkm-inline-create-input bkm-library-search';
+    searchInput.placeholder = '북마크 이름으로 검색';
+    searchInput.autocomplete = 'off';
+
+    var sortSelect = document.createElement('select');
+    sortSelect.className = 'bkm-library-sort';
+    [['new', '최신순'], ['updated', '최근 수정순'], ['name', '이름순']].forEach(function (opt) {
+      var o = document.createElement('option');
+      o.value = opt[0];
+      o.textContent = opt[1];
+      sortSelect.appendChild(o);
+    });
+
+    toolbar.appendChild(searchInput);
+    toolbar.appendChild(sortSelect);
+    contentEl.insertBefore(toolbar, grid);
+
+    function clearLoadMore() {
+      var stale = contentEl.querySelectorAll('.bkm-load-more');
+      for (var i = 0; i < stale.length; i++) stale[i].remove();
+    }
+
+    function resetAndLoad() {
+      libOffset = 0;
+      grid.innerHTML = '';
+      clearLoadMore();
+      countEl.textContent = '불러오는 중...';
+      loadPage(null, null);
+    }
+
+    searchInput.addEventListener('input', function () {
+      libQuery = searchInput.value.trim();
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(resetAndLoad, 250);
+    });
+    sortSelect.addEventListener('change', function () {
+      libSort = sortSelect.value;
+      resetAndLoad();
+    });
+
+    function loadPage(_ignored, loadMoreBtn) {
+      var seq = ++loadSeq;
+      return global.BookmarkLibrary.list({ sort: libSort, q: libQuery, offset: libOffset, limit: LIB_PAGE })
         .then(function (data) {
-          (data.items || []).forEach(function (entry) {
+          if (seq !== loadSeq) return;   // 낡은 응답 — 버린다
+          var items = data.items || [];
+          items.forEach(function (entry) {
             grid.appendChild(createLibraryCard(entry));
           });
-          total += (data.items || []).length;
-          countEl.textContent = total + '개의 공개 북마크를 불러왔어요!';
+          libOffset += items.length;
+          total = data.total || 0;
 
-          if (loadMoreBtn) loadMoreBtn.remove();
-          if (data.cursor) {
+          if (libQuery) {
+            countEl.textContent = total
+              ? '"' + libQuery + '" 검색 결과 ' + total + '개'
+              : '"' + libQuery + '" 검색 결과가 없어요';
+          } else {
+            countEl.textContent = total + '개의 공개 북마크가 있어요!';
+          }
+
+          clearLoadMore();
+
+          if (data.hasMore) {
             var moreBtn = document.createElement('button');
             moreBtn.type = 'button';
             moreBtn.className = 'bkm-load-more';
-            moreBtn.textContent = '더 보기';
+            moreBtn.textContent = '더 보기 (' + libOffset + '/' + total + ')';
             moreBtn.addEventListener('click', function () {
               moreBtn.disabled = true;
               moreBtn.textContent = '불러오는 중...';
-              loadPage(data.cursor, moreBtn);
+              loadPage(null, moreBtn);
             });
             contentEl.appendChild(moreBtn);
-          } else if (!total) {
+          } else if (!libOffset) {
             var empty = document.createElement('p');
             empty.className = 'series-empty';
-            empty.textContent = '아직 공개된 북마크가 없어요. 내 북마크 탭에서 공유 버튼을 눌러 처음으로 공개해보세요!';
+            empty.textContent = libQuery
+              ? '검색 결과가 없어요. 다른 이름으로 찾아보세요.'
+              : '아직 공개된 북마크가 없어요. 내 북마크 탭에서 공유 버튼을 눌러 처음으로 공개해보세요!';
             grid.appendChild(empty);
+          }
+
+          if (data.truncated) {
+            var warn = document.createElement('p');
+            warn.className = 'bkm-share-note';
+            warn.textContent = '공개 북마크가 너무 많아 일부만 정렬해 보여주고 있어요.';
+            contentEl.appendChild(warn);
           }
         })
         .catch(function (err) {
+          if (seq !== loadSeq) return;
           countEl.textContent = '불러오기 실패';
-          if (loadMoreBtn) loadMoreBtn.remove();
+          clearLoadMore();
           var msg = document.createElement('p');
           msg.className = 'series-empty';
           msg.textContent = err.message;
@@ -641,34 +796,112 @@
     countEl.textContent = bookmark.items.length + '개의 항목이 있어요!';
 
     contentEl.innerHTML = '';
+
+    // 타입 필터 칩 — 그리드는 하나로 두고 '전체'가 기본이라 담은 순서를
+    // 그대로 볼 수 있고, 칩을 누르면 해당 타입만 남는다
+    var chipBar = document.createElement('div');
+    chipBar.className = 'bkm-filter-chips';
+    contentEl.appendChild(chipBar);
+
     var grid = document.createElement('div');
     grid.className = 'series-grid';
     contentEl.appendChild(grid);
 
+    var TYPE_LABELS = { novel: '문학', series: '시리즈', hof: '명예관', official: '공식' };
+    var activeType = 'all';
+
     loadItemLookup().then(function (byId) {
+      // 실제로 데이터에서 찾아진 항목만 대상으로 삼는다 (원본이 사라진
+      // 항목은 카드로 못 그리므로 개수에서도 빼야 숫자가 맞는다)
+      var resolved = [];
+      bookmark.items.forEach(function (entry) {
+        var s = byId[entry.type] && byId[entry.type][entry.id];
+        if (s) resolved.push({ type: entry.type, data: s });
+      });
+
+      function countOf(type) {
+        if (type === 'all') return resolved.length;
+        var n = 0;
+        for (var i = 0; i < resolved.length; i++) if (resolved[i].type === type) n++;
+        return n;
+      }
+
+      function renderGrid() {
+        grid.innerHTML = '';
+        var shown = resolved.filter(function (r) {
+          return activeType === 'all' || r.type === activeType;
+        });
+
+        shown.forEach(function (r) {
+          var card = createItemCard(r.type, r.data, {
+            viewingBookmarkId: bookmark.id,
+            onRemovedFromCurrentView: function () {
+              // 해제된 항목은 목록에서도 빼야 칩 개수가 어긋나지 않는다
+              var idx = resolved.indexOf(r);
+              if (idx !== -1) resolved.splice(idx, 1);
+              card.remove();
+
+              // 마지막 항목을 지워 그 타입 칩이 사라지면 updateChips 가
+              // activeType 을 'all' 로 되돌린다 — 이때는 필터가 바뀐 것이므로
+              // 그리드를 다시 그려야 남은 다른 타입 카드들이 나타난다
+              var prevType = activeType;
+              updateChips();
+              updateCount();
+              if (activeType !== prevType) renderGrid();
+              else showEmptyIfNeeded();
+            }
+          });
+          grid.appendChild(card);
+        });
+
+        showEmptyIfNeeded();
+      }
+
       function showEmptyIfNeeded() {
         if (grid.children.length) return;
         var empty = document.createElement('p');
         empty.className = 'series-empty';
-        empty.textContent = '이 북마크에는 아직 항목이 없어요.';
+        empty.textContent = resolved.length
+          ? (TYPE_LABELS[activeType] || '') + ' 항목이 없어요.'
+          : '이 북마크에는 아직 항목이 없어요.';
         grid.appendChild(empty);
       }
 
-      bookmark.items.forEach(function (entry) {
-        var s = byId[entry.type] && byId[entry.type][entry.id];
-        if (!s) return;
-        var card = createItemCard(entry.type, s, {
-          viewingBookmarkId: bookmark.id,
-          onRemovedFromCurrentView: function () {
-            card.remove();
-            countEl.textContent = grid.querySelectorAll('.series-card').length + '개의 항목이 있어요!';
-            showEmptyIfNeeded();
-          }
-        });
-        grid.appendChild(card);
-      });
+      function updateCount() {
+        countEl.textContent = activeType === 'all'
+          ? resolved.length + '개의 항목이 있어요!'
+          : countOf(activeType) + '개의 ' + TYPE_LABELS[activeType] + ' 항목';
+      }
 
-      showEmptyIfNeeded();
+      function updateChips() {
+        chipBar.innerHTML = '';
+        var types = ['all'].concat(Object.keys(TYPE_LABELS).filter(function (t) {
+          return countOf(t) > 0;   // 비어 있는 타입은 칩 자체를 숨긴다
+        }));
+        // 지금 보고 있던 타입이 비었으면 전체로 되돌린다
+        if (activeType !== 'all' && types.indexOf(activeType) === -1) activeType = 'all';
+
+        types.forEach(function (t) {
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'bkm-chip' + (t === activeType ? ' is-active' : '');
+          chip.textContent = (t === 'all' ? '전체' : TYPE_LABELS[t]) + ' ' + countOf(t);
+          chip.addEventListener('click', function () {
+            if (activeType === t) return;
+            activeType = t;
+            updateChips();
+            updateCount();
+            renderGrid();
+          });
+          chipBar.appendChild(chip);
+        });
+        // 타입이 한 종류뿐이면 굳이 칩을 보여줄 필요가 없다
+        chipBar.hidden = types.length <= 2;
+      }
+
+      updateChips();
+      updateCount();
+      renderGrid();
     });
   }
 

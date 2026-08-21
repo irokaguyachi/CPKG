@@ -6,6 +6,7 @@
 
 # Cloudflare Workers local cache/state
 worker/.wrangler/
+.wrangler/
 
 # OS generated files
 Thumbs.db

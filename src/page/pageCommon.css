@@ -964,6 +964,40 @@ body.is-top .site-info {
   padding: 0 2.6042vw 1.5625vw;
 }
 
+/* 라이브러리 목록 검색/정렬 + 관리 코드 되찾기 패널 */
+.bkm-library-toolbar {
+  gap: 0.5208vw;
+  align-items: center;
+}
+
+.bkm-library-search {
+  width: 18vw;
+}
+
+.bkm-library-sort {
+  padding: 0.5208vw 0.8333vw;
+  font-family: inherit;
+  font-size: 0.8333vw;
+  color: #000000;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.bkm-claim-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4167vw;
+  padding: 0 2.6042vw 1.5625vw;
+  text-align: center;
+}
+
+.bkm-claim-token {
+  width: 16vw;
+}
+
 .bkm-inline-create {
   display: flex;
   align-items: center;
@@ -1118,6 +1152,34 @@ body.is-top .site-info {
   background: #f0f0f0;
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   border-radius: 999px;
+}
+
+/* 북마크 상세 — 타입 필터 칩 */
+.bkm-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4167vw;
+  padding: 0 2.6042vw 1.25vw;
+}
+
+.bkm-chip {
+  padding: 0.3646vw 1.0417vw;
+  font-family: inherit;
+  font-size: 0.8333vw;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  background: #f0f1f3;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.bkm-chip:hover { color: rgba(0, 0, 0, 0.8); }
+.bkm-chip.is-active {
+  color: #ffffff;
+  background: #2f6fed;
+  border-color: #2f6fed;
 }
 
 .bkm-tab {

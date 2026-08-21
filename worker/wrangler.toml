@@ -2,7 +2,7 @@ name = "chokaguya-favorites-share"
 main = "favoritesShareWorker.js"
 compatibility_date = "2026-08-20"
 
-# 즐겨찾기 공유 데이터를 이미지와 같은 R2 버킷의 share/ 프리픽스 아래에 저장합니다.
+# 북마크 라이브러리 데이터를 이미지와 같은 R2 버킷의 library/ 프리픽스 아래에 저장합니다.
 # bucket_name은 로컬 .r2_config.json의 bucket_name 값과 동일해야 합니다
 # (src/scripts/sync_to_r2.py가 이미지 업로드에 쓰는 것과 같은 버킷).
 [[r2_buckets]]
@@ -10,20 +10,17 @@ binding = "FAVORITES_BUCKET"
 bucket_name = "chokaguya-assets"
 
 # 북마크 라이브러리(/library) 쓰기·목록 조회의 IP당 요청 횟수 제한에 씁니다.
-# 아래 id 는 아직 비어 있습니다 — 배포 전에 네임스페이스를 만들고 채워주세요:
-#   cd worker
-#   npx wrangler kv namespace create RATE_LIMIT_KV
-# 출력된 id 를 그대로 아래 id = "" 안에 붙여넣으면 됩니다.
-# (id 가 비어있거나 바인딩이 없으면 Worker 는 레이트리밋을 건너뛰고 동작합니다 —
-#  favoritesShareWorker.js 의 checkRateLimit 참고. 운영 배포 전엔 반드시 채우세요.)
+# 2026-08-21 생성 완료 (npx wrangler kv namespace create RATE_LIMIT_KV).
+# 바인딩이 없으면 Worker 는 레이트리밋을 건너뛴 채 동작하므로(fail open,
+# favoritesShareWorker.js 의 checkRateLimit 참고) 이 id 를 비우지 마세요.
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = ""
+id = "564a89b518d544eeabec62fb758d17ed"
 
 # 배포 절차:
 #   cd worker
 #   wrangler login
 #   wrangler deploy
 # 배포가 끝나면 출력되는 workers.dev 주소를
-# src/js/favoritesShareRemote.js 와 src/js/bookmarkLibrary.js 의
-# WORKER_URL 에 넣어주세요.
+# src/js/bookmarkLibrary.js 의 WORKER_BASE 에 넣어주세요
+# (name 이 그대로면 주소가 안 바뀌므로 손댈 필요 없습니다).
