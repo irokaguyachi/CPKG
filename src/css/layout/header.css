@@ -8,6 +8,13 @@
   background: #ffffff;
 }
 
+@media (max-width: 768px) {
+  .header {
+    height: 72px;
+    padding: 0 24px;
+  }
+}
+
 /* logo is fixed to the viewport (not clipped to the header's own thin box) so
    it can grow past the header at the top of the page and read as the page's
    hero visual, then slide/scale back down into its normal header spot on

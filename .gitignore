@@ -26,10 +26,7 @@ scratch/
 __pycache__/
 
 # Agent internal files — only rules/tag.md should be published
-# .agent/*
-# !.agent/rules
 # .agent/rules/*
-# !.agent/rules/tag.md
 
 
 # Src File
@@ -40,3 +37,4 @@ src/data/번역 정리
 
 # etc
 requirements.txt
+anything

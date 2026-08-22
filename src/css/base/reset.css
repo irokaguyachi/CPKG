@@ -10,11 +10,15 @@
 html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   background: #ffffff;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+  min-height: 100vh;
 }
 
 /* hidden 속성으로 껐다 켜는 요소들(.bkm-claim-panel 등)은 대부분 자기 클래스에

@@ -192,6 +192,7 @@ body.is-top .header-logo {
   align-items: center;
   gap: 5px;
   width: 486px;
+  max-width: 100%;
   height: 78px;
   padding: 10px;
   background: #ffffff;

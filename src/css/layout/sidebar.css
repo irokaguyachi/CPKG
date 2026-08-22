@@ -84,6 +84,7 @@
   align-items: flex-end;
   gap: 15px;
   width: 286px;
+  max-width: 85vw;
   height: 100vh;
   /* 위쪽만 넉넉히 비워서 .sidebar-toggle-btn(fixed, top:64px, 지름 42px) 이
      사이드바가 열렸을 때도 네비 링크와 안 겹치게 한다 — 버튼이 이 빈 여백
@@ -93,10 +94,14 @@
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
   overflow-y: auto;
   transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.3s ease;
 }
 .sidebar.is-open {
   transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .sidebar .header-nav {
