@@ -20,18 +20,22 @@ html.theme-transitioning *:after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
+  gap: 8px;
+  width: auto;
   height: 42px;
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
+  padding: 0 18px;
   background: rgba(0, 0, 0, 0.05);
   border: 0.5px solid rgba(0, 0, 0, 0.15);
-  border-radius: 50%;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
   color: #000000;
   cursor: pointer;
   outline: none;
   z-index: 30;
+  white-space: nowrap;
+  user-select: none;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
               background 0.2s ease,
               border-color 0.2s ease,
@@ -40,21 +44,27 @@ html.theme-transitioning *:after {
 }
 
 .theme-toggle-btn:hover {
-  transform: translateY(-3px) scale(1.05);
+  transform: translateY(-3px) scale(1.03);
   background: rgba(0, 0, 0, 0.1);
   border-color: rgba(0, 0, 0, 0.3);
 }
 
 .theme-toggle-btn svg {
-  width: 20px;
-  height: 20px;
-  min-width: 16px;
-  min-height: 16px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .theme-toggle-btn:active svg {
   transform: rotate(45deg);
+}
+
+.theme-toggle-label {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 /* body.is-top 상태에서 .header-nav/.theme-toggle-btn/.auth-header-btn 을

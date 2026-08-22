@@ -301,12 +301,12 @@
 /* 공유 버튼 */
 .bkm-folder-share {
   right: auto;
-  left: 8px;
-  top: 8px;
+  left: 10px;
+  top: 10px;
 }
 .bkm-folder-share.is-published {
   color: #6ee7a8;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .bkm-library-card .bkm-folder-image {

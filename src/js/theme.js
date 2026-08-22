@@ -39,10 +39,13 @@
 
   function updateButtons(theme) {
     var buttons = document.querySelectorAll('.theme-toggle-btn');
+    var isDark = theme === 'dark';
+    var icon = isDark ? SUN_ICON : MOON_ICON;
+    var labelText = isDark ? '라이트 모드' : '다크 모드';
     buttons.forEach(function (btn) {
-      btn.setAttribute('aria-label', theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환');
-      btn.title = theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환';
-      btn.innerHTML = theme === 'dark' ? SUN_ICON : MOON_ICON;
+      btn.setAttribute('aria-label', isDark ? '라이트 모드로 전환' : '다크 모드로 전환');
+      btn.title = isDark ? '라이트 모드로 전환' : '다크 모드로 전환';
+      btn.innerHTML = icon + '<span class="theme-toggle-label">' + labelText + '</span>';
     });
   }
 
@@ -67,9 +70,12 @@
     btn.type = 'button';
     btn.className = 'theme-toggle-btn';
     var currentTheme = document.documentElement.getAttribute('data-theme') || getPreferredTheme();
-    btn.setAttribute('aria-label', currentTheme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환');
-    btn.title = currentTheme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환';
-    btn.innerHTML = currentTheme === 'dark' ? SUN_ICON : MOON_ICON;
+    var isDark = currentTheme === 'dark';
+    var icon = isDark ? SUN_ICON : MOON_ICON;
+    var labelText = isDark ? '라이트 모드' : '다크 모드';
+    btn.setAttribute('aria-label', isDark ? '라이트 모드로 전환' : '다크 모드로 전환');
+    btn.title = isDark ? '라이트 모드로 전환' : '다크 모드로 전환';
+    btn.innerHTML = icon + '<span class="theme-toggle-label">' + labelText + '</span>';
 
     btn.addEventListener('click', function (e) {
       e.preventDefault();

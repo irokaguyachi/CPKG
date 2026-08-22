@@ -183,20 +183,17 @@
     return section;
   }
 
-  // Fetch real Novel, Series & HOF data
+  // Fetch real Novel & Series data
   Promise.all([
     fetch(DATA('../data/PageData/Novel.json')).then(function (r) { return r.json(); }).catch(function () { return []; }),
-    fetch(DATA('../data/PageData/Series.json')).then(function (r) { return r.json(); }).catch(function () { return []; }),
-    fetch(DATA('../data/PageData/HOF.json')).then(function (r) { return r.json(); }).catch(function () { return []; })
+    fetch(DATA('../data/PageData/Series.json')).then(function (r) { return r.json(); }).catch(function () { return []; })
   ]).then(function (results) {
     var novels = Array.isArray(results[0]) ? results[0] : [];
     var series = Array.isArray(results[1]) ? results[1] : [];
-    var hof = Array.isArray(results[2]) ? results[2] : [];
 
     if (global.SeriesUtil) {
       global.SeriesUtil.assignPostNumbers(novels, 'N');
       global.SeriesUtil.assignPostNumbers(series, 'S');
-      global.SeriesUtil.assignPostNumbers(hof, 'H');
     }
 
     // 총 게시물 수 업데이트
@@ -218,12 +215,6 @@
     if (series.length) {
       var recentSeries = series.slice(0, 10);
       contentEl.appendChild(createRecentSection('최신 등록 시리즈', recentSeries, 'seriesPage.html', 'series'));
-    }
-
-    // 3. 명예의 전당 (HOF.json 최신 10개)
-    if (hof.length) {
-      var recentHof = hof.slice(0, 10);
-      contentEl.appendChild(createRecentSection('명예의 전당', recentHof, 'HOFPage.html', 'hof'));
     }
   }).catch(function () {});
 })(window);

@@ -174,10 +174,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   height: 42px;
-  padding: 0 24px;
+  padding: 0 20px;
   font-family: inherit;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #000000;
   white-space: nowrap;
@@ -186,6 +187,17 @@
   border-radius: 999px;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.auth-header-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.auth-header-btn .auth-header-btn-label {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
 }
 .auth-header-btn:hover {
   background: rgba(0, 0, 0, 0.1);
