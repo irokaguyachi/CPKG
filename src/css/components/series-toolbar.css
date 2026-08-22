@@ -6,6 +6,9 @@
   z-index: 15;
   display: flex;
   justify-content: center;
+  padding: 0 var(--content-padding);
+  width: 100%;
+  box-sizing: border-box;
   pointer-events: none;
 }
 
@@ -13,19 +16,23 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 20px;
+  width: 100%;
+  max-width: 900px;
+  padding: 12px 18px;
   background: #ffffff;
   border-radius: 999px;
   border: 0.5px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   pointer-events: auto;
+  box-sizing: border-box;
 }
 
 .series-search {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 1056px;
+  flex: 1;
+  min-width: 0;
   padding: 11px 20px;
   background: #f5f5f5;
   border: 0.5px solid rgba(0, 0, 0, 0.2);
@@ -172,4 +179,26 @@
   font-size: 14px;
   color: rgba(0, 0, 0, 0.4);
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .series-toolbar {
+    top: 80px;
+    padding: 0 16px;
+  }
+  .series-toolbar-row {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+  .series-search {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+  .series-search input {
+    font-size: 14px;
+  }
+  .series-filter-btn {
+    width: 36px;
+    height: 36px;
+  }
 }

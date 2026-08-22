@@ -50,6 +50,13 @@
   height: 20px;
 }
 
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    right: 24px;
+    top: 48px;
+  }
+}
+
 /* 사이드바 뒤에 까는 딤 배경 — src/js/postDetailSeries.js 의 .pds-overlay
    패턴(진짜 화면 중앙 모달)과 같은 뼈대를 오프캔버스 사이드바에 맞게
    썼다: 바깥(오버레이 자체) 클릭이나 Escape 로 닫힌다(sidebar.js). */

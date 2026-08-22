@@ -1,11 +1,14 @@
 /* 즐겨찾기 목록 페이지 전용 — 탭별 섹션 헤더 */
 .fav-section {
-  margin-bottom: 60px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto 60px;
+  padding: 0 var(--content-padding);
 }
 
 .fav-section-title {
   margin: 0 0 20px;
-  padding: 0 30px;
+  padding: 0 10px;
   font-size: 24px;
   font-weight: 700;
   color: #000000;
@@ -27,7 +30,10 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  padding: 0 50px 30px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--content-padding) 30px;
 }
 
 /* 라이브러리 목록 검색/정렬 + 관리 코드 되찾기 패널 */
@@ -56,7 +62,10 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 0 50px 30px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--content-padding) 30px;
   text-align: center;
 }
 
@@ -127,8 +136,8 @@
   color: rgba(0, 0, 0, 0.2);
 }
 .bkm-folder-image svg {
-  width: 60px;
-  height: 60px;
+  width: 28px;
+  height: 28px;
 }
 
 .bkm-folder-title-row {
@@ -248,7 +257,10 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  padding: 0 50px 24px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--content-padding) 24px;
 }
 
 .bkm-chip {
@@ -289,7 +301,8 @@
 /* 공유 버튼 */
 .bkm-folder-share {
   right: auto;
-  left: 10px;
+  left: 8px;
+  top: 8px;
 }
 .bkm-folder-share.is-published {
   color: #6ee7a8;

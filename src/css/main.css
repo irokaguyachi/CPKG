@@ -14,8 +14,10 @@
 
 /* Components */
 @import url("./components/loader.css");
+@import url("./components/series-card.css");
 @import url("./components/modal-series.css");
 @import url("./components/auth.css");
+@import url("./components/bookmarks.css");
 
 /* Main Page Specific */
 @import url("./pages/main-page.css");

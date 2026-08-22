@@ -15,7 +15,7 @@
           if (idx >= order.length) { order = shuffle(tips.slice()); idx = 0; }
           var text = order[idx];
           idx++;
-          typeText(tipEl, text, 45, function () {
+          typeText(tipEl, text, 500, function () {
             setTimeout(cycle, 2200);
           });
         }
@@ -44,17 +44,27 @@
       .catch(function () {});
   }
 
-  function typeText(el, text, speed, done) {
+  function typeText(el, text, durationMs, done) {
     el.textContent = '';
-    var i = 0;
-    var timer = setInterval(function () {
-      el.textContent += text.charAt(i);
-      i++;
-      if (i >= text.length) {
-        clearInterval(timer);
+    if (!text) {
+      if (done) done();
+      return;
+    }
+    var startTime = performance.now();
+    var duration = durationMs || 500;
+    function step(now) {
+      var elapsed = now - startTime;
+      var progress = Math.min(1, elapsed / duration);
+      var charCount = Math.floor(progress * text.length);
+      el.textContent = text.slice(0, charCount);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = text;
         if (done) done();
       }
-    }, speed);
+    }
+    requestAnimationFrame(step);
   }
 
   function shuffle(arr) {
@@ -154,33 +164,9 @@
     }
   }
 
-  // demo: nav links without a real destination yet just replay the loading
-  // transition to preview how a page change will feel. links that do have a
-  // real href (e.g. 시리즈 → seriesPage.html) are left alone to navigate
-  // normally — the loader replays anyway on the destination page's own load.
-  var DEMO_HOLD_MS = 1600;
-  var navLinks = document.querySelectorAll('.header-nav a');
-  var demoRunning = false;
-  for (var i = 0; i < navLinks.length; i++) {
-    navLinks[i].addEventListener('click', function (e) {
-      if (this.getAttribute('href') !== '#' || this.hasAttribute('data-locked')) return;
-      e.preventDefault();
-      if (demoRunning) return;
-      demoRunning = true;
-      loaderEl.classList.remove('is-hidden');
-      lockScroll();
-      playIntro();
-      setTimeout(function () {
-        window.finishLoading();
-        setTimeout(function () { demoRunning = false; }, OUTRO_MS);
-      }, INTRO_MS + DEMO_HOLD_MS);
-    });
-  }
-
-  // locked nav links (e.g. 번역) have no destination yet — instead of the
-  // loading-replay demo, they shake in place to read as a deliberate
-  // "not open yet" rejection rather than a dead/broken link
-  var lockedLinks = document.querySelectorAll('.header-nav a[data-locked]');
+  // locked nav links (e.g. 번역) have no destination yet — they shake in place
+  // to read as a deliberate "not open yet" rejection rather than a dead/broken link
+  var lockedLinks = document.querySelectorAll('.header-nav a[data-locked], a[data-locked]');
   for (var k = 0; k < lockedLinks.length; k++) {
     lockedLinks[k].addEventListener('click', function (e) {
       e.preventDefault();
@@ -190,4 +176,48 @@
       el.classList.add('is-nav-shake');
     });
   }
+
+  // Same-page link protection: clicking a link to the current page (e.g. header logo
+  // on main page, or "시리즈" link while already on seriesPage) does NOT navigate or reload,
+  // preventing unnecessary traffic, loader flashes, and re-fetching data.
+  function isSamePage(anchor) {
+    if (!anchor) return false;
+    var rawHref = anchor.getAttribute('href');
+    if (!rawHref || rawHref === '#') return true;
+    if (rawHref.startsWith('#')) return false; // in-page anchor
+
+    try {
+      var currentUrl = new URL(window.location.href);
+      var targetUrl = new URL(anchor.href, window.location.href);
+
+      var currentPath = currentUrl.pathname.replace(/\/+$/, '');
+      var targetPath = targetUrl.pathname.replace(/\/+$/, '');
+
+      var currentFile = (currentPath.split('/').pop() || 'mainPage.html').toLowerCase();
+      var targetFile = (targetPath.split('/').pop() || 'mainPage.html').toLowerCase();
+
+      if (currentFile === targetFile) {
+        if (targetUrl.search === currentUrl.search || (!targetUrl.search && !currentUrl.search)) {
+          return true;
+        }
+      }
+    } catch (err) {
+      if (anchor.href === window.location.href) return true;
+    }
+    return false;
+  }
+
+  document.addEventListener('click', function (e) {
+    var anchor = e.target.closest('a');
+    if (!anchor) return;
+    if (anchor.hasAttribute('data-locked')) return;
+    if (anchor.target && anchor.target !== '_self') return;
+
+    if (isSamePage(anchor)) {
+      e.preventDefault();
+      if (window.Sidebar && typeof window.Sidebar.close === 'function') {
+        window.Sidebar.close();
+      }
+    }
+  });
 })();

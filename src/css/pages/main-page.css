@@ -2,67 +2,97 @@
    Main Page Exclusive Styles
    ========================================================================== */
 
+/* Main page header logo: 긴 타이틀에 맞춘 크기 */
+.header-logo {
+  max-width: 220px;
+  height: 42px;
+}
+
 /* Main page hero logo expansion at top of page */
 body.is-top .header-logo {
-  transform: translateY(-50%) translate(769px, 202px) scale(2.32313, 2.3314);
+  transform: translateY(-50%) translate(calc(50vw - 50px - 50%), 202px) scale(3.2);
+}
+
+@media (max-width: 768px) {
+  .header-logo {
+    left: 24px;
+    max-width: 170px;
+    height: 36px;
+  }
+  body.is-top .header-logo {
+    transform: translateY(-50%) translate(calc(50vw - 24px - 50%), 150px) scale(2.0);
+  }
 }
 
 .content {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px 0;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px var(--content-padding);
 }
 
 .recent {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0 50px;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 
 .content-heading {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 25px;
-  padding: 10px 0;
+  gap: 10px;
+  padding: 8px 0 4px;
   width: fit-content;
-  font-size: 25px;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 700;
   color: #000000;
+  text-decoration: none;
   cursor: pointer;
+  transition: color 0.2s ease;
+}
+.content-heading:hover {
+  color: #00bfc2;
 }
 
 .content-heading-arrow {
   width: 10px;
   height: 16px;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.content-heading:hover .content-heading-arrow {
+  transform: translateX(4px);
 }
 
 .post-list {
   display: flex;
-  gap: 15px;
-  padding: 10px 0;
+  gap: 16px;
+  padding: 8px 4px 18px;
   overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
-.post-card {
+.post-list::-webkit-scrollbar {
+  height: 6px;
+}
+.post-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+.post-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.post-list .series-card {
+  width: 290px;
+  height: 340px;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  width: 470px;
-  height: 304px;
-  background: #efefef;
-  border: 0.5px solid rgba(0, 0, 0, 0.3);
-  border-radius: 15px;
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
-}
-
-.post-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+  scroll-snap-align: start;
 }
 
 .post-image {
@@ -132,7 +162,10 @@ body.is-top .header-logo {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 10px 40px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px var(--content-padding) 40px;
 }
 
 .report-heading {

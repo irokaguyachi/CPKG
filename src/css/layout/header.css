@@ -17,11 +17,13 @@
   top: 48px;
   left: 50px;
   transform: translateY(-50%);
-  width: 281px;
-  height: 56px;
-  object-fit: cover;
+  width: auto;
+  max-width: 140px;
+  height: 34px;
+  object-fit: contain;
   z-index: 21;
   cursor: pointer;
+  transform-origin: center center;
   /* only transform animates — top/left/width/height each force a layout
      recalc every frame, which is what made this stutter when scrolling off
      the top of the page */
@@ -31,9 +33,20 @@
 /* top-of-page state: logo breaks out of the header and blows up into a hero mark.
    it's decorative here, not a nav target, so clicks pass straight through */
 body.is-top .header-logo {
-  transform: translateY(-50%) translate(769px, 202px) scale(1.63986, 1.6457);
+  transform: translateY(-50%) translate(calc(50vw - 50px - 50%), 200px) scale(3.2);
   pointer-events: none;
   cursor: default;
+}
+
+@media (max-width: 768px) {
+  .header-logo {
+    left: 24px;
+    max-width: 120px;
+    height: 30px;
+  }
+  body.is-top .header-logo {
+    transform: translateY(-50%) translate(calc(50vw - 24px - 50%), 150px) scale(2.0);
+  }
 }
 
 /* .header-nav 컨테이너 자체의 배치(세로/사이드바)는 sidebar.css 로 옮김 —

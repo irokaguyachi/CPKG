@@ -398,6 +398,21 @@ html.theme-transitioning *:after {
   background: linear-gradient(90deg, rgba(28, 29, 34, 0) 0%, #1c1d22 45%);
 }
 
+@media (max-width: 1080px) {
+  [data-theme="dark"] .post-detail-series {
+    border-bottom: none;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+  }
+  [data-theme="dark"] .pds-gradient {
+    background: linear-gradient(180deg, rgba(28, 29, 34, 0.1) 0%, #1c1d22 100%);
+  }
+  [data-theme="dark"] .pds-series-episode-count {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+}
+
 [data-theme="dark"] .pds-series-name {
   color: #ffffff;
 }
@@ -654,9 +669,13 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .auth-title,
 [data-theme="dark"] .auth-desc,
-[data-theme="dark"] .auth-code-display,
 [data-theme="dark"] .auth-switch {
   color: #f1f3f5;
+}
+[data-theme="dark"] .auth-code-display {
+  background: #151619;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #00ffcc;
 }
 [data-theme="dark"] .auth-reason {
   background: #151619;
@@ -664,7 +683,12 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .auth-input {
   background: #151619;
+  border-color: rgba(255, 255, 255, 0.15);
   color: #f1f3f5;
+}
+[data-theme="dark"] .auth-input:focus {
+  border-color: #00ffcc;
+  background: #1c1d22;
 }
 [data-theme="dark"] .auth-input::placeholder {
   color: rgba(255, 255, 255, 0.3);
@@ -689,4 +713,18 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .auth-header-btn.is-logged-in:hover {
   background: #2058c9;
+}
+
+/* 메인 페이지 다크 모드 */
+[data-theme="dark"] .content-heading {
+  color: #f1f3f5;
+}
+[data-theme="dark"] .content-heading:hover {
+  color: #5c9aff;
+}
+[data-theme="dark"] .content-heading-arrow path {
+  stroke: #f1f3f5;
+}
+[data-theme="dark"] .post-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }

@@ -17,6 +17,10 @@
 
   function applyFitScale(card) {
     if (!card) return;
+    if (window.innerWidth <= 1080) {
+      card.style.removeProperty('--pds-scale');
+      return;
+    }
     var unit = window.innerWidth / 100;
     var scale = Math.min(
       BASE_SCALE,
@@ -71,6 +75,10 @@
 
     var card = document.createElement('div');
     card.className = 'post-detail-series';
+
+    var handle = document.createElement('div');
+    handle.className = 'pds-sheet-handle';
+    card.appendChild(handle);
 
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
