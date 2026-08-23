@@ -200,9 +200,13 @@
     return p;
   }
 
-  // 게시 직후 한 번만 보여주는 관리 코드 — 이 브라우저엔 이미 저장됐지만
-  // 기기를 바꾸면 복구할 방법이 없어서 백업을 권한다.
-  function renderPublishedResult(panel, code, editToken) {
+  // 게시 직후 한 번만 보여주는 결과 화면. 공개는 이제 로그인이 끝난
+  // 뒤에만 할 수 있어서(requireLogin), publish() 가 항상 personalCode 를
+  // 함께 보내고 서버가 그 자리에서 ownerHash 를 걸어준다 — 즉 로그인된
+  // 계정만으로 어느 기기에서든 이미 수정·공개취소가 가능하므로, 예전처럼
+  // editToken(관리 코드)을 따로 보여주고 "잃어버리면 못 고친다"며 백업을
+  // 요구할 필요가 없다.
+  function renderPublishedResult(panel, code) {
     panel.innerHTML = '';
     panel.appendChild(sharePanelHeader('라이브러리에 공개했어요!'));
 
@@ -219,22 +223,7 @@
     linkInput.addEventListener('focus', function () { linkInput.select(); });
     panel.appendChild(linkInput);
 
-    if (editToken) {
-      var tokenLabel = document.createElement('p');
-      tokenLabel.className = 'bkm-share-note';
-      tokenLabel.textContent = '관리 코드 (수정·삭제에 필요해요)';
-      panel.appendChild(tokenLabel);
-
-      var tokenInput = document.createElement('input');
-      tokenInput.type = 'text';
-      tokenInput.className = 'bkm-share-code';
-      tokenInput.readOnly = true;
-      tokenInput.value = editToken;
-      tokenInput.addEventListener('focus', function () { tokenInput.select(); });
-      panel.appendChild(tokenInput);
-
-      panel.appendChild(sharePanelNote('이 브라우저에는 자동 저장됐어요. 다시 볼 수 없으니 백업이 필요하면 지금 따로 보관해두세요 — 다만 이 북마크는 로그인된 계정(개인 코드)에도 이미 연결돼 있으니, 다른 기기에서는 보통 이 관리 코드 대신 헤더의 로그인으로 되찾을 수 있어요.'));
-    }
+    panel.appendChild(sharePanelNote('로그인된 계정에 연결됐어요. 다른 기기에서도 같은 개인 코드로 로그인하면 수정·공개취소까지 그대로 할 수 있어요.'));
   }
 
   // 공개 여부는 이 북마크 자체의 publishedCode(계정과 함께 동기화됨)를
@@ -271,7 +260,7 @@
             // 시점의 스냅샷이라 따로 갱신 안 하면 이 화면 안에서는 여전히
             // "공개 안 됨"으로 보인다.
             bookmark.publishedCode = data.code;
-            renderPublishedResult(panel, data.code, data.editToken);
+            renderPublishedResult(panel, data.code);
             positionSharePanel(anchorEl);
             if (onStateChange) onStateChange();
           })
