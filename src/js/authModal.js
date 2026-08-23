@@ -54,7 +54,9 @@
   }
 
   // ---- SignIn ----
-  function renderSignIn(card, opts) {
+  // presetError: renderSignUp 이 가입 요청 자체가 막혀서(IP 하루 한도 등)
+  // 되돌아올 때 바로 보여줄 에러 메시지.
+  function renderSignIn(card, opts, presetError) {
     dismissible = true;
     card.innerHTML = '';
     card.appendChild(closeButton());
@@ -89,6 +91,8 @@
       errorEl.textContent = message;
       errorEl.hidden = false;
     }
+
+    if (presetError) showError(presetError);
 
     function submit() {
       var raw = input.value;
@@ -134,7 +138,32 @@
   }
 
   // ---- SignUp ----
+  // 잠긴 코드 확인 화면(확인 버튼으로만 나갈 수 있음)은 서버 가입이 실제로
+  // 성공했을 때만 보여준다. 그 전에 먼저 가입을 시도해보는 이유는, IP 하루
+  // 1회 한도(worker/favoritesShareWorker.js 의 user-signup 버킷)에 이미
+  // 걸려 있으면 "확인"을 눌러도 100% 실패할 잠긴 화면에 사용자를 가두게
+  // 되기 때문이다 — 그 경우엔 코드 화면 자체로 넘어가지 않고 로그인
+  // 화면으로 되돌아가 에러만 보여준다.
   function renderSignUp(card, opts) {
+    dismissible = true; // 가입 시도 중에는 자유롭게 닫을 수 있다
+    card.innerHTML = '';
+    card.appendChild(closeButton());
+    card.appendChild(el('h2', 'auth-title is-small', '계정을 만드는 중...'));
+    card.appendChild(el('p', 'auth-desc', '잠시만 기다려주세요.'));
+
+    var code = global.BookmarkLibrary.issueNewPersonalCode();
+
+    global.UserData.signup(code)
+      .then(function () {
+        renderSignUpCode(card, opts, code);
+      })
+      .catch(function (err) {
+        renderSignIn(card, opts, err.message || '계정을 만들지 못했어요. 인터넷 연결을 확인해주세요.');
+      });
+  }
+
+  // 서버 가입이 끝난 뒤에만 뜨는, "확인"을 눌러야만 나갈 수 있는 화면.
+  function renderSignUpCode(card, opts, code) {
     // 방금 발급된 코드는 이 화면을 벗어나면 다시 볼 수 없다 — 실수로
     // 바깥을 클릭하거나 Escape 를 누르거나 X 를 눌러서 코드를 못 본 채
     // 나가버리는 일이 없도록, "확인" 버튼을 눌러야만 닫히게 한다.
@@ -145,7 +174,6 @@
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
-    var code = global.BookmarkLibrary.issueNewPersonalCode();
     card.appendChild(el('p', 'auth-code-display', global.BookmarkLibrary.formatPersonalCodeForDisplay(code)));
 
     var confirmBtn = document.createElement('button');
@@ -154,27 +182,11 @@
     confirmBtn.textContent = '확인';
     card.appendChild(confirmBtn);
 
-    var errorEl = el('p', 'auth-error');
-    errorEl.hidden = true;
-    card.appendChild(errorEl);
-
     confirmBtn.addEventListener('click', function () {
-      errorEl.hidden = true;
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = '계정을 만드는 중...';
-      // 서버에 계정이 생긴 걸 확인한 뒤에야 이 기기가 코드를 채택한다 —
-      // 순서가 반대면 가입은 된 것처럼 보이는데 다른 기기에선 못 찾는다
-      global.UserData.signup(code)
-        .then(function () {
-          close();
-          if (opts.onSuccess) opts.onSuccess(code);
-        })
-        .catch(function (err) {
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = '확인';
-          errorEl.textContent = err.message || '계정을 만들지 못했어요. 인터넷 연결을 확인해주세요.';
-          errorEl.hidden = false;
-        });
+      // 서버 가입과 로컬 코드 채택은 이미 UserData.signup() 이 끝냈다 —
+      // 여기서는 닫기만 하면 된다.
+      close();
+      if (opts.onSuccess) opts.onSuccess(code);
     });
 
     // "이미 코드가 있으신가요? 로그인하기" 링크는 일부러 안 넣는다 — 이
