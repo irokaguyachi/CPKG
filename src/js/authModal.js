@@ -62,14 +62,19 @@
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
-    var row = el('div', 'auth-form-row');
+    // 개인 코드가 사실상 비밀번호 역할이라, 브라우저의 비밀번호 관리자가
+    // 저장·자동채움 대상으로 인식하도록 password 타입 + <form> 으로
+    // 감쌌다(폼 없이 input 단독이면 인식률이 떨어진다).
+    var row = document.createElement('form');
+    row.className = 'auth-form-row';
     var input = document.createElement('input');
-    input.type = 'text';
+    input.type = 'password';
+    input.name = 'password';
     input.className = 'auth-input';
     input.placeholder = '로그인 코드 입력창';
-    input.autocomplete = 'off';
+    input.autocomplete = 'current-password';
     var submitBtn = document.createElement('button');
-    submitBtn.type = 'button';
+    submitBtn.type = 'submit';
     submitBtn.className = 'auth-btn';
     submitBtn.textContent = '로그인';
     row.appendChild(input);
@@ -111,8 +116,10 @@
         });
     }
 
-    submitBtn.addEventListener('click', submit);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+    row.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submit();
+    });
 
     var switchRow = el('p', 'auth-switch', '로그인 코드가 없으신가요? ');
     var switchLink = document.createElement('button');
