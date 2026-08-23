@@ -3,7 +3,7 @@
  * - Shared implementation behind 시리즈 / 명예관 / 공식 — the three pages had
  *   ~95% identical scripts, so they now pass their differences in as config
  *   and this file owns the behaviour.
- * - Config: { dataUrl, numberPrefix, favType, countText(n), emptyText, countLine(s) }
+ * - Config: { dataUrl, favType, countText(n), emptyText, countLine(s) }
  *   countLine 을 생략하면 SeriesUtil.countLine (자식 글이 2개 이상이면 시리즈로
  *   보고 화수, 아니면 글자 수) 을 씁니다.
  */
@@ -151,7 +151,6 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         allItems = Array.isArray(data) ? data : [];
-        assignPostNumbers();
         if (countEl) countEl.textContent = config.countText(allItems.length);
         renderFilterOptions();
         renderGrid();
@@ -227,21 +226,13 @@
       if (CHOSUNG_ONLY_RE.test(term)) {
         if (toChosung(name).indexOf(term) !== -1) return true;
       }
-      // 자체 게시물 번호(S1/H1/O1...)나 디시 게시물 번호로도 검색 가능
+      // 디시 게시물 번호로도 검색 가능
       var posts = s.posts || [];
       for (var i = 0; i < posts.length; i++) {
         var p = posts[i];
-        if (p.customNo && p.customNo.toLowerCase().indexOf(term) !== -1) return true;
         if (p.id != null && String(p.id).indexOf(term) !== -1) return true;
       }
       return false;
-    }
-
-    // DC 게시물 번호(디시 게시물 번호) 대신 사이트 자체 게시물 번호를 매김 —
-    // 규칙은 SeriesUtil (오래된 글이 <prefix>1, 최신 글이 마지막 번호)
-    function assignPostNumbers() {
-      global.SeriesUtil.assignPostNumbers(allItems, config.numberPrefix);
-      global.SeriesUtil.assignSeriesNumbers(allItems, config.numberPrefix);
     }
 
     function allTags() {
@@ -458,7 +449,7 @@
 
       var count = document.createElement('p');
       count.className = 'series-card-count';
-      count.textContent = countLine(s) + ' | ' + global.SeriesUtil.itemNumber(s);
+      count.textContent = countLine(s);
       info.appendChild(count);
 
       var tagsWrap = document.createElement('div');
@@ -483,7 +474,6 @@
           episodes: (s.posts || []).map(function (post) {
             return {
               title: post.title,
-              id: post.customNo,
               dcId: post.id,
               link: post.link,
               episodeLabel: post.episode + ' 화'

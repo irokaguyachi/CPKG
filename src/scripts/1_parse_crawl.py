@@ -13,9 +13,16 @@ AUTHOR_RE = re.compile(r"\*\*작성자\*\*:\s*(.+)")
 TAGS_RE = re.compile(r"\*\*태그\*\*:\s*\[(.*?)\]")
 CHARS_RE = re.compile(r"\*\*글자 수\*\*:\s*(.+)")
 PHOTO_RE = re.compile(r"\*\*첨부 사진\*\*:\s*(.+)")
+# 디시 갤러리 자체 "시리즈 연결" 기능을 쓴 글에만 붙는 필드 — 2026-08-23
+# 이전까지는 이 필드를 통째로 버리고 있어서, 이 필드로만 확인 가능한 시리즈
+# 소속 여부를 2_parse_series.py(수동 큐레이션 md 파일 기반)가 알 도리가
+# 없었다. 여기서 캡처해 crawl_entries.json에 실어두면, 이후 시리즈 md 파일을
+# 새로 만들거나 검토할 때 이 필드로 누락을 빠르게 찾을 수 있다.
+SERIES_RE = re.compile(r"\*\*시리즈\*\*:\s*(.+)")
 
 all_entries = []
 tag_counter = {}
+series_counter = {}
 fail_blocks = []
 
 
@@ -25,6 +32,7 @@ def parse_block(pid, title, block, source):
     tags_m = TAGS_RE.search(block)
     chars_m = CHARS_RE.search(block)
     photo_m = PHOTO_RE.search(block)
+    series_m = SERIES_RE.search(block)
     if not link_m:
         fail_blocks.append((pid, source, "no-link"))
         return
@@ -33,10 +41,13 @@ def parse_block(pid, title, block, source):
     tags_str = tags_m.group(1) if tags_m else ""
     chars = chars_m.group(1).strip() if chars_m else ""
     photo = photo_m.group(1).strip() if photo_m else "없음"
+    series_name = series_m.group(1).strip() if series_m else None
     tag_list = [t.strip() for t in tags_str.split(",") if t.strip()]
     for t in tag_list:
         tag_counter[t] = tag_counter.get(t, 0) + 1
-    all_entries.append({
+    if series_name:
+        series_counter[series_name] = series_counter.get(series_name, 0) + 1
+    entry = {
         "id": int(pid),
         "title": title.strip(),
         "link": link,
@@ -45,11 +56,23 @@ def parse_block(pid, title, block, source):
         "chars": chars,
         "photo": photo,
         "source": source,
-    })
+    }
+    # 필드가 없는 절대다수 글에는 아예 안 실어서 기존 스키마를 그대로 둔다 —
+    # series 키가 있는 글만 "디시 공식 시리즈 연결이 확인된 글"이라는 뜻이 된다.
+    if series_name:
+        entry["series"] = series_name
+    all_entries.append(entry)
+
+
+def sort_crawl_file(p):
+    base = os.path.splitext(os.path.basename(p))[0]
+    if base.isdigit():
+        return (0, int(base), "")
+    return (1, 0, base)
 
 
 # 1) crawling list files: split on "### [ID]..." headers
-files = sorted(glob.glob(os.path.join(CRAWL_DIR, "*.md")), key=lambda p: int(os.path.basename(p)[:-3]))
+files = sorted(glob.glob(os.path.join(CRAWL_DIR, "*.md")), key=sort_crawl_file)
 header_re = re.compile(r"^### \[(\d+)\](?:\[시리즈\])?\s*(.*)$", re.MULTILINE)
 crawl_count = 0
 for fp in files:
@@ -112,6 +135,9 @@ for e in all_entries:
     deduped.append(e)
 
 print("DUPLICATES (kept first):", len(dup_report))
+
+print("OFFICIAL SERIES-TAGGED POSTS:", sum(series_counter.values()), "/", len(series_counter), "고유 시리즈명")
+print("  (src/data/문학 정리/시리즈/ 안에 아직 md 파일이 없는 시리즈명이 있는지 확인할 것)")
 
 print("TAG COUNTS:")
 for t, c in sorted(tag_counter.items(), key=lambda x: -x[1]):

@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+시리즈 페이지 데이터 생성 스크립트 (5_build_series_page_data.py)
+
+⚠️ 기존 Series.json 에 사용자가 수동으로 매핑해 둔 image 경로가 있으면
+   그대로 보존합니다 (CLAUDE.md 최우선 규칙). 크롤링 자동 매칭은 image 가
+   비어 있는 시리즈에만 적용됩니다. (7_build_novel_page_data.py 와 동일한 패턴)
+"""
 import json, os, re, sys
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -14,6 +21,20 @@ out_path = os.path.join(out_dir, "Series.json")
 
 data = json.load(open(src_path, encoding="utf-8"))
 posts_by_id = {p["i"]: p for p in data["posts"]}
+
+# 기존 파일의 수동 image 매핑 보존 (CLAUDE.md 최우선 규칙 —
+# 7_build_novel_page_data.py 의 existing_image 패턴과 동일).
+# 시리즈명이 바뀌어도 매칭되도록 이름이 아니라 대표(첫 화) 게시물 id로 키를 잡는다.
+existing_image_by_first_post = {}
+if os.path.exists(out_path):
+    try:
+        for entry in json.load(open(out_path, encoding="utf-8")):
+            posts = entry.get("posts") or []
+            pid = posts[0]["id"] if posts else None
+            if pid is not None and entry.get("image"):
+                existing_image_by_first_post[pid] = entry["image"]
+    except (ValueError, AttributeError, KeyError, IndexError):
+        pass  # 비어 있거나 깨진 파일이면 새로 만듦
 
 # 명예관 여부의 authoritative 출처는 문학 정리/명예관/명예관.md 입니다.
 # MoonHakdata 의 per-post 태그에는 일부만 반영돼 있어(73건 중 소수), 이것만
@@ -47,9 +68,10 @@ for s in data["series"]:
         for ch in s.get("ch", [])
     ]
 
+    first_post_id = posts[0]["id"] if posts else None
     series_out.append({
         "name": s["n"],
-        "image": None,
+        "image": existing_image_by_first_post.get(first_post_id),
         "tags": tags,
         "posts": posts,
     })
@@ -100,4 +122,5 @@ with open(out_path, "w", encoding="utf-8") as f:
     json.dump(series_out, f, ensure_ascii=False, indent=2)
 
 matched = sum(1 for s in series_out if s["image"])
-print("wrote", out_path, "-", len(series_out), "series,", matched, "with a cover image")
+kept = sum(1 for s in series_out if s["posts"] and existing_image_by_first_post.get(s["posts"][0]["id"]))
+print("wrote", out_path, "-", len(series_out), "series,", matched, "with a cover image (", kept, "kept from existing custom mapping)")

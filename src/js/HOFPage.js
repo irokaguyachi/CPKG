@@ -3,7 +3,6 @@
 // 글자 수를 카드에 보여줍니다.
 window.GridPage.create({
   dataUrl: '../data/PageData/HOF.json',
-  numberPrefix: 'H',
   favType: 'hof',
   countText: function (n) { return n + '개의 게시물이 있습니다!'; },
   emptyText: '조건에 맞는 게시물이 없어요.'

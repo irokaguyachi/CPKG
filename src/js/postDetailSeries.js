@@ -184,9 +184,8 @@
 
       // build off-document so the whole list lands in one layout pass
       var frag = document.createDocumentFragment();
-      var isSolo = episodes.length <= 1;
       sorted.forEach(function (ep) {
-        frag.appendChild(createEpisodeItem(ep, isSolo));
+        frag.appendChild(createEpisodeItem(ep));
       });
       list.appendChild(frag);
 
@@ -297,7 +296,7 @@
     for (var j = 0; j < entries.length; j++) marqueeObserver.observe(entries[j].el);
   }
 
-  function createEpisodeItem(ep, isSolo) {
+  function createEpisodeItem(ep) {
     ep = ep || {};
     var item = document.createElement('a');
     item.className = 'pds-episode-item';
@@ -312,13 +311,7 @@
     titleInner.appendChild(document.createTextNode((ep.title || '게시물 이름') + ' '));
     var idSpan = document.createElement('span');
     idSpan.className = 'pds-episode-id';
-    // 화가 하나뿐인 게시물(문학/명예관/공식)은 사이트 자체 번호 없이 디시
-    // 게시물 번호만 보여줌 — 시리즈처럼 여러 화를 오가며 찾을 일이 없어서
-    // 사이트 번호가 굳이 필요 없음
-    var idText = isSolo
-      ? '| ' + (ep.dcId != null ? ep.dcId : (ep.id != null ? ep.id : '게시물 ID'))
-      : '| ' + (ep.id != null ? ep.id : '게시물 ID') + (ep.dcId != null ? ' (' + ep.dcId + ')' : '');
-    idSpan.textContent = idText;
+    idSpan.textContent = '| ' + (ep.dcId != null ? ep.dcId : '게시물 ID');
     titleInner.appendChild(idSpan);
     title.appendChild(titleInner);
     item.appendChild(title);

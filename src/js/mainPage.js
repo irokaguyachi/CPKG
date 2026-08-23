@@ -112,7 +112,7 @@
     var countText = (item.posts && item.posts.length > 1)
       ? item.posts.length + '화'
       : (item.charCount || '단편');
-    count.textContent = countText + ' | ' + (item.customNo || 'ID');
+    count.textContent = countText;
     info.appendChild(count);
 
     var tagsWrap = document.createElement('div');
@@ -136,7 +136,6 @@
       var episodes = (item.posts || []).map(function (post) {
         return {
           title: post.title,
-          id: post.customNo || item.customNo,
           dcId: post.id,
           link: post.link,
           episodeLabel: (post.episode != null ? post.episode + ' 화' : (item.charCount || '1 화'))
@@ -190,11 +189,6 @@
   ]).then(function (results) {
     var novels = Array.isArray(results[0]) ? results[0] : [];
     var series = Array.isArray(results[1]) ? results[1] : [];
-
-    if (global.SeriesUtil) {
-      global.SeriesUtil.assignPostNumbers(novels, 'N');
-      global.SeriesUtil.assignPostNumbers(series, 'S');
-    }
 
     // 총 게시물 수 업데이트
     var statEl = document.querySelector('.site-info-stat');

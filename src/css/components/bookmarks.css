@@ -129,6 +129,103 @@
 }
 .bkm-inline-create-btn:hover { background: #2058c9; }
 
+/* 내 북마크 목록 — Figma "Button_BookMark"(node 2232:2) 참고한 가로형
+   리스트 버튼. 폴더 카드(series-card 그리드)를 대체한다. */
+.bkm-row-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px var(--content-padding) 60px;
+  min-height: 200px;
+}
+
+.bkm-row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 32px;
+  background: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-radius: 15px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+.bkm-row-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+}
+
+.bkm-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bkm-row-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  color: #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bkm-row-sub {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bkm-row-count {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000000;
+}
+
+@media (max-width: 600px) {
+  .bkm-row-card {
+    padding: 16px 20px;
+    gap: 10px;
+  }
+  .bkm-row-title { font-size: 18px; }
+  .bkm-row-sub { font-size: 12px; }
+  .bkm-row-count { font-size: 15px; }
+}
+
+/* 상세 화면 헤더의 케밥(⋮) 메뉴 — 이름 바꾸기/공개/삭제를 여기로 모았다 */
+.bkm-detail-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 8px;
+  padding: 0;
+  vertical-align: middle;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.bkm-detail-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.8);
+}
+.bkm-detail-menu-btn svg { width: 18px; height: 18px; }
+
 .bkm-folder-image {
   display: flex;
   align-items: center;
@@ -138,45 +235,6 @@
 .bkm-folder-image svg {
   width: 28px;
   height: 28px;
-}
-
-.bkm-folder-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.bkm-folder-title-row .series-card-title {
-  flex: 1;
-  min-width: 0;
-}
-
-.bkm-rename-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-}
-.bkm-rename-btn:hover { color: rgba(0, 0, 0, 0.7); }
-.bkm-rename-btn svg { width: 16px; height: 16px; }
-
-.bkm-rename-input {
-  flex: 1;
-  min-width: 0;
-  font-family: inherit;
-  font-size: 20px;
-  font-weight: 700;
-  color: #000000;
-  background: #ffffff;
-  border: 0.5px solid rgba(0, 0, 0, 0.25);
-  border-radius: 6px;
-  padding: 2px 6px;
 }
 
 /* 담을 북마크 고르기 팝오버 — body 싱글턴 position:fixed (src/js/bookmarkPicker.js) */
@@ -323,17 +381,6 @@
   color: #000000;
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
-/* 공유 버튼 */
-.bkm-folder-share {
-  right: auto;
-  left: 10px;
-  top: 10px;
-}
-.bkm-folder-share.is-published {
-  color: #6ee7a8;
-  background: rgba(0, 0, 0, 0.55);
 }
 
 .bkm-library-card .bkm-folder-image {

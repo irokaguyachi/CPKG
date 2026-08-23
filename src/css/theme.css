@@ -567,16 +567,26 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .bkm-folder-image {
   color: rgba(255, 255, 255, 0.15);
 }
-[data-theme="dark"] .bkm-rename-btn {
-  color: rgba(255, 255, 255, 0.4);
+[data-theme="dark"] .bkm-row-card {
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.18);
 }
-[data-theme="dark"] .bkm-rename-btn:hover {
-  color: rgba(255, 255, 255, 0.8);
+[data-theme="dark"] .bkm-row-card:hover {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
 }
-[data-theme="dark"] .bkm-rename-input {
-  background: #151619;
-  border-color: rgba(255, 255, 255, 0.2);
+[data-theme="dark"] .bkm-row-title,
+[data-theme="dark"] .bkm-row-count {
   color: #f1f3f5;
+}
+[data-theme="dark"] .bkm-row-sub {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .bkm-detail-menu-btn {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .bkm-detail-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
 }
 [data-theme="dark"] .bkm-picker {
   background: #1c1d22;
