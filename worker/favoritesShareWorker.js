@@ -771,9 +771,16 @@ function userStorePutOptions(record) {
 }
 
 async function readUserBody(request, env, bucket, limit) {
-  var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, bucket, limit))) {
-    return { error: jsonResponse({ error: 'too many requests, try again later' }, 429) };
+  // bucket 이 없으면 rate limit 자체를 건너뛴다 — /user/head 가 이 경로다.
+  // KV 는 요청마다 get+put 두 번을 쓰는데, head 는 60초 폴링(userData.js)이
+  // 계속 때리는 엔드포인트라 여기서만 KV 를 아끼면 일일 무료 한도 소모가
+  // 크게 줄어든다. head 자체는 R2 head() 조회뿐이라 남용돼도 부담이 훨씬
+  // 가벼운 R2 Class B 요청만 늘어난다(무료 한도가 KV 쓰기보다 훨씬 넉넉함).
+  if (bucket) {
+    var ip = clientIp(request);
+    if (!(await checkRateLimit(env, ip, bucket, limit))) {
+      return { error: jsonResponse({ error: 'too many requests, try again later' }, 429) };
+    }
   }
   var body = await readJsonBody(request, USER_MAX_BODY_BYTES);
   if (body.error) return { error: body.error };
@@ -876,7 +883,7 @@ async function handleUserGet(request, env) {
 }
 
 async function handleUserHead(request, env) {
-  var parsed = await readUserBody(request, env, 'user-sync', RATE_LIMIT_USER_SYNC_PER_HOUR);
+  var parsed = await readUserBody(request, env, null, 0);
   if (parsed.error) return parsed.error;
 
   var head = await env.FAVORITES_BUCKET.head(await userStoreKey(parsed.personalCode));
