@@ -20,7 +20,6 @@
     { type: 'official', dataUrl: '../data/PageData/Official.json' }
   ];
 
-  var GLOBE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.4 3.4 8.5S14.2 18.2 12 20.5c-2.2-2.3-3.4-5.4-3.4-8.5S9.8 5.8 12 3.5z"/></svg>';
   var KEBAB_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>';
 
   var contentEl = document.getElementById('bkm-content');
@@ -582,34 +581,37 @@
     contentEl.appendChild(createTabs('library'));
 
     var grid = document.createElement('div');
-    grid.className = 'series-grid';
+    grid.className = 'bkm-row-list';
     contentEl.appendChild(grid);
 
     var total = 0;
 
+    // 내 북마크 목록(createFolderCard)과 같은 Figma "Button_BookMark" 형식.
+    // 부제 자리는 항상 공개 코드 — 라이브러리는 공개된 것만 모아두는
+    // 곳이라 formatBookmarkMeta 의 "비공개면 생성일" 분기가 필요 없다.
     function createLibraryCard(entry) {
       var card = document.createElement('article');
-      card.className = 'series-card bkm-folder-card bkm-library-card';
-
-      var image = document.createElement('div');
-      image.className = 'series-card-image bkm-folder-image';
-      image.innerHTML = GLOBE_ICON;
-      card.appendChild(image);
+      card.className = 'bkm-row-card';
 
       var info = document.createElement('div');
-      info.className = 'series-card-info';
+      info.className = 'bkm-row-info';
 
       var title = document.createElement('p');
-      title.className = 'series-card-title';
+      title.className = 'bkm-row-title';
       title.textContent = entry.name || '(이름 없음)';
       info.appendChild(title);
 
-      var count = document.createElement('p');
-      count.className = 'series-card-count';
-      count.textContent = entry.itemCount + '개 | ' + entry.code;
-      info.appendChild(count);
+      var sub = document.createElement('p');
+      sub.className = 'bkm-row-sub';
+      sub.textContent = '공개 코드 ' + entry.code;
+      info.appendChild(sub);
 
       card.appendChild(info);
+
+      var count = document.createElement('p');
+      count.className = 'bkm-row-count';
+      count.textContent = entry.itemCount + '개';
+      card.appendChild(count);
 
       card.addEventListener('click', function () {
         global.location.href = 'bookmarksPage.html?libraryId=' + encodeURIComponent(entry.code);

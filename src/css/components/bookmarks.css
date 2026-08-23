@@ -226,17 +226,6 @@
 }
 .bkm-detail-menu-btn svg { width: 18px; height: 18px; }
 
-.bkm-folder-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(0, 0, 0, 0.2);
-}
-.bkm-folder-image svg {
-  width: 28px;
-  height: 28px;
-}
-
 /* 담을 북마크 고르기 팝오버 — body 싱글턴 position:fixed (src/js/bookmarkPicker.js) */
 .bkm-picker {
   position: fixed;
@@ -381,10 +370,6 @@
   color: #000000;
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
-.bkm-library-card .bkm-folder-image {
-  color: rgba(47, 111, 237, 0.35);
 }
 
 .bkm-load-more {
