@@ -21,7 +21,10 @@
  * - 서버 라우트와 저장 형식은 worker/favoritesShareWorker.js 참고.
  */
 (function (global) {
-  var WORKER_BASE = 'https://chokaguya-favorites-share.nwb10102.workers.dev';
+  // API가 이제 이 사이트와 같은 Worker(cpkg)에 합쳐져 있어서, 같은 오리진에
+  // 상대 경로로 호출하면 된다 — 별도 도메인을 안 거치니 CORS 프리플라이트도
+  // 필요 없다. src/_worker.js, src/wrangler.toml 참고.
+  var WORKER_BASE = '';
   var LIBRARY_URL = WORKER_BASE + '/library';
   var OWNER_LOOKUP_URL = WORKER_BASE + '/owner/lookup';
   var TOKEN_KEY = 'chokaguya_library_tokens';
@@ -408,6 +411,9 @@
     isLoggedIn: isLoggedIn,
     issueNewPersonalCode: issueNewPersonalCode,
     confirmPersonalCode: confirmPersonalCode,
+    // userData.js 가 서버 계정 생성/조회에 성공한 뒤에야 이 기기에 코드를
+    // 채택하려고 쓴다 — 여기서 서버를 직접 부르면 두 모듈이 서로를 참조하게 된다
+    adoptPersonalCode: adoptPersonalCode,
     logout: logout,
     restorePublishedToLocal: restorePublishedToLocal
   };

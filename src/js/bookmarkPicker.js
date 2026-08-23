@@ -156,6 +156,21 @@
     open(anchorEl, type, id, opts);
   }
 
+  function isLoggedIn() {
+    return !!(global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn());
+  }
+
+  // 로그인/로그아웃이나 다른 기기에서 넘어온 동기화로 담긴 목록이 바뀌면
+  // 이미 그려진 카드 버튼들도 따라가야 한다. 버튼마다 자기 상태를 다시
+  // 계산하는 함수를 달아두고 문서 전체를 훑는 방식이라, 카드를 다시 그리지
+  // 않아도 되고 type/id 를 문자열 속성으로 왕복시키지 않아 타입도 안 어긋난다.
+  function refreshButtons() {
+    var btns = document.querySelectorAll('.bkm-fav-btn');
+    for (var i = 0; i < btns.length; i++) {
+      if (typeof btns[i]._bkmSync === 'function') btns[i]._bkmSync();
+    }
+  }
+
   // opts: { viewingBookmarkId, onRemovedFromCurrentView } — 북마크 상세
   // 페이지에서만 씀. 지금 보고 있는 북마크를 팝오버에서 체크 해제하면
   // onRemovedFromCurrentView 로 카드를 즉시 그리드에서 뺄 수 있게 함
@@ -165,19 +180,40 @@
     btn.className = 'series-card-fav bkm-fav-btn';
     btn.innerHTML = BOOKMARK_ICON;
     btn.setAttribute('aria-label', '북마크에 담기');
-    if (global.Bookmarks && global.Bookmarks.isInAnyBookmark(type, id)) {
-      btn.classList.add('is-fav');
-    }
+    // 로그아웃 상태에서는 담긴 표시(채운 아이콘)를 내보내지 않는다 — 열지도
+    // 못하는 북마크에 담겨 있다고 보여주면, 눌렀을 때 로그인 모달이 뜨는 게
+    // 앞뒤가 안 맞는다. 로그인하면 refreshButtons 가 곧바로 되살린다.
+    btn._bkmSync = function () {
+      var marked = isLoggedIn() && global.Bookmarks && global.Bookmarks.isInAnyBookmark(type, id);
+      btn.classList.toggle('is-fav', !!marked);
+    };
+    btn._bkmSync();
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
+      // 북마크는 계정에 딸린 기능이라 로그인부터 받는다. 가입/로그인이
+      // 끝나면 누르려던 그 버튼의 팝오버를 그대로 이어서 연다.
+      if (!isLoggedIn()) {
+        global.AuthModal.requireLogin({
+          reason: '북마크에 담으려면 먼저 로그인해주세요',
+          onSuccess: function () { open(btn, type, id, opts); }
+        });
+        return;
+      }
       toggle(btn, type, id, opts);
     });
     return btn;
   }
 
+  global.addEventListener('chokaguya:auth-change', function () {
+    close();
+    refreshButtons();
+  });
+  global.addEventListener('chokaguya:bookmarks-change', refreshButtons);
+
   global.BookmarkPicker = {
     createButton: createButton,
     open: open,
-    close: close
+    close: close,
+    refreshButtons: refreshButtons
   };
 })(window);

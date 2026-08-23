@@ -1,5 +1,11 @@
 /**
  * ChoKaguya Favorites Share Worker
+ * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
+ *   workers.dev 서브도메인)로 배포하던 걸 그만두고, 이 파일은 이제
+ *   src/_worker.js가 import해서 cpkg Worker(정적 사이트와 같은 배포)의
+ *   API 부분으로 합쳐졌다. 실제 배포 설정은 src/wrangler.toml에 있고, 이
+ *   파일 자체를 위한 wrangler.toml은 더 이상 없다 — R2/KV 바인딩 이름
+ *   (FAVORITES_BUCKET, RATE_LIMIT_KV)은 그대로라 코드는 안 바뀐다.
  * - The only piece of this project that can write to R2: the public
  *   pub-*.r2.dev bucket (src/js/cdnConfig.js) is read-only from the browser,
  *   and the only existing write path (src/scripts/sync_to_r2.py) holds a
@@ -114,6 +120,24 @@ const OWNER_MAX_CODES = 500;
 const RATE_LIMIT_WRITE_PER_HOUR = 20;
 const RATE_LIMIT_LIST_PER_HOUR = 120;
 const RATE_LIMIT_OWNER_LOOKUP_PER_HOUR = 60;
+
+// ---- 유저 계정 스토어(/user/*) ----
+// 공개 라이브러리(library/)와 달리 여기엔 비공개 북마크까지 전부 들어간다.
+// 스냅샷을 통째로 주고받으므로 본문이 library 쪽보다 훨씬 크다.
+const USER_MAX_BODY_BYTES = 1048576;
+const USER_MAX_BOOKMARKS = 100;
+const USER_MAX_ITEMS_PER_BOOKMARK = 300;
+const USER_MAX_TOMBSTONES = 500;
+const USER_MAX_NAME = 200;
+// 클라이언트 로컬 스토어(src/js/bookmarks.js)의 version 과 맞물린 값 —
+// 한쪽만 올리면 동기화가 조용히 어긋나므로 반드시 같이 올려야 한다.
+const USER_DATA_VERSION = 2;
+// etag CAS 가 어긋났을 때 다시 읽고 시도하는 횟수. 넘기면 409로 넘겨서
+// 클라이언트가 병합하게 한다(서버는 병합 로직을 갖지 않는다 — 아래 주석 참고).
+const USER_SYNC_MAX_ATTEMPTS = 3;
+
+const RATE_LIMIT_USER_SYNC_PER_HOUR = 200;
+const RATE_LIMIT_USER_AUTH_PER_HOUR = 60;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -640,6 +664,269 @@ async function handleOwnerLookup(request, env) {
   return jsonResponse({ items: items, total: items.length });
 }
 
+// ---- 유저 계정 스토어 ----
+// 공개 라이브러리와 완전히 분리된 프라이빗 저장소. 키가 개인 코드의 해시라
+// 버킷이 공개 읽기 가능해도 키를 모르면 닿을 수 없다. owner-index 와는 해시
+// prefix 가 달라서(user-v2: vs owner-index:) 같은 개인 코드라도 두 키가
+// 전혀 다른 값이 된다 — 마이그레이션할 땐 양쪽을 따로 계산해야 한다.
+async function userStoreKey(personalCode) {
+  return 'user/' + (await sha256Hex('user-v2:' + personalCode)) + '.json';
+}
+
+function emptyUserData() {
+  return { version: USER_DATA_VERSION, bookmarks: [], deletedBookmarks: [] };
+}
+
+function cleanUserItems(raw) {
+  if (!Array.isArray(raw) || raw.length > USER_MAX_ITEMS_PER_BOOKMARK) return null;
+  var out = [];
+  for (var i = 0; i < raw.length; i++) {
+    var item = raw[i];
+    if (!item || typeof item !== 'object') return null;
+    if (LIBRARY_ITEM_TYPES.indexOf(item.type) === -1) return null;
+    if (typeof item.id !== 'number' || !Number.isInteger(item.id) || item.id < 0) return null;
+    out.push({
+      type: item.type,
+      id: item.id,
+      addedAt: typeof item.addedAt === 'number' ? item.addedAt : 0
+    });
+  }
+  return out;
+}
+
+function cleanUserTombstones(raw, stampField) {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.length > USER_MAX_TOMBSTONES) return null;
+  var out = [];
+  for (var i = 0; i < raw.length; i++) {
+    var t = raw[i];
+    if (!t || typeof t !== 'object') return null;
+    var stamp = typeof t[stampField] === 'number' ? t[stampField] : 0;
+    if (stampField === 'deletedAt') {
+      if (typeof t.id !== 'string' || !t.id || t.id.length > 64) return null;
+      out.push({ id: t.id, deletedAt: stamp });
+    } else {
+      if (LIBRARY_ITEM_TYPES.indexOf(t.type) === -1) return null;
+      if (typeof t.id !== 'number' || !Number.isInteger(t.id)) return null;
+      out.push({ type: t.type, id: t.id, removedAt: stamp });
+    }
+  }
+  return out;
+}
+
+// 클라이언트 로컬 스토어를 그대로 받되, 남이 버킷에 쓰레기를 밀어 넣지
+// 못하도록 형태와 크기만 확인하고 아는 필드만 재조립한다.
+function cleanUserData(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (raw.version !== USER_DATA_VERSION) return null;
+  if (!Array.isArray(raw.bookmarks) || raw.bookmarks.length > USER_MAX_BOOKMARKS) return null;
+
+  var bookmarks = [];
+  for (var i = 0; i < raw.bookmarks.length; i++) {
+    var b = raw.bookmarks[i];
+    if (!b || typeof b !== 'object') return null;
+    if (typeof b.id !== 'string' || !b.id || b.id.length > 64) return null;
+    if (typeof b.name !== 'string' || b.name.length > USER_MAX_NAME) return null;
+    var items = cleanUserItems(b.items);
+    if (items === null) return null;
+    var removedItems = cleanUserTombstones(b.removedItems, 'removedAt');
+    if (removedItems === null) return null;
+    bookmarks.push({
+      id: b.id,
+      name: b.name,
+      createdAt: typeof b.createdAt === 'number' ? b.createdAt : 0,
+      updatedAt: typeof b.updatedAt === 'number' ? b.updatedAt : 0,
+      items: items,
+      removedItems: removedItems
+    });
+  }
+
+  var deletedBookmarks = cleanUserTombstones(raw.deletedBookmarks, 'deletedAt');
+  if (deletedBookmarks === null) return null;
+
+  return { version: USER_DATA_VERSION, bookmarks: bookmarks, deletedBookmarks: deletedBookmarks };
+}
+
+// head() 만으로 "서버가 나보다 최신인지"를 판단할 수 있게 메타로도 남긴다 —
+// 폴링이 매번 본문 전체를 내려받지 않아도 되게 하는 게 목적(library 레코드가
+// customMetadata 로 목록을 만드는 것과 같은 수법).
+function userStorePutOptions(record) {
+  return {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: {
+      syncVersion: String(record.syncVersion),
+      updatedAt: String(record.updatedAt)
+    }
+  };
+}
+
+async function readUserBody(request, env, bucket, limit) {
+  var ip = clientIp(request);
+  if (!(await checkRateLimit(env, ip, bucket, limit))) {
+    return { error: jsonResponse({ error: 'too many requests, try again later' }, 429) };
+  }
+  var body = await readJsonBody(request, USER_MAX_BODY_BYTES);
+  if (body.error) return { error: body.error };
+  var personalCode = cleanPersonalCode(body.value && body.value.personalCode);
+  if (personalCode === null) return { error: jsonResponse({ error: 'invalid payload shape' }, 400) };
+  return { personalCode: personalCode, raw: body.value };
+}
+
+async function handleUserSignup(request, env) {
+  var parsed = await readUserBody(request, env, 'user-auth', RATE_LIMIT_USER_AUTH_PER_HOUR);
+  if (parsed.error) return parsed.error;
+
+  var key = await userStoreKey(parsed.personalCode);
+  var existing = await env.FAVORITES_BUCKET.head(key);
+  if (existing) {
+    var meta = existing.customMetadata || {};
+    return jsonResponse({ ok: true, existed: true, syncVersion: parseInt(meta.syncVersion || '1', 10) || 1 });
+  }
+
+  var now = Date.now();
+  var record = { v: 1, createdAt: now, updatedAt: now, syncVersion: 1, data: emptyUserData() };
+  // etagDoesNotMatch:'*' = "없을 때만 만들어라". 두 기기가 같은 코드로 동시에
+  // 가입을 눌러도 한쪽만 성공하고, 진 쪽은 이미 있는 계정을 그대로 쓰면 된다.
+  var written = await env.FAVORITES_BUCKET.put(
+    key, JSON.stringify(record),
+    Object.assign({ onlyIf: { etagDoesNotMatch: '*' } }, userStorePutOptions(record))
+  );
+  if (!written) return jsonResponse({ ok: true, existed: true, syncVersion: 1 });
+
+  return jsonResponse({ ok: true, createdAt: now, syncVersion: 1 }, 201);
+}
+
+// 구버전 개인 코드 사용자를 위한 1회성 통합. 예전엔 "공개한 북마크"만 서버에
+// 있었으므로, owners 인덱스에 걸린 공개 북마크들을 새 계정 스토어의 북마크로
+// 옮겨 담는다. 이 기기의 로컬 북마크와 합치는 건 클라이언트가 이어서 한다.
+async function migrateFromOwnerIndex(env, personalCode, userKey) {
+  var indexObject = await env.FAVORITES_BUCKET.get(await ownerIndexKey(personalCode));
+  if (!indexObject) return null;
+
+  var indexData = await indexObject.json();
+  var codes = (indexData && Array.isArray(indexData.codes))
+    ? indexData.codes.filter(function (c) { return typeof c === 'string'; })
+    : [];
+  if (!codes.length) return null;
+
+  var bookmarks = [];
+  for (var i = 0; i < codes.length && bookmarks.length < USER_MAX_BOOKMARKS; i++) {
+    var libObject = await env.FAVORITES_BUCKET.get('library/' + codes[i] + '.json');
+    if (!libObject) continue;
+    var rec = await libObject.json();
+    var stamp = rec.createdAt || Date.now();
+    // 되찾기(restorePublishedToLocal)로 이미 로컬에 복원해 둔 사용자가 있으므로,
+    // 클라이언트가 code 로 짝을 찾아 중복 폴더를 합칠 수 있도록 id 에 code 를 심는다.
+    bookmarks.push({
+      id: 'lib_' + codes[i],
+      name: rec.name || '',
+      createdAt: stamp,
+      updatedAt: rec.updatedAt || stamp,
+      items: (rec.items || []).map(function (it) {
+        return { type: it.type, id: it.id, addedAt: stamp };
+      }),
+      removedItems: []
+    });
+  }
+  if (!bookmarks.length) return null;
+
+  var now = Date.now();
+  var record = {
+    v: 1, createdAt: now, updatedAt: now, syncVersion: 1,
+    data: { version: USER_DATA_VERSION, bookmarks: bookmarks, deletedBookmarks: [] }
+  };
+  var written = await env.FAVORITES_BUCKET.put(
+    userKey, JSON.stringify(record),
+    Object.assign({ onlyIf: { etagDoesNotMatch: '*' } }, userStorePutOptions(record))
+  );
+  if (!written) {
+    // 다른 기기가 한발 먼저 마이그레이션을 끝냈다 — 그쪽 결과를 쓴다
+    var raced = await env.FAVORITES_BUCKET.get(userKey);
+    if (raced) return raced.json();
+  }
+  return record;
+}
+
+async function handleUserGet(request, env) {
+  var parsed = await readUserBody(request, env, 'user-auth', RATE_LIMIT_USER_AUTH_PER_HOUR);
+  if (parsed.error) return parsed.error;
+
+  var key = await userStoreKey(parsed.personalCode);
+  var object = await env.FAVORITES_BUCKET.get(key);
+  if (object) return jsonResponse({ userStore: await object.json() });
+
+  var migrated = await migrateFromOwnerIndex(env, parsed.personalCode, key);
+  if (migrated) return jsonResponse({ userStore: migrated, migrated: true });
+
+  return jsonResponse({ error: 'account not found' }, 404);
+}
+
+async function handleUserHead(request, env) {
+  var parsed = await readUserBody(request, env, 'user-sync', RATE_LIMIT_USER_SYNC_PER_HOUR);
+  if (parsed.error) return parsed.error;
+
+  var head = await env.FAVORITES_BUCKET.head(await userStoreKey(parsed.personalCode));
+  if (!head) return jsonResponse({ error: 'account not found' }, 404);
+
+  var meta = head.customMetadata || {};
+  return jsonResponse({
+    syncVersion: parseInt(meta.syncVersion || '0', 10) || 0,
+    updatedAt: parseInt(meta.updatedAt || '0', 10) || 0
+  });
+}
+
+// 병합은 서버가 하지 않는다. 클라이언트가 이미 mergeStores 를 갖고 있는데
+// 서버에 같은 로직을 하나 더 두면 두 구현이 조용히 어긋날 수 있어서다.
+// 서버는 syncVersion 비교 + etag CAS 로 "덮어써도 되는가"만 판정하고,
+// 뒤처진 요청에는 409와 함께 서버 사본을 돌려줘 클라이언트가 병합하게 한다.
+async function handleUserSync(request, env) {
+  var parsed = await readUserBody(request, env, 'user-sync', RATE_LIMIT_USER_SYNC_PER_HOUR);
+  if (parsed.error) return parsed.error;
+
+  var raw = parsed.raw;
+  var data = cleanUserData(raw && raw.data);
+  if (data === null) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  var clientSyncVersion = raw.clientSyncVersion;
+  if (typeof clientSyncVersion !== 'number' || !Number.isInteger(clientSyncVersion) || clientSyncVersion < 0) {
+    return jsonResponse({ error: 'invalid payload shape' }, 400);
+  }
+
+  var key = await userStoreKey(parsed.personalCode);
+  for (var attempt = 0; attempt < USER_SYNC_MAX_ATTEMPTS; attempt++) {
+    var object = await env.FAVORITES_BUCKET.get(key);
+    if (!object) return jsonResponse({ error: 'account not found' }, 404);
+
+    var etag = object.etag;
+    var current = await object.json();
+    if (clientSyncVersion !== current.syncVersion) {
+      return jsonResponse({ error: 'sync version conflict', serverStore: current }, 409);
+    }
+
+    var now = Date.now();
+    var next = {
+      v: 1,
+      createdAt: current.createdAt || now,
+      updatedAt: now,
+      syncVersion: current.syncVersion + 1,
+      data: data
+    };
+    var written = await env.FAVORITES_BUCKET.put(
+      key, JSON.stringify(next),
+      Object.assign({ onlyIf: { etagMatches: etag } }, userStorePutOptions(next))
+    );
+    if (written) {
+      return jsonResponse({ ok: true, serverSyncVersion: next.syncVersion, updatedAt: now });
+    }
+    // etag 가 어긋났다 = 방금 사이에 누가 썼다. 다시 읽어서 판정한다.
+  }
+
+  var latest = await env.FAVORITES_BUCKET.get(key);
+  return jsonResponse({
+    error: 'sync version conflict',
+    serverStore: latest ? await latest.json() : null
+  }, 409);
+}
+
 export default {
   async fetch(request, env) {
     var url = new URL(request.url);
@@ -656,6 +943,20 @@ export default {
     }
     if (url.pathname === '/owner/lookup' && request.method === 'POST') {
       return handleOwnerLookup(request, env);
+    }
+    // 개인 코드가 URL/서버 로그에 남지 않도록 조회도 POST 로 받는다
+    // (/owner/lookup 이 POST 인 것과 같은 이유).
+    if (url.pathname === '/user/signup' && request.method === 'POST') {
+      return handleUserSignup(request, env);
+    }
+    if (url.pathname === '/user/get' && request.method === 'POST') {
+      return handleUserGet(request, env);
+    }
+    if (url.pathname === '/user/head' && request.method === 'POST') {
+      return handleUserHead(request, env);
+    }
+    if (url.pathname === '/user/sync' && request.method === 'PUT') {
+      return handleUserSync(request, env);
     }
     if (url.pathname.indexOf('/library/') === 0) {
       var libRest = url.pathname.slice('/library/'.length);

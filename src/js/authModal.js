@@ -90,27 +90,13 @@
       submitBtn.disabled = true;
       submitBtn.textContent = '확인하는 중...';
 
-      global.BookmarkLibrary.claimAllByPersonalCode(raw)
-        .then(function (items) {
-          if (!items.length) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = '로그인';
-            showError('그래도 이 코드로 로그인되지 않았어요 — 코드가 틀렸는지, 이 코드로 아직 공개한 게 없는지는 구분할 수 없으니 코드를 다시 확인해주세요.');
-            return;
-          }
-          // 이 페이지에 로컬 북마크(Bookmarks)가 있으면, 연결된 항목들을
-          // 그 자리에서 복원한다 — 없는 페이지(mainPage.html 등)에서는
-          // 개별 실패를 조용히 무시한다(로그인 자체는 이미 끝났으므로).
-          var chain = Promise.resolve();
-          items.forEach(function (entry) {
-            chain = chain.then(function () {
-              return global.BookmarkLibrary.restorePublishedToLocal(entry.code).catch(function () {});
-            });
-          });
-          return chain.then(function () {
-            close();
-            if (opts.onSuccess) opts.onSuccess(normalized);
-          });
+      // 서버에 계정이 있으면 북마크가 0개여도 로그인 성공이다. 예전엔 공개한
+      // 게시물 목록이 비어 있으면 실패로 돌렸는데, 그게 갓 가입한 사람이 다른
+      // 기기에서 절대 로그인하지 못하던 원인이었다.
+      global.UserData.login(raw)
+        .then(function () {
+          close();
+          if (opts.onSuccess) opts.onSuccess(normalized);
         })
         .catch(function (err) {
           submitBtn.disabled = false;
@@ -150,12 +136,30 @@
     confirmBtn.type = 'button';
     confirmBtn.className = 'auth-btn';
     confirmBtn.textContent = '확인';
-    confirmBtn.addEventListener('click', function () {
-      global.BookmarkLibrary.confirmPersonalCode(code);
-      close();
-      if (opts.onSuccess) opts.onSuccess(code);
-    });
     card.appendChild(confirmBtn);
+
+    var errorEl = el('p', 'auth-error');
+    errorEl.hidden = true;
+    card.appendChild(errorEl);
+
+    confirmBtn.addEventListener('click', function () {
+      errorEl.hidden = true;
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '계정을 만드는 중...';
+      // 서버에 계정이 생긴 걸 확인한 뒤에야 이 기기가 코드를 채택한다 —
+      // 순서가 반대면 가입은 된 것처럼 보이는데 다른 기기에선 못 찾는다
+      global.UserData.signup(code)
+        .then(function () {
+          close();
+          if (opts.onSuccess) opts.onSuccess(code);
+        })
+        .catch(function (err) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '확인';
+          errorEl.textContent = err.message || '계정을 만들지 못했어요. 인터넷 연결을 확인해주세요.';
+          errorEl.hidden = false;
+        });
+    });
 
     var switchRow = el('p', 'auth-switch', '이미 코드가 있으신가요? ');
     var switchLink = document.createElement('button');
@@ -188,9 +192,31 @@
   function openSignIn(opts) { openWith(renderSignIn, opts); }
   function openSignUp(opts) { openWith(renderSignUp, opts); }
 
+  // 로그인이 필요한 동작의 공통 관문 — 이미 로그인돼 있으면 곧바로
+  // 실행하고, 아니면 모달을 띄운 뒤 완료 시점에 이어서 실행한다.
+  //
+  // 반드시 로그인 화면을 먼저 보여준다. 회원가입 화면을 먼저 띄우면 새 코드가
+  // 곧바로 눈앞에 뜨는데, 이미 계정이 있는 사람(다른 기기에서 왔거나 로그아웃
+  // 상태인 사람)이 그걸 그대로 확정해 버리면 쓰지도 않을 계정이 서버에 하나 더
+  // 생기고, 원래 쓰던 북마크와도 갈라진다. 코드가 없는 사람은 로그인 화면의
+  // "새로 발급받으세요!" 링크로 넘어가면 되고, 그때 opts 도 그대로 따라간다.
+  function requireLogin(opts) {
+    opts = opts || {};
+    if (global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn()) {
+      if (opts.onSuccess) opts.onSuccess();
+      return true;
+    }
+    openSignIn({
+      reason: opts.reason,
+      onSuccess: function () { if (opts.onSuccess) opts.onSuccess(); }
+    });
+    return false;
+  }
+
   global.AuthModal = {
     openSignIn: openSignIn,
     openSignUp: openSignUp,
+    requireLogin: requireLogin,
     close: close
   };
 })(window);

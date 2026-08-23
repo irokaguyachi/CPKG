@@ -266,14 +266,16 @@
       }
       publishBtn.addEventListener('click', function () {
         // 북마크를 공개하려면(서버에 실제로 써야 하므로) 로그인이 돼
-        // 있어야 한다 — 안 돼 있으면 회원가입 모달부터 띄우고, 완료되면
-        // 이어서 공개를 진행한다.
+        // 있어야 한다 — requireLogin 이 로그인 화면부터 보여준다. 여기서
+        // 곧장 회원가입 화면을 띄우면, 이미 계정이 있는데 지금 로그아웃
+        // 상태인 사람이 새 코드를 그대로 확정해 버려 쓰지도 않을 계정이
+        // 하나 더 생기고 원래 북마크와도 갈라진다.
         if (!global.BookmarkLibrary.isLoggedIn()) {
           // 패널은 싱글턴 DOM 이라 innerHTML 은 그대로 두고 is-open 만
-          // 뺀다 — 회원가입 완료 후 다시 열 때 새로 그릴 필요가 없다.
+          // 뺀다 — 로그인 완료 후 다시 열 때 새로 그릴 필요가 없다.
           closeSharePanel();
-          global.AuthModal.openSignUp({
-            reason: '북마크를 공개하려면 먼저 회원가입해주세요',
+          global.AuthModal.requireLogin({
+            reason: '북마크를 공개하려면 먼저 로그인해주세요',
             onSuccess: function () {
               panel.classList.add('is-open');
               positionSharePanel(anchorEl);
@@ -335,6 +337,45 @@
     panel.classList.add('is-open');
   }
 
+  function isLoggedIn() {
+    return !!(global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn());
+  }
+
+  // 로그인 전 안내판. 이 기기에 이미 쌓아둔 북마크가 있으면 개수를 먼저
+  // 알려준다 — 목록만 비워두면 "데이터가 날아갔다"로 읽히기 때문이고,
+  // 실제로는 로그인하는 순간 userData.js 가 계정 데이터와 합쳐준다.
+  function renderLoginGate(withTabs) {
+    contentEl.innerHTML = '';
+    if (withTabs) contentEl.appendChild(createTabs('mine'));
+
+    var box = document.createElement('div');
+    box.className = 'bkm-login-gate';
+
+    var heading = document.createElement('p');
+    heading.className = 'bkm-login-gate-title';
+    heading.textContent = '북마크는 로그인한 뒤에 쓸 수 있어요';
+    box.appendChild(heading);
+
+    var desc = document.createElement('p');
+    desc.className = 'bkm-login-gate-desc';
+    var localCount = global.Bookmarks ? global.Bookmarks.getAllBookmarks().length : 0;
+    desc.textContent = localCount
+      ? '이 기기에 저장해 둔 북마크 ' + localCount + '개가 있어요. 로그인하면 계정으로 옮겨져서 다른 기기에서도 그대로 볼 수 있어요.'
+      : '로그인하면 북마크가 계정에 저장돼서, 다른 기기에서도 그대로 이어서 볼 수 있어요.';
+    box.appendChild(desc);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bkm-inline-create-btn bkm-login-gate-btn';
+    btn.textContent = localCount ? '로그인하고 이어서 쓰기' : '로그인하기';
+    btn.addEventListener('click', function () {
+      global.AuthModal.requireLogin({ reason: '북마크를 쓰려면 먼저 로그인해주세요' });
+    });
+    box.appendChild(btn);
+
+    contentEl.appendChild(box);
+  }
+
   // ---- 목록 모드 ----
   function renderList(tab) {
     if (tab === 'library') {
@@ -344,6 +385,12 @@
 
     titleEl.textContent = '북마크';
     subEl.textContent = '내가 만든 북마크들을 모아봤어요';
+
+    if (!isLoggedIn()) {
+      countEl.textContent = '';
+      renderLoginGate(true);
+      return;
+    }
 
     var bookmarks = global.Bookmarks.getAllBookmarks();
     countEl.textContent = bookmarks.length + '개의 북마크가 있습니다!';
@@ -718,6 +765,13 @@
 
   // ---- 상세 모드 ----
   function renderDetail(bookmarkId) {
+    if (!isLoggedIn()) {
+      titleEl.textContent = '북마크';
+      subEl.textContent = '';
+      countEl.textContent = '';
+      renderLoginGate(false);
+      return;
+    }
     var bookmark = global.Bookmarks.getBookmark(bookmarkId);
     if (!bookmark) {
       titleEl.textContent = '북마크';
@@ -850,7 +904,17 @@
   var params = new URLSearchParams(global.location.search);
   var bkmId = params.get('id');
   var libId = params.get('libraryId');
-  if (bkmId) renderDetail(bkmId);
-  else if (libId) renderLibraryDetail(libId);
-  else renderList(params.get('tab') === 'library' ? 'library' : 'mine');
+
+  function renderCurrentView() {
+    if (bkmId) renderDetail(bkmId);
+    else if (libId) renderLibraryDetail(libId);
+    else renderList(params.get('tab') === 'library' ? 'library' : 'mine');
+  }
+
+  // 로그인/로그아웃하면 지금 보고 있던 화면을 그 자리에서 다시 그린다 —
+  // 안내판에서 로그인한 사람이 새로고침하지 않아도 목록을 바로 보게 하고,
+  // 반대로 로그아웃하면 남아 있던 목록이 즉시 안내판으로 바뀌게 한다.
+  global.addEventListener('chokaguya:auth-change', renderCurrentView);
+
+  renderCurrentView();
 })(window);

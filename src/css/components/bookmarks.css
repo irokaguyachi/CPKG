@@ -251,6 +251,33 @@
   border-radius: 999px;
 }
 
+/* 로그인 전 안내판 (src/js/bookmarksPage.js 의 renderLoginGate) */
+.bkm-login-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 520px;
+  margin: 40px auto 0;
+  padding: 0 var(--content-padding);
+  text-align: center;
+}
+.bkm-login-gate-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.85);
+}
+.bkm-login-gate-desc {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.55);
+}
+.bkm-login-gate-btn {
+  margin-top: 8px;
+}
+
 /* 북마크 상세 — 타입 필터 칩 */
 .bkm-filter-chips {
   display: flex;

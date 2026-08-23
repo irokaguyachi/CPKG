@@ -1,0 +1,26 @@
+name = "cpkg"
+main = "_worker.js"
+compatibility_date = "2026-08-20"
+
+# 정적 사이트 자산 — 이 디렉터리(src/) 자체가 사이트 루트다.
+# _worker.js 가 처리하지 않는 모든 요청은 여기로 떨어진다.
+# html_handling 기본값(auto-trailing-slash)은 .html 확장자 URL을
+# 확장자 없는 주소로 307 리다이렉트해버린다 — 이 사이트는 모든 링크와
+# window.location.replace 호출이 .html을 그대로 쓰고 있으므로, 리다이렉트
+# 없이 요청한 경로 그대로 응답하도록 반드시 "none"으로 꺼야 한다.
+[assets]
+directory = "."
+binding = "ASSETS"
+html_handling = "none"
+
+# 아래 두 바인딩은 원래 별도 Worker였던 chokaguya-favorites-share
+# (worker/wrangler.toml, 이제 삭제됨)에 있던 것과 완전히 동일한 리소스를
+# 그대로 재사용한다 — 데이터가 있는 R2/KV는 그대로 두고 Worker만 이쪽으로
+# 옮겼다.
+[[r2_buckets]]
+binding = "FAVORITES_BUCKET"
+bucket_name = "chokaguya-assets"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "564a89b518d544eeabec62fb758d17ed"
