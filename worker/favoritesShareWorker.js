@@ -138,6 +138,11 @@ const USER_SYNC_MAX_ATTEMPTS = 3;
 
 const RATE_LIMIT_USER_SYNC_PER_HOUR = 200;
 const RATE_LIMIT_USER_AUTH_PER_HOUR = 60;
+// 회원가입만 훨씬 좁은 하루 단위 한도를 따로 둔다 — 로그인(handleUserGet)은
+// 정상적인 재방문마다 계속 일어나는 동작이라 시간당 한도를 그대로 쓰지만,
+// 가입은 계정을 하나 새로 만드는 동작이라 같은 IP에서 반복될 이유가 없다.
+const RATE_LIMIT_USER_SIGNUP_PER_DAY = 1;
+const DAY_MS = 86400000;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -254,18 +259,21 @@ function validateLibraryAuth(raw) {
   return result;
 }
 
-// Fixed-window counter in KV, keyed per IP/bucket/hour. Fails open (allows
+// Fixed-window counter in KV, keyed per IP/bucket/window. Fails open (allows
 // the request) if RATE_LIMIT_KV isn't bound — e.g. local `wrangler dev`
 // without the namespace set up yet — so the feature isn't blocked on
 // deploying that piece first; production must bind it (see wrangler.toml).
-async function checkRateLimit(env, ip, bucket, limit) {
+// windowMs defaults to an hour; callers that need a coarser window (e.g. the
+// once-a-day signup cap) pass a bigger one.
+async function checkRateLimit(env, ip, bucket, limit, windowMs) {
   if (!env.RATE_LIMIT_KV) return true;
-  var windowStart = Math.floor(Date.now() / 3600000);
+  windowMs = windowMs || 3600000;
+  var windowStart = Math.floor(Date.now() / windowMs);
   var key = 'rl:' + bucket + ':' + ip + ':' + windowStart;
   var current = await env.RATE_LIMIT_KV.get(key);
   var count = current ? parseInt(current, 10) : 0;
   if (count >= limit) return false;
-  await env.RATE_LIMIT_KV.put(key, String(count + 1), { expirationTtl: 3600 });
+  await env.RATE_LIMIT_KV.put(key, String(count + 1), { expirationTtl: Math.ceil(windowMs / 1000) });
   return true;
 }
 
@@ -770,7 +778,7 @@ function userStorePutOptions(record) {
   };
 }
 
-async function readUserBody(request, env, bucket, limit) {
+async function readUserBody(request, env, bucket, limit, windowMs) {
   // bucket 이 없으면 rate limit 자체를 건너뛴다 — /user/head 가 이 경로다.
   // KV 는 요청마다 get+put 두 번을 쓰는데, head 는 60초 폴링(userData.js)이
   // 계속 때리는 엔드포인트라 여기서만 KV 를 아끼면 일일 무료 한도 소모가
@@ -778,7 +786,7 @@ async function readUserBody(request, env, bucket, limit) {
   // 가벼운 R2 Class B 요청만 늘어난다(무료 한도가 KV 쓰기보다 훨씬 넉넉함).
   if (bucket) {
     var ip = clientIp(request);
-    if (!(await checkRateLimit(env, ip, bucket, limit))) {
+    if (!(await checkRateLimit(env, ip, bucket, limit, windowMs))) {
       return { error: jsonResponse({ error: 'too many requests, try again later' }, 429) };
     }
   }
@@ -790,7 +798,10 @@ async function readUserBody(request, env, bucket, limit) {
 }
 
 async function handleUserSignup(request, env) {
-  var parsed = await readUserBody(request, env, 'user-auth', RATE_LIMIT_USER_AUTH_PER_HOUR);
+  // 회원가입은 로그인(handleUserGet)과 다른 버킷·다른 창(하루)을 쓴다 —
+  // 같은 IP에서 계정을 계속 새로 찍어내는 걸 막는 게 목적이라, 시간당
+  // 한도로는 너무 느슨하다.
+  var parsed = await readUserBody(request, env, 'user-signup', RATE_LIMIT_USER_SIGNUP_PER_DAY, DAY_MS);
   if (parsed.error) return parsed.error;
 
   var key = await userStoreKey(parsed.personalCode);

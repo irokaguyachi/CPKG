@@ -752,10 +752,14 @@ html.theme-transitioning *:after {
   background: #2058c9;
 }
 
-/* 동기화 상태 뱃지 — 어두운 배경에서는 점 색을 한 단계 밝게 올려야
+/* 동기화 버튼 — 어두운 배경에서는 점 색을 한 단계 밝게 올려야
    같은 채도로 읽힌다(라이트 모드 값 그대로 쓰면 눌려 보임). */
 [data-theme="dark"] .auth-sync-badge {
   color: rgba(241, 243, 245, 0.6);
+}
+[data-theme="dark"] .auth-sync-badge:hover {
+  color: rgba(241, 243, 245, 0.95);
+  background: rgba(255, 255, 255, 0.1);
 }
 [data-theme="dark"] .auth-sync-dot {
   background: #868e96;
@@ -763,8 +767,14 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .auth-sync-badge.is-synced .auth-sync-dot {
   background: #51cf66;
 }
+[data-theme="dark"] .auth-sync-badge.is-pending .auth-sync-dot {
+  background: #ffd43b;
+}
 [data-theme="dark"] .auth-sync-badge.is-syncing .auth-sync-dot {
   background: #ffd43b;
+}
+[data-theme="dark"] .auth-sync-badge.is-cooldown .auth-sync-dot {
+  background: #adb5bd;
 }
 [data-theme="dark"] .auth-sync-badge.is-error .auth-sync-dot {
   background: #ff6b6b;

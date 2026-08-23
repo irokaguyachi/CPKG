@@ -11,16 +11,21 @@
  */
 (function (global) {
   var overlayEl = null;
+  // 회원가입 확인 화면(발급된 개인 코드를 보여주는 단계)은 코드를 못 보고
+  // 나가버리면 되돌릴 수 없으니, 바깥 클릭/Escape/X 로 못 닫게 잠근다 —
+  // "확인" 버튼을 눌러야만 나갈 수 있다. 다른 화면(로그인 등)은 그대로
+  // 자유롭게 닫힌다.
+  var dismissible = true;
 
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
     overlayEl = document.createElement('div');
     overlayEl.className = 'auth-overlay';
     overlayEl.addEventListener('click', function (e) {
-      if (e.target === overlayEl) close();
+      if (e.target === overlayEl && dismissible) close();
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape' && dismissible) close();
     });
     document.body.appendChild(overlayEl);
     return overlayEl;
@@ -50,6 +55,7 @@
 
   // ---- SignIn ----
   function renderSignIn(card, opts) {
+    dismissible = true;
     card.innerHTML = '';
     card.appendChild(closeButton());
     card.appendChild(el('h2', 'auth-title', '로그인'));
@@ -122,8 +128,11 @@
 
   // ---- SignUp ----
   function renderSignUp(card, opts) {
+    // 방금 발급된 코드는 이 화면을 벗어나면 다시 볼 수 없다 — 실수로
+    // 바깥을 클릭하거나 Escape 를 누르거나 X 를 눌러서 코드를 못 본 채
+    // 나가버리는 일이 없도록, "확인" 버튼을 눌러야만 닫히게 한다.
+    dismissible = false;
     card.innerHTML = '';
-    card.appendChild(closeButton());
     card.appendChild(el('h2', 'auth-title is-small', '잊어버리지 마세요!'));
     card.appendChild(el('p', 'auth-desc', '해당 코드를 잃어버릴시 앞으로 로그인이 힘들수도 있으니 미리 다른곳에 해당 코드를 적어두세요'));
 
@@ -161,14 +170,9 @@
         });
     });
 
-    var switchRow = el('p', 'auth-switch', '이미 코드가 있으신가요? ');
-    var switchLink = document.createElement('button');
-    switchLink.type = 'button';
-    switchLink.className = 'auth-switch-link';
-    switchLink.textContent = '로그인하기';
-    switchLink.addEventListener('click', function () { renderSignIn(card, opts); });
-    switchRow.appendChild(switchLink);
-    card.appendChild(switchRow);
+    // "이미 코드가 있으신가요? 로그인하기" 링크는 일부러 안 넣는다 — 이
+    // 화면은 확인 버튼으로만 나가야 하므로, 로그인 화면으로 새는 경로도
+    // 열어두면 안 된다.
   }
 
   function openWith(renderFn, opts) {

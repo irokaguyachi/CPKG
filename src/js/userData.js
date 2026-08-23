@@ -4,12 +4,14 @@
  *   (worker/favoritesShareWorker.js 의 /user/*)과 양방향으로 맞춥니다.
  *   공개 라이브러리(bookmarkLibrary.js)와는 별개 층입니다 — 저쪽은 "남에게
  *   보여주려고 발행한 스냅샷", 이쪽은 "비공개 포함 내 데이터 전부".
- * - 업스트림: 북마크가 바뀌면 1.5초 디바운스 후 스토어 전체를 스냅샷으로
- *   올립니다. 부분 diff 를 보내지 않으므로 오프라인 중 쌓인 변경을 따로
- *   큐에 담을 필요가 없습니다 — 로컬 스토어 자체가 항상 "보낼 것"입니다.
- * - 다운스트림: 같은 기기의 다른 탭은 BroadcastChannel 로 즉시, 다른 기기의
- *   변경은 탭 포커스 복귀와 60초 폴링으로 따라옵니다. 폴링은 head 만 찔러
- *   syncVersion 을 비교하므로 본문을 매번 내려받지 않습니다.
+ * - 자동 동기화(폴링, 포커스/탭전환 감지, 다른 탭 알림)는 전부 없앴습니다 —
+ *   서버 요청이 너무 잦아지는 게 문제였습니다. 대신 헤더의 동기화 버튼을
+ *   눌러야만(requestSync) 로컬↔서버를 맞춥니다. 로그인/가입 직후 서버
+ *   데이터를 한 번 받아오는 것만 예외입니다 — 그건 로그인 절차 자체지
+ *   "동기화를 자동 반복"하는 게 아닙니다.
+ * - 업스트림: 동기화 버튼을 누르면 스토어 전체를 스냅샷으로 올립니다.
+ *   부분 diff 를 보내지 않으므로 오프라인 중 쌓인 변경을 따로 큐에 담을
+ *   필요가 없습니다 — 로컬 스토어 자체가 항상 "보낼 것"입니다.
  * - 충돌은 서버가 아니라 여기서 풉니다(mergeStores). 서버는 syncVersion 과
  *   etag 로 "덮어써도 되는지"만 판정하고, 뒤처졌으면 409와 함께 서버 사본을
  *   돌려줍니다. 병합 구현이 한쪽에만 있어야 두 구현이 어긋날 일이 없습니다.
@@ -24,25 +26,22 @@
   var SYNC_URL = WORKER_BASE + '/user/sync';
 
   var SYNC_VERSION_KEY = 'chokaguya_sync_version';
-  var DEBOUNCE_MS = 1500;
-  var POLL_INTERVAL_MS = 60000;
-  var CHANNEL_NAME = 'chokaguya_sync';
+  var LAST_SYNC_AT_KEY = 'chokaguya_last_sync_at';
+  // 동기화 버튼을 누른 뒤 이 시간 안에는 다시 눌러도 서버로 안 나간다 —
+  // "동기화 쿨타임중.." 으로 표시만 해준다. localStorage 에 저장해서
+  // 새로고침으로 우회하지 못하게 한다.
+  var SYNC_COOLDOWN_MS = 120000;
+  var COOLDOWN_LABEL_MS = 2500;
 
-  var pushTimer = null;
-  var pollTimer = null;
   var inFlight = false;
   var pendingPush = false;
   var applyingRemote = false;
-  // 서버에 아직 못 올린 변경이 있는가. 이게 없으면 폴링/포커스 복귀마다
-  // 같은 내용을 올려 syncVersion 만 올라가고, 그걸 본 다른 기기가 또 받아가
-  // 되올리는 핑퐁이 생긴다.
+  // 서버에 아직 못 올린 변경이 있는가. 로컬 변경이 생겨도 자동으로 올리지
+  // 않으므로, 사용자가 동기화 버튼을 눌러야 할지 이 플래그로 알려준다.
   var dirty = false;
   var status = 'offline';
-
-  var channel = null;
-  try {
-    if (typeof global.BroadcastChannel === 'function') channel = new global.BroadcastChannel(CHANNEL_NAME);
-  } catch (e) {}
+  var lastSyncAt = 0;
+  try { lastSyncAt = parseInt(localStorage.getItem(LAST_SYNC_AT_KEY) || '0', 10) || 0; } catch (e) {}
 
   function lib() { return global.BookmarkLibrary; }
   function store() { return global.Bookmarks; }
@@ -311,7 +310,9 @@
         });
       }
       if (res.status === 409) {
-        // 다른 기기가 먼저 썼다 — 그 사본과 합친 뒤 새 버전으로 다시 올린다
+        // 다른 기기가 먼저 썼다 — 그 사본과 합친 뒤 새 버전으로 다시 올린다.
+        // 이건 지금 누른 동기화 버튼 한 번을 완결짓는 재시도라 자동 폴링이
+        // 아니다.
         return res.json().then(function (data) {
           if (!data.serverStore) return;
           applyRemote(data.serverStore);
@@ -338,19 +339,13 @@
     });
   }
 
-  function schedulePush() {
+  // 로컬 변경이 생겨도 곧장 서버로 올리지 않는다 — "아직 안 올렸다"는
+  // 표시만 남기고, 실제 업로드는 사용자가 동기화 버튼(requestSync)을
+  // 눌렀을 때만 한다.
+  function markDirty() {
     if (!canSync()) return;
     dirty = true;
-    setStatus('syncing');
-    if (pushTimer) clearTimeout(pushTimer);
-    pushTimer = setTimeout(function () {
-      pushTimer = null;
-      pushNow().then(function () {
-        if (channel) {
-          try { channel.postMessage({ type: 'pushed', version: getSyncVersion() }); } catch (e) {}
-        }
-      });
-    }, DEBOUNCE_MS);
+    setStatus('pending');
   }
 
   // ---- 다운스트림 ----
@@ -363,8 +358,8 @@
       return res.json();
     }).then(function (data) {
       var localOnlyChanges = applyRemote(data.userStore);
-      setStatus('synced');
-      if (localOnlyChanges) schedulePush();
+      if (localOnlyChanges) { dirty = true; setStatus('pending'); }
+      else setStatus('synced');
     });
   }
 
@@ -373,20 +368,17 @@
     if (!code || !store()) return Promise.resolve();
     return postJson(HEAD_URL, { personalCode: code }).then(function (res) {
       if (res.status === 404) {
-        // 구버전 코드로 로그인한 상태 — 계정을 만들고 지금 로컬을 올린다
+        // 구버전 코드로 로그인한 상태 — 계정을 만들고 지금 로컬을 올려야 한다
         return postJson(SIGNUP_URL, { personalCode: code }).then(function (signupRes) {
           if (!signupRes.ok) return;
           setSyncVersion(1);
-          schedulePush();
+          dirty = true;
         });
       }
       if (!res.ok) return failWith(res);
       return res.json().then(function (meta) {
         if (meta.syncVersion > getSyncVersion()) return pullFull();
-        setStatus('synced');
       });
-    }).catch(function () {
-      setStatus(global.navigator && global.navigator.onLine === false ? 'offline' : 'error');
     });
   }
 
@@ -403,9 +395,14 @@
       // 순서가 반대면 "가입은 됐는데 다른 기기에선 로그인 안 되는" 상태가 된다
       l.adoptPersonalCode(code);
       setSyncVersion(data.syncVersion || 1);
-      setStatus('synced');
-      // 이 브라우저에 이미 있던 북마크를 새 계정에 올려둔다
-      if (store() && store().getRawStore().bookmarks.length) schedulePush();
+      // 이 브라우저에 이미 있던 북마크는 동기화 버튼을 눌러야 새 계정에
+      // 올라간다 — 자동으로 올리지 않는다.
+      if (store() && store().getRawStore().bookmarks.length) {
+        dirty = true;
+        setStatus('pending');
+      } else {
+        setStatus('synced');
+      }
       return code;
     });
   }
@@ -424,77 +421,76 @@
       // 취급하던 게 신규 가입자의 첫 로그인을 막던 원인이었다
       l.adoptPersonalCode(code);
       if (store()) {
-        // 이 기기에 이미 있던 북마크가 서버 것과 합쳐졌으면 되돌려 올린다
-        if (applyRemote(data.userStore)) schedulePush();
+        // 이 기기에 이미 있던 북마크가 서버 것과 합쳐졌으면 동기화가 필요하다
+        if (applyRemote(data.userStore)) { dirty = true; setStatus('pending'); }
+        else setStatus('synced');
       } else {
         // 로컬 북마크를 다루지 않는 페이지(mainPage 등)에서도 로그인 자체는 된다
         setSyncVersion(data.userStore.syncVersion);
+        setStatus('synced');
       }
-      setStatus('synced');
       return code;
     });
   }
 
-  function syncNow() {
-    if (!canSync()) return Promise.resolve();
+  // 헤더의 동기화 버튼이 부르는 단 하나의 진입점 — 자동으로 서버에 나가는
+  // 경로는 이제 없고 여기뿐이다. 쿨다운 중이면 서버로 아무것도 안 보내고
+  // 그 사실만 잠깐 알려준다.
+  function requestSync() {
+    if (!canSync()) return Promise.resolve({ ok: false, reason: 'offline' });
+
+    var remaining = SYNC_COOLDOWN_MS - (Date.now() - lastSyncAt);
+    if (remaining > 0) {
+      var prevStatus = status;
+      setStatus('cooldown');
+      setTimeout(function () {
+        if (status === 'cooldown') setStatus(prevStatus);
+      }, COOLDOWN_LABEL_MS);
+      return Promise.resolve({ ok: false, reason: 'cooldown', remainingMs: remaining });
+    }
+
+    setStatus('syncing');
     return pullIfStale().then(function () {
-      if (!dirty) return;
-      if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
-      return pushNow();
+      return dirty ? pushNow() : null;
+    }).then(function () {
+      lastSyncAt = Date.now();
+      try { localStorage.setItem(LAST_SYNC_AT_KEY, String(lastSyncAt)); } catch (e) {}
+      if (!dirty) setStatus('synced');
+      return { ok: true };
+    }).catch(function () {
+      setStatus(global.navigator && global.navigator.onLine === false ? 'offline' : 'error');
+      return { ok: false, reason: 'error' };
     });
   }
 
   // ---- 이벤트 배선 ----
-
-  function startPolling() {
-    if (pollTimer) return;
-    pollTimer = setInterval(function () {
-      if (canSync() && !global.document.hidden) pullIfStale();
-    }, POLL_INTERVAL_MS);
-  }
+  // 폴링도, 포커스/탭전환 감지도, 다른 탭에서 온 알림도 없다 — 로컬 변경은
+  // "동기화 필요" 표시만 남기고, 실제로 서버와 주고받는 건 오직
+  // requestSync(동기화 버튼)뿐이다.
 
   global.addEventListener('chokaguya:bookmarks-change', function (e) {
     if (applyingRemote) return;
     var source = e.detail && e.detail.source;
-    // storage 는 같은 기기 다른 탭이 이미 올린 변경, remote 는 방금 서버에서
-    // 받아 앉힌 것 — 둘 다 다시 올리면 순환이다
-    if (source === 'remote' || source === 'storage') return;
-    schedulePush();
+    // remote 는 방금 서버에서 받아 앉힌 것이라 다시 표시할 필요가 없다
+    if (source === 'remote') return;
+    markDirty();
   });
 
   global.addEventListener('chokaguya:auth-change', function (e) {
     var loggedIn = e.detail && e.detail.loggedIn;
-    if (loggedIn) {
-      startPolling();
-      pullIfStale();
-    } else {
-      if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+    if (!loggedIn) {
       setSyncVersion(0);
+      dirty = false;
       setStatus('offline');
     }
+    // 로그인 시에는 signup()/login() 이 이미 상태를 정해뒀다 — 여기서
+    // 또 서버를 찔러 확인하지 않는다.
   });
 
-  global.addEventListener('online', function () { if (canSync()) pullIfStale(); });
-  global.addEventListener('offline', function () { setStatus('offline'); });
-  global.addEventListener('focus', function () { if (canSync()) pullIfStale(); });
-
-  if (global.document) {
-    global.document.addEventListener('visibilitychange', function () {
-      if (!global.document.hidden && canSync()) pullIfStale();
-    });
-  }
-
-  if (channel) {
-    channel.onmessage = function (e) {
-      if (!e.data || e.data.type !== 'pushed' || !canSync()) return;
-      if ((e.data.version || 0) > getSyncVersion()) pullFull();
-    };
-  }
-
   function boot() {
-    if (!canSync()) { setStatus('offline'); return; }
-    startPolling();
-    pullIfStale();
+    // 서버에 새 변경이 있는지는 동기화 버튼을 눌러야 확인한다 — 로그인만
+    // 돼 있으면 우선 "동기화 필요"로 보여준다.
+    setStatus(canSync() ? 'pending' : 'offline');
   }
 
   if (global.document && global.document.readyState === 'loading') {
@@ -506,7 +502,7 @@
   global.UserData = {
     signup: signup,
     login: login,
-    syncNow: syncNow,
+    requestSync: requestSync,
     getStatus: function () { return status; },
     mergeStores: mergeStores
   };

@@ -212,22 +212,31 @@
   background: #2058c9;
 }
 
-/* 클라우드 동기화 상태 뱃지 (src/js/auth.js) — 로그인 버튼 바로 아래에
-   붙는다. 사이드바의 .header-nav 가 세로 flex 라 줄바꿈 걱정 없이 라벨을
-   그대로 보여줄 수 있다. 색은 점에만 싣고 글자는 본문 톤을 유지해서,
-   상태가 바뀔 때마다 사이드바 전체가 번쩍이지 않게 했다. */
+/* 클라우드 동기화 버튼 (src/js/auth.js) — 로그인 버튼 바로 아래에 붙는다.
+   자동 동기화가 없으므로(userData.js) 이건 상태 표시가 아니라 눌러야
+   동작하는 버튼이다. 사이드바의 .header-nav 가 세로 flex 라 줄바꿈 걱정
+   없이 라벨을 그대로 보여줄 수 있다. 색은 점에만 싣고 글자는 본문 톤을
+   유지해서, 상태가 바뀔 때마다 사이드바 전체가 번쩍이지 않게 했다. */
 .auth-sync-badge {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 0 4px;
+  padding: 2px 4px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   line-height: 1;
   color: rgba(0, 0, 0, 0.55);
   white-space: nowrap;
-  cursor: default;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.auth-sync-badge:hover {
+  color: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.06);
 }
 .auth-sync-dot {
   width: 8px;
@@ -239,9 +248,15 @@
 .auth-sync-badge.is-synced .auth-sync-dot {
   background: #2f9e44;
 }
+.auth-sync-badge.is-pending .auth-sync-dot {
+  background: #f08c00;
+}
 .auth-sync-badge.is-syncing .auth-sync-dot {
   background: #f08c00;
   animation: auth-sync-pulse 1.1s ease-in-out infinite;
+}
+.auth-sync-badge.is-cooldown .auth-sync-dot {
+  background: #868e96;
 }
 .auth-sync-badge.is-error .auth-sync-dot {
   background: #e03131;

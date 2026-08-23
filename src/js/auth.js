@@ -114,12 +114,15 @@
   var MANAGE_ICON = '<svg class="auth-icon-manage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 
   // 클라우드 동기화가 지금 어떤 상태인지 — 로컬에만 저장됐는데 저장됐다고
-  // 믿는 상황을 막는 게 목적이라, 로그인 상태에서만 띄운다.
+  // 믿는 상황을 막는 게 목적이라, 로그인 상태에서만 띄운다. 자동 동기화가
+  // 없으므로(userData.js) 이 뱃지는 곧 버튼이다 — 눌러야 실제로 맞춰진다.
   var SYNC_STATE_LABELS = {
     synced: '동기화됨',
-    syncing: '동기화 중',
+    pending: '동기화 필요 · 눌러서 동기화',
+    syncing: '동기화 중...',
+    cooldown: '동기화 쿨타임중..',
     offline: '오프라인 (이 기기에만 저장 중)',
-    error: '동기화 실패 (잠시 후 다시 시도해요)'
+    error: '동기화 실패 · 다시 눌러보세요'
   };
 
   function renderSyncBadge(nav, loggedIn) {
@@ -129,15 +132,31 @@
       return;
     }
     if (!badge) {
-      badge = document.createElement('span');
+      badge = document.createElement('button');
+      badge.type = 'button';
       badge.className = 'auth-sync-badge';
+      badge.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (global.UserData) global.UserData.requestSync();
+      });
+    }
+    // userData.js 의 초기 상태 이벤트(chokaguya:sync-state)가 스크립트 로드
+    // 순서상 renderHeaderButton 보다 먼저 도착할 수 있어(로그인된 채로
+    // 페이지를 새로고침한 경우 흔함), 그때는 이 뱃지가 개인 코드 관리
+    // 버튼보다 먼저 nav 에 붙어버린다. 매번 그 버튼 바로 뒤로 강제
+    // 재배치해서 순서를 고정한다.
+    var authBtn = nav.querySelector('.auth-header-btn');
+    if (authBtn) {
+      authBtn.insertAdjacentElement('afterend', badge);
+    } else if (!badge.parentNode) {
       nav.appendChild(badge);
     }
     var state = (global.UserData && global.UserData.getStatus()) || 'offline';
     var label = SYNC_STATE_LABELS[state] || SYNC_STATE_LABELS.offline;
     badge.className = 'auth-sync-badge is-' + state;
     badge.title = label;
-    badge.setAttribute('aria-label', '클라우드 동기화 상태: ' + label);
+    badge.setAttribute('aria-label', '클라우드 동기화 상태: ' + label + '. 눌러서 지금 동기화');
     badge.innerHTML = '<span class="auth-sync-dot" aria-hidden="true"></span>' +
       '<span class="auth-sync-badge-label">' + label + '</span>';
   }
