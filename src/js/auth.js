@@ -57,13 +57,6 @@
     return header;
   }
 
-  function panelNote(text) {
-    var p = document.createElement('p');
-    p.className = 'bkm-share-note';
-    p.textContent = text;
-    return p;
-  }
-
   function panelButton(label, variant) {
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -104,30 +97,6 @@
       }
     });
     panel.appendChild(copyBtn);
-
-    var migrateBtn = panelButton('이 브라우저의 기존 코드들을 여기 연결하기');
-    panel.appendChild(migrateBtn);
-    var migrateMsg = panelNote('');
-    panel.appendChild(migrateMsg);
-    migrateBtn.addEventListener('click', function () {
-      migrateBtn.disabled = true;
-      migrateMsg.textContent = '연결하는 중...';
-      global.BookmarkLibrary.migrateExistingToPersonalCode()
-        .then(function (result) {
-          migrateBtn.disabled = false;
-          if (!result.linked.length && !result.failed.length) {
-            migrateMsg.textContent = '이 브라우저에 연결할 만한 기존 코드가 없어요.';
-            return;
-          }
-          var msg = result.linked.length + '개 연결 완료';
-          if (result.failed.length) msg += ' (' + result.failed.length + '개 실패, 잠시 후 다시 시도해주세요)';
-          migrateMsg.textContent = msg + '!';
-        })
-        .catch(function (err) {
-          migrateBtn.disabled = false;
-          migrateMsg.textContent = err.message || '연결에 실패했어요.';
-        });
-    });
 
     var logoutBtn = panelButton('로그아웃', 'is-danger');
     logoutBtn.addEventListener('click', function () {

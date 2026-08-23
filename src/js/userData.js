@@ -165,16 +165,34 @@
     return order.map(function (key) { return byKey[key]; });
   }
 
+  // publishedCode는 북마크 전체의 공용 updatedAt(이름 변경 등 아무 수정에나
+  // 갱신됨)을 기준으로 병합하면 안 된다 — 한 기기가 공개를 취소한 직후에,
+  // 그 사실을 아직 못 받아본 다른 기기가 이름만 바꿔도 그 변경이 "더
+  // 최신"으로 잡혀서 이미 지운 공개 게시물이 되살아나 버린다(실사용
+  // 중에 실제로 재현된 회귀). publishedCode 전용 타임스탬프
+  // (publishedCodeUpdatedAt)끼리만 비교해야 이 필드가 다른 필드의 변경에
+  // 휩쓸리지 않는다.
+  function mergePublishedCode(a, b) {
+    var winner = (b.publishedCodeUpdatedAt || 0) >= (a.publishedCodeUpdatedAt || 0) ? b : a;
+    return {
+      publishedCode: winner.publishedCode || null,
+      publishedCodeUpdatedAt: winner.publishedCodeUpdatedAt || 0
+    };
+  }
+
   function mergeBookmark(a, b) {
     var removedItems = mergeTombstones(a.removedItems, b.removedItems, 'removedAt');
     var newer = (b.updatedAt || 0) > (a.updatedAt || 0) ? b : a;
+    var pub = mergePublishedCode(a, b);
     return {
       id: a.id,
       name: newer.name,
       createdAt: Math.min(a.createdAt || 0, b.createdAt || 0) || (a.createdAt || b.createdAt || 0),
       updatedAt: Math.max(a.updatedAt || 0, b.updatedAt || 0),
       items: mergeItems(a.items, b.items, tombstoneMap(removedItems, 'removedAt')),
-      removedItems: removedItems
+      removedItems: removedItems,
+      publishedCode: pub.publishedCode,
+      publishedCodeUpdatedAt: pub.publishedCodeUpdatedAt
     };
   }
 
@@ -238,7 +256,7 @@
     for (var i = 0; i < bookmarks.length; i++) {
       var b = bookmarks[i];
       var itemKeys = (b.items || []).map(function (it) { return it.type + ':' + it.id; }).sort();
-      lines.push(b.id + '|' + b.name + '|' + (b.updatedAt || 0) + '|' + itemKeys.join(','));
+      lines.push(b.id + '|' + b.name + '|' + (b.updatedAt || 0) + '|' + (b.publishedCode || '') + '|' + itemKeys.join(','));
     }
     var deleted = (data.deletedBookmarks || []).map(function (t) { return t.id; }).sort();
     return lines.join(';') + '#' + deleted.join(',');

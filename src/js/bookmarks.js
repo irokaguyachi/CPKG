@@ -17,6 +17,18 @@
  * - 스토어가 바뀌면 window 에 'chokaguya:bookmarks-change' 커스텀 이벤트가
  *   발생합니다(detail.source 로 어디서 비롯됐는지 구분). userData.js 가
  *   이걸 듣고 서버에 올립니다.
+ * - publishedCode: 이 북마크가 공개 라이브러리(bookmarkLibrary.js)에
+ *   올라가 있으면 그 code, 아니면 null. 이것도 계정과 함께 동기화되는
+ *   필드에 넣어야 한다 — bookmarkLibrary.js의 editToken 맵은 이 브라우저
+ *   localStorage에만 있어서, A기기에서 공개한 북마크가 계정 동기화로
+ *   B기기에 넘어와도 B기기는 "이미 공개됐다"는 걸 몰라 똑같은 북마크를
+ *   또 공개해버리는 중복 게시 버그가 있었다. publishedCode를 여기 넣어서
+ *   같이 동기화되게 하면 어느 기기에서 봐도 공개 여부를 알 수 있다.
+ * - publishedCodeUpdatedAt: publishedCode가 마지막으로 바뀐 시각. 공용
+ *   updatedAt(이름 변경 등 아무 수정에나 갱신됨)을 그대로 병합 기준으로
+ *   쓰면, 공개 취소 직후 다른 기기의 (공개와 무관한) 이름 변경이 "더
+ *   최신"으로 잡혀서 이미 지운 게시물이 되살아나는 문제가 있었다 —
+ *   publishedCode만의 시각을 따로 둬서 이 필드끼리만 최신순으로 비교한다.
  */
 (function (global) {
   var STORAGE_KEY = 'chokaguya_bookmarks';
@@ -44,6 +56,8 @@
       if (!b || typeof b !== 'object') return false;
       if (typeof b.id !== 'string' || typeof b.name !== 'string') return false;
       if (!Array.isArray(b.items)) return false;
+      if (b.publishedCode !== undefined && b.publishedCode !== null && typeof b.publishedCode !== 'string') return false;
+      if (b.publishedCodeUpdatedAt !== undefined && typeof b.publishedCodeUpdatedAt !== 'number') return false;
     }
     return true;
   }
@@ -76,7 +90,9 @@
         createdAt: stamp,
         updatedAt: stamp,
         items: items,
-        removedItems: []
+        removedItems: [],
+        publishedCode: null,
+        publishedCodeUpdatedAt: 0
       });
     }
     return { version: STORE_VERSION, bookmarks: bookmarks, deletedBookmarks: [] };
@@ -167,7 +183,9 @@
       name: b.name,
       createdAt: b.createdAt,
       updatedAt: b.updatedAt,
-      items: b.items.map(cloneItem)
+      items: b.items.map(cloneItem),
+      publishedCode: b.publishedCode || null,
+      publishedCodeUpdatedAt: b.publishedCodeUpdatedAt || 0
     };
   }
 
@@ -184,10 +202,26 @@
     var store = readAll();
     var clean = (name || '').trim() || '새 북마크';
     var now = Date.now();
-    var bookmark = { id: genId(), name: clean, createdAt: now, updatedAt: now, items: [], removedItems: [] };
+    var bookmark = { id: genId(), name: clean, createdAt: now, updatedAt: now, items: [], removedItems: [], publishedCode: null, publishedCodeUpdatedAt: 0 };
     store.bookmarks.push(bookmark);
     writeAll(store);
     return bookmark.id;
+  }
+
+  // bookmarkLibrary.js가 공개/공개취소에 성공했을 때 호출한다. 이걸 여기
+  // (계정과 동기화되는 스토어)에 남겨야, 다른 기기가 계정 동기화로 이
+  // 북마크를 받았을 때도 "이미 공개돼 있다"는 걸 알아채고 똑같은 걸
+  // 또 공개하는 사고를 막을 수 있다.
+  function setPublishedCode(id, code) {
+    var store = readAll();
+    var b = findBookmark(store, id);
+    if (!b) return false;
+    var now = Date.now();
+    b.publishedCode = code || null;
+    b.publishedCodeUpdatedAt = now;
+    b.updatedAt = now;
+    writeAll(store);
+    return true;
   }
 
   function renameBookmark(id, name) {
@@ -312,6 +346,7 @@
     getBookmark: getBookmark,
     createBookmark: createBookmark,
     renameBookmark: renameBookmark,
+    setPublishedCode: setPublishedCode,
     deleteBookmark: deleteBookmark,
     isInBookmark: isInBookmark,
     isInAnyBookmark: isInAnyBookmark,

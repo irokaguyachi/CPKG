@@ -338,30 +338,6 @@
     });
   }
 
-  // 이 브라우저에 이미 저장돼 있던(이 기능 추가 전에 발급된) editToken들을
-  // 한 번에 개인 코드로 연결하는 1회성 마이그레이션. code별로 순차 처리하고
-  // 성공/실패를 모두 모아서 돌려준다(하나 실패해도 나머지는 계속 진행).
-  function migrateExistingToPersonalCode() {
-    if (!isLoggedIn()) {
-      return Promise.reject(new Error('로그인이 필요해요.'));
-    }
-    var map = readTokens();
-    var codes = Object.keys(map).filter(function (code) { return !!map[code].editToken; });
-    if (!codes.length) return Promise.resolve({ linked: [], failed: [] });
-
-    var linked = [];
-    var failed = [];
-    var chain = Promise.resolve();
-    codes.forEach(function (code) {
-      chain = chain.then(function () {
-        return linkToPersonalCode(code, map[code].editToken)
-          .then(function () { linked.push(code); })
-          .catch(function (err) { failed.push({ code: code, message: err.message }); });
-      });
-    });
-    return chain.then(function () { return { linked: linked, failed: failed }; });
-  }
-
   function getOne(code) {
     return fetch(LIBRARY_URL + '/' + encodeURIComponent(code)).then(function (res) {
       if (!res.ok) return parseError(res);
@@ -405,7 +381,6 @@
     formatPersonalCodeForDisplay: formatPersonalCodeForDisplay,
     normalizePersonalCode: normalizePersonalCode,
     claimAllByPersonalCode: claimAllByPersonalCode,
-    migrateExistingToPersonalCode: migrateExistingToPersonalCode,
     linkLocalBookmark: linkLocalBookmark,
     getLocalLinkForCode: getLocalLinkForCode,
     isLoggedIn: isLoggedIn,

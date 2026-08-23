@@ -731,13 +731,23 @@ function cleanUserData(raw) {
     if (items === null) return null;
     var removedItems = cleanUserTombstones(b.removedItems, 'removedAt');
     if (removedItems === null) return null;
+    // 공개 라이브러리(library/<code>.json)에 이미 올라가 있으면 그 code —
+    // 클라이언트가 같은 북마크를 다른 기기에서 또 공개하지 않도록 이 값을
+    // 계정 데이터에 함께 실어 나른다(bookmarks.js 상단 주석 참고).
+    var publishedCode = (typeof b.publishedCode === 'string' && CODE_RE.test(b.publishedCode))
+      ? b.publishedCode : null;
     bookmarks.push({
       id: b.id,
       name: b.name,
       createdAt: typeof b.createdAt === 'number' ? b.createdAt : 0,
       updatedAt: typeof b.updatedAt === 'number' ? b.updatedAt : 0,
       items: items,
-      removedItems: removedItems
+      removedItems: removedItems,
+      publishedCode: publishedCode,
+      // publishedCode 전용 타임스탬프 — 공용 updatedAt에 얹으면 이름 변경 같은
+      // 무관한 수정이 "더 최신"으로 잡혀서 공개 취소가 되살아나는 병합 버그가
+      // 생긴다(src/js/userData.js의 mergePublishedCode 참고).
+      publishedCodeUpdatedAt: typeof b.publishedCodeUpdatedAt === 'number' ? b.publishedCodeUpdatedAt : 0
     });
   }
 
@@ -825,7 +835,11 @@ async function migrateFromOwnerIndex(env, personalCode, userKey) {
       items: (rec.items || []).map(function (it) {
         return { type: it.type, id: it.id, addedAt: stamp };
       }),
-      removedItems: []
+      removedItems: [],
+      // 이 항목은 정의상 이미 공개돼 있던 것(owners 인덱스에 걸려 있었음) —
+      // 안 채우면 마이그레이션 직후 다른 기기에서 또 공개할 수 있게 된다.
+      publishedCode: codes[i],
+      publishedCodeUpdatedAt: stamp
     });
   }
   if (!bookmarks.length) return null;
