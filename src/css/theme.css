@@ -578,6 +578,22 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .bkm-row-sub {
   color: rgba(255, 255, 255, 0.5);
 }
+[data-theme="dark"] .bkm-row-icon-btn {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .bkm-row-icon-btn:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.16);
+}
+[data-theme="dark"] .bkm-row-icon-btn.is-published {
+  color: #6ee7a8;
+  background: rgba(110, 231, 168, 0.16);
+}
+[data-theme="dark"] .bkm-row-icon-btn.is-danger:hover {
+  color: #ff8080;
+  background: rgba(255, 128, 128, 0.16);
+}
 [data-theme="dark"] .bkm-detail-menu-btn {
   color: rgba(255, 255, 255, 0.5);
 }

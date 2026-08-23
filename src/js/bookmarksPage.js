@@ -21,6 +21,8 @@
   ];
 
   var KEBAB_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>';
+  var SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>';
+  var DELETE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>';
 
   var contentEl = document.getElementById('bkm-content');
   var countEl = document.getElementById('bkm-count');
@@ -541,10 +543,48 @@
 
       card.appendChild(info);
 
+      var right = document.createElement('div');
+      right.className = 'bkm-row-right';
+
       var count = document.createElement('p');
       count.className = 'bkm-row-count';
       count.textContent = bookmark.items.length + '개';
-      card.appendChild(count);
+      right.appendChild(count);
+
+      var shareBtn = document.createElement('button');
+      shareBtn.type = 'button';
+      shareBtn.className = 'bkm-row-icon-btn';
+      shareBtn.innerHTML = SHARE_ICON;
+      shareBtn.setAttribute('aria-label', '라이브러리에 공개하기');
+      function syncShareState() {
+        shareBtn.classList.toggle('is-published', !!getPublishedCode(bookmark));
+        sub.textContent = formatBookmarkMeta(bookmark);
+      }
+      syncShareState();
+      shareBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openSharePanel(shareBtn, bookmark, syncShareState);
+      });
+      right.appendChild(shareBtn);
+
+      var deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'bkm-row-icon-btn is-danger';
+      deleteBtn.innerHTML = DELETE_ICON;
+      deleteBtn.setAttribute('aria-label', '북마크 삭제');
+      deleteBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!global.confirm('"' + bookmark.name + '" 북마크를 삭제할까요?')) return;
+        var publishedCode = getPublishedCode(bookmark);
+        if (publishedCode) global.BookmarkLibrary.unpublish(publishedCode).catch(function () {});
+        global.Bookmarks.deleteBookmark(bookmark.id);
+        card.remove();
+        countEl.textContent = global.Bookmarks.getAllBookmarks().length + '개의 북마크가 있습니다!';
+        showEmptyIfNeeded();
+      });
+      right.appendChild(deleteBtn);
+
+      card.appendChild(right);
 
       card.addEventListener('click', function () {
         global.location.href = 'bookmarksPage.html?id=' + encodeURIComponent(bookmark.id);

@@ -193,6 +193,44 @@
   color: #000000;
 }
 
+/* 카드 우측 — 개수 + 공유/삭제 관리 버튼 */
+.bkm-row-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bkm-row-icon-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.bkm-row-icon-btn svg { width: 16px; height: 16px; }
+.bkm-row-icon-btn:hover {
+  transform: scale(1.08);
+  color: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.1);
+}
+.bkm-row-icon-btn.is-published {
+  color: #1c9c5b;
+  background: rgba(28, 156, 91, 0.14);
+}
+.bkm-row-icon-btn.is-danger:hover {
+  color: #d64545;
+  background: rgba(214, 69, 69, 0.12);
+}
+
 @media (max-width: 600px) {
   .bkm-row-card {
     padding: 16px 20px;
@@ -201,6 +239,9 @@
   .bkm-row-title { font-size: 18px; }
   .bkm-row-sub { font-size: 12px; }
   .bkm-row-count { font-size: 15px; }
+  .bkm-row-right { gap: 8px; }
+  .bkm-row-icon-btn { width: 28px; height: 28px; }
+  .bkm-row-icon-btn svg { width: 14px; height: 14px; }
 }
 
 /* 상세 화면 헤더의 케밥(⋮) 메뉴 — 이름 바꾸기/공개/삭제를 여기로 모았다 */
