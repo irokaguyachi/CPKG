@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Yachiyo click easter egg (local-only, src/img/ForEvent/yachiyo.png)
+   Triggered from src/js/yachiyoEvent.js after 168 clicks on the locked
+   "번역" nav link. Not part of the deployed asset pipeline.
+   ========================================================================== */
+
+.yachiyo-event-block {
+  position: fixed;
+  inset: 0;
+  z-index: 599;
+  background: transparent;
+  cursor: default;
+}
+
+.yachiyo-event-block.is-ready {
+  cursor: pointer;
+}
+
+.yachiyo-event {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 600;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  transform: translateX(85%);
+  transition: transform 2.2s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.yachiyo-event.is-in {
+  transform: translateX(0%);
+}
+
+.yachiyo-event.is-out {
+  transform: translateX(85%);
+  transition: transform 0.8s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.yachiyo-event-img {
+  display: block;
+  width: clamp(150px, 20vw, 280px);
+  height: auto;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+}
+
+.yachiyo-event-img.is-talking {
+  animation: yachiyo-talk-bounce 0.45s ease-in-out;
+}
+
+@keyframes yachiyo-talk-bounce {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(14px); }
+  65% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+.yachiyo-event-cta {
+  margin: 0 0 48px 0;
+  transform: translateX(30px);
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.yachiyo-event-cta.is-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.yachiyo-event-cta a {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  background: #fee500;
+  color: #191919;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.yachiyo-event-bubble {
+  position: relative;
+  margin: 0 0 48px 0;
+  padding: 10px 14px;
+  max-width: 200px;
+  background: #ffffff;
+  color: #222222;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.yachiyo-event-bubble.is-visible {
+  opacity: 1;
+}
+
+.yachiyo-event-bubble::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  bottom: 16px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-right: inherit;
+  border-bottom: inherit;
+  transform: rotate(-45deg);
+}
+
+[data-theme="dark"] .yachiyo-event-bubble {
+  background: #1c1e22;
+  color: #f1f3f5;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 640px) {
+  .yachiyo-event-bubble {
+    max-width: 150px;
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* near-instant instead of transition:none — the JS waits on transitionend
+     to reveal the text and to remove the click-blocking overlay */
+  .yachiyo-event,
+  .yachiyo-event.is-out {
+    transition-duration: 0.01s;
+  }
+
+  .yachiyo-event-img.is-talking {
+    animation: none;
+  }
+
+  .yachiyo-event-cta {
+    transition-duration: 0.01s;
+  }
+}

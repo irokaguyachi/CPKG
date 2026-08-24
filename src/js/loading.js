@@ -9,12 +9,25 @@
       .then(function (r) { return r.json(); })
       .then(function (tips) {
         if (!Array.isArray(tips) || !tips.length) return;
+
+        // 이 브라우저로 사이트에 처음 들어온 경우에만 첫 팁을 고정 문구로 보여줌
+        var FIRST_VISIT_TIP = "Let's go on a trip!";
+        var isFirstVisit = !localStorage.getItem('chokaguya_tipVisited');
+        if (isFirstVisit) localStorage.setItem('chokaguya_tipVisited', '1');
+
         var order = shuffle(tips.slice());
         var idx = 0;
+        var showFirstVisitTip = isFirstVisit;
         function cycle() {
-          if (idx >= order.length) { order = shuffle(tips.slice()); idx = 0; }
-          var text = order[idx];
-          idx++;
+          var text;
+          if (showFirstVisitTip) {
+            text = FIRST_VISIT_TIP;
+            showFirstVisitTip = false;
+          } else {
+            if (idx >= order.length) { order = shuffle(tips.slice()); idx = 0; }
+            text = order[idx];
+            idx++;
+          }
           typeText(tipEl, text, 500, function () {
             setTimeout(cycle, 2200);
           });
