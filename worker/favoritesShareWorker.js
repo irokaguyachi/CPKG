@@ -78,13 +78,20 @@
  *   until claim-owner or another publish repairs the index.
  *
  * ---- Rate limiting ----
- * Every /library write (POST/PUT/DELETE) and the list GET are throttled per
- * client IP via the RATE_LIMIT_KV binding (see wrangler.toml) — a public
- * write endpoint with a browsable public listing is an attractive spam
- * target, so this was added alongside the library feature rather than left
- * for later (see TRAFFIC_LAG_AUDIT.md).
- * KV is only eventually consistent, so this is a best-effort deterrent, not a
- * hard guarantee — good enough for this use case.
+ * 공개 쓰기 엔드포인트 + 누구나 볼 수 있는 목록이라 스팸 표적이 되기 쉬워서
+ * 라이브러리 기능과 함께 넣었다(TRAFFIC_LAG_AUDIT.md 참고).
+ * - 2026-08-24: 원래는 전부 RATE_LIMIT_KV 고정 윈도우 카운터였는데, 허용되는
+ *   요청마다 KV put 을 한 번씩 해서 무료 일일 쓰기 한도(1,000)를 갉아먹었다.
+ *   게다가 try/catch 가 없어서 한도를 넘기면 예외가 그대로 전파돼 로그인·
+ *   가입·동기화·라이브러리가 한꺼번에 500 이 됐다(TRAFFIC_SECURITY_AUDIT.md
+ *   S1). 이제 라이브러리·소유권 조회·로그인·동기화는 Cloudflare 네이티브
+ *   Rate Limiting 바인딩(RL_*, src/wrangler.toml)을 쓴다 — 원자적이고 KV
+ *   할당량을 전혀 쓰지 않는다. 대신 period 가 10/60초로 제한돼 있어서
+ *   창은 60초로 좁아졌다.
+ * - 하루 단위 창이 꼭 필요한 회원가입만 KV 카운터로 남는다. 이쪽도 조회와
+ *   증가를 분리해서, 실제로 계정이 만들어졌을 때만 KV 쓰기가 일어난다.
+ * - KV 경로는 전부 fail open 한다(peekRateLimit/bumpRateLimit). 레이트리밋
+ *   때문에 사이트가 죽는 일은 없어야 한다.
  */
 
 const CODE_RE = /^[A-Za-z0-9_-]{1,32}$/;
@@ -117,9 +124,12 @@ const PERSONAL_CODE_RE = /^[A-Za-z0-9_-]{16,64}$/;
 // 안 뜬다).
 const OWNER_MAX_CODES = 500;
 
-const RATE_LIMIT_WRITE_PER_HOUR = 20;
-const RATE_LIMIT_LIST_PER_HOUR = 120;
-const RATE_LIMIT_OWNER_LOOKUP_PER_HOUR = 60;
+// 시간당/일당 한도 상수는 더 이상 없다 — 라이브러리·소유권·로그인·동기화의
+// 레이트리밋은 전부 Cloudflare 네이티브 Rate Limiting 바인딩(RL_*)으로 옮겼다.
+// 네이티브 바인딩의 period 는 10초 또는 60초만 허용되므로 창 자체가 60초로
+// 좁아졌다: 장시간 누적 총량 상한은 사라지지만 폭주는 더 확실히 막히고,
+// 무엇보다 KV 일일 쓰기 한도(1,000)를 요청마다 갉아먹지 않는다.
+// 한도 값은 src/wrangler.toml 의 [[ratelimits]] 에 있다.
 
 // ---- 유저 계정 스토어(/user/*) ----
 // 공개 라이브러리(library/)와 달리 여기엔 비공개 북마크까지 전부 들어간다.
@@ -136,24 +146,40 @@ const USER_DATA_VERSION = 2;
 // 클라이언트가 병합하게 한다(서버는 병합 로직을 갖지 않는다 — 아래 주석 참고).
 const USER_SYNC_MAX_ATTEMPTS = 3;
 
-const RATE_LIMIT_USER_SYNC_PER_HOUR = 200;
-const RATE_LIMIT_USER_AUTH_PER_HOUR = 60;
-// 회원가입만 훨씬 좁은 하루 단위 한도를 따로 둔다 — 로그인(handleUserGet)은
-// 정상적인 재방문마다 계속 일어나는 동작이라 시간당 한도를 그대로 쓰지만,
-// 가입은 계정을 하나 새로 만드는 동작이라 같은 IP에서 반복될 이유가 없다.
-const RATE_LIMIT_USER_SIGNUP_PER_DAY = 1;
+// 회원가입만 하루 단위 창을 쓰기 때문에 유일하게 KV 카운터가 남아 있는
+// 경로다(네이티브 바인딩은 최대 60초 창까지밖에 못 만든다). 한국은 통신사·
+// 학교·PC방이 전부 CGNAT 이라 수백 명이 공인 IP 하나를 공유한다 — 1회/일은
+// 같은 망의 두 번째 사람을 그날 통째로 막아버려서 5회/일로 넓혔다. 그리고
+// 이 카운터는 handleUserSignup 이 실제로 새 계정을 만들었을 때만 오른다
+// (가입 화면을 열기만 해도 하루치가 소진되던 문제 — bumpRateLimit 참고).
+const RATE_LIMIT_USER_SIGNUP_PER_DAY = 5;
 const DAY_MS = 86400000;
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+// API 는 이제 정적 사이트와 같은 Worker(src/_worker.js)라 모든 정상 호출이
+// 동일 출처다(bookmarkLibrary.js/userData.js 의 WORKER_BASE = ''). 예전
+// workers.dev 시절의 '*' 는 아무 사이트나 자기 방문자의 브라우저로 이 API 를
+// 두드리게 하는 통로일 뿐이라, 자기 오리진일 때만 CORS 를 허용한다.
+function corsHeaders(request) {
+  var origin = request && request.headers.get('Origin');
+  var self = request ? new URL(request.url).origin : null;
+  if (origin && origin === self) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin'
+    };
+  }
+  // 교차 출처에는 허용 헤더를 아예 주지 않는다. 동일 출처 요청은 애초에
+  // 프리플라이트를 하지 않으므로 정상 동작에는 영향이 없다.
+  return { 'Vary': 'Origin' };
+}
 
-function jsonResponse(body, status) {
+function jsonResponse(request, body, status) {
   return new Response(JSON.stringify(body), {
     status: status || 200,
-    headers: Object.assign({ 'Content-Type': 'application/json' }, CORS_HEADERS)
+    headers: Object.assign({ 'Content-Type': 'application/json' }, corsHeaders(request))
   });
 }
 
@@ -259,22 +285,57 @@ function validateLibraryAuth(raw) {
   return result;
 }
 
-// Fixed-window counter in KV, keyed per IP/bucket/window. Fails open (allows
-// the request) if RATE_LIMIT_KV isn't bound — e.g. local `wrangler dev`
-// without the namespace set up yet — so the feature isn't blocked on
-// deploying that piece first; production must bind it (see wrangler.toml).
-// windowMs defaults to an hour; callers that need a coarser window (e.g. the
-// once-a-day signup cap) pass a bigger one.
-async function checkRateLimit(env, ip, bucket, limit, windowMs) {
+// Cloudflare 네이티브 Rate Limiting 바인딩. KV 할당량을 전혀 쓰지 않고
+// 원자적이라, 예전 KV 고정 윈도우 카운터(get→비교→put, 락 없음)가 갖고
+// 있던 두 문제를 한 번에 없앤다. 바인딩이 없으면(아직 [[ratelimits]] 가
+// 없는 구 배포, 로컬 wrangler dev) fail open 해서 기능 자체가 막히지 않게
+// 한다 — 예전 checkRateLimit 이 RATE_LIMIT_KV 없이 통과시키던 것과 같다.
+async function checkLimit(limiter, ip) {
+  if (!limiter) return true;
+  try {
+    var r = await limiter.limit({ key: ip });
+    return r.success;
+  } catch (e) {
+    return true;
+  }
+}
+
+// ---- KV 고정 윈도우 카운터 (이제 회원가입 일당 창 전용) ----
+// 네이티브 바인딩의 period 는 10/60초만 허용돼서 "하루 N회"를 표현할 수 없다.
+// 그래서 이 경로만 KV 로 남는다. 다만 예전과 달리 조회(peek)와 증가(bump)를
+// 나눠서, 실제로 계정이 만들어졌을 때만 쓰기가 일어난다.
+//
+// 🔴 이 두 함수의 try/catch 가 없어서 예전엔 KV 일일 쓰기 한도(무료 1,000회)를
+// 넘기는 순간 예외가 그대로 전파돼 로그인·가입·동기화·라이브러리가 한꺼번에
+// 500 이 됐다. KV 가 죽어도 사이트는 살아 있어야 하므로 전부 fail open 한다.
+function rateLimitKey(ip, bucket, windowMs) {
+  return 'rl:' + bucket + ':' + ip + ':' + Math.floor(Date.now() / windowMs);
+}
+
+// "한도를 넘겼는가"만 본다 — 쓰기를 하지 않으므로 KV 쓰기 할당량을 안 쓴다.
+async function peekRateLimit(env, ip, bucket, limit, windowMs) {
   if (!env.RATE_LIMIT_KV) return true;
-  windowMs = windowMs || 3600000;
-  var windowStart = Math.floor(Date.now() / windowMs);
-  var key = 'rl:' + bucket + ':' + ip + ':' + windowStart;
-  var current = await env.RATE_LIMIT_KV.get(key);
-  var count = current ? parseInt(current, 10) : 0;
-  if (count >= limit) return false;
-  await env.RATE_LIMIT_KV.put(key, String(count + 1), { expirationTtl: Math.ceil(windowMs / 1000) });
-  return true;
+  try {
+    var current = await env.RATE_LIMIT_KV.get(rateLimitKey(ip, bucket, windowMs));
+    var count = current ? parseInt(current, 10) : 0;
+    return count < limit;
+  } catch (e) {
+    return true;
+  }
+}
+
+// 실제로 셀 만한 일이 벌어졌을 때만 호출한다. 실패는 삼킨다 — 카운터 하나
+// 못 올린 것 때문에 이미 성공한 요청을 500 으로 되돌릴 이유가 없다.
+async function bumpRateLimit(env, ip, bucket, windowMs) {
+  if (!env.RATE_LIMIT_KV) return;
+  try {
+    var key = rateLimitKey(ip, bucket, windowMs);
+    var current = await env.RATE_LIMIT_KV.get(key);
+    var count = current ? parseInt(current, 10) : 0;
+    await env.RATE_LIMIT_KV.put(key, String(count + 1), { expirationTtl: Math.ceil(windowMs / 1000) });
+  } catch (e) {
+    // KV 한도 초과/장애 — 무시한다(위 주석 참고)
+  }
 }
 
 // ---- Legacy 1:1 favorites share ----
@@ -336,11 +397,11 @@ function validateLibraryUpdate(raw) {
 
 async function readJsonBody(request, maxBytes) {
   var text = await request.text();
-  if (text.length > maxBytes) return { error: jsonResponse({ error: 'payload too large' }, 413) };
+  if (text.length > maxBytes) return { error: jsonResponse(request, { error: 'payload too large' }, 413) };
   try {
     return { value: JSON.parse(text) };
   } catch (e) {
-    return { error: jsonResponse({ error: 'invalid json' }, 400) };
+    return { error: jsonResponse(request, { error: 'invalid json' }, 400) };
   }
 }
 
@@ -356,15 +417,15 @@ function libraryPublicView(code, record) {
 
 async function handleLibraryCreate(request, env) {
   var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, 'lib-write', RATE_LIMIT_WRITE_PER_HOUR))) {
-    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  if (!(await checkLimit(env.RL_LIB_WRITE, ip))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
 
   var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
   if (body.error) return body.error;
 
   var clean = validateLibraryCreate(body.value);
-  if (!clean) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  if (!clean) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
 
   var code = null;
   for (var attempt = 0; attempt < 3; attempt++) {
@@ -372,7 +433,7 @@ async function handleLibraryCreate(request, env) {
     var existing = await env.FAVORITES_BUCKET.head('library/' + candidate + '.json');
     if (!existing) { code = candidate; break; }
   }
-  if (!code) return jsonResponse({ error: 'could not allocate code, try again' }, 500);
+  if (!code) return jsonResponse(request, { error: 'could not allocate code, try again' }, 500);
 
   var editToken = generateEditToken();
   var editTokenHash = await sha256Hex(editToken);
@@ -402,7 +463,7 @@ async function handleLibraryCreate(request, env) {
     await addToOwnerIndex(env, clean.personalCode, code);
   }
 
-  return jsonResponse({ code: code, editToken: editToken }, 201);
+  return jsonResponse(request, { code: code, editToken: editToken }, 201);
 }
 
 async function scanLibrary(env) {
@@ -439,8 +500,8 @@ async function scanLibrary(env) {
 
 async function handleLibraryList(url, request, env) {
   var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, 'lib-list', RATE_LIMIT_LIST_PER_HOUR))) {
-    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  if (!(await checkLimit(env.RL_LIB_LIST, ip))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
 
   var limit = parseInt(url.searchParams.get('limit'), 10);
@@ -472,7 +533,7 @@ async function handleLibraryList(url, request, env) {
   var total = rows.length;
   var items = rows.slice(offset, offset + limit);
 
-  return jsonResponse({
+  return jsonResponse(request, {
     items: items,
     total: total,
     offset: offset,
@@ -484,36 +545,36 @@ async function handleLibraryList(url, request, env) {
   });
 }
 
-async function handleLibraryGet(code, env) {
-  if (!CODE_RE.test(code)) return jsonResponse({ error: 'invalid code' }, 400);
+async function handleLibraryGet(code, request, env) {
+  if (!CODE_RE.test(code)) return jsonResponse(request, { error: 'invalid code' }, 400);
 
   var object = await env.FAVORITES_BUCKET.get('library/' + code + '.json');
-  if (!object) return jsonResponse({ error: 'not found' }, 404);
+  if (!object) return jsonResponse(request, { error: 'not found' }, 404);
 
   var record = await object.json();
-  return jsonResponse(libraryPublicView(code, record));
+  return jsonResponse(request, libraryPublicView(code, record));
 }
 
 async function handleLibraryUpdate(code, request, env) {
   var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, 'lib-write', RATE_LIMIT_WRITE_PER_HOUR))) {
-    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  if (!(await checkLimit(env.RL_LIB_WRITE, ip))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
-  if (!CODE_RE.test(code)) return jsonResponse({ error: 'invalid code' }, 400);
+  if (!CODE_RE.test(code)) return jsonResponse(request, { error: 'invalid code' }, 400);
 
   var object = await env.FAVORITES_BUCKET.get('library/' + code + '.json');
-  if (!object) return jsonResponse({ error: 'not found' }, 404);
+  if (!object) return jsonResponse(request, { error: 'not found' }, 404);
   var record = await object.json();
 
   var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
   if (body.error) return body.error;
 
   var clean = validateLibraryUpdate(body.value);
-  if (!clean) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  if (!clean) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
 
   var authorized = await verifyLibraryAuth(record, code, clean);
   if (!authorized) {
-    return jsonResponse({ error: 'invalid edit token' }, 403);
+    return jsonResponse(request, { error: 'invalid edit token' }, 403);
   }
 
   if (clean.name !== undefined) record.name = clean.name;
@@ -530,28 +591,28 @@ async function handleLibraryUpdate(code, request, env) {
     }
   });
 
-  return jsonResponse(libraryPublicView(code, record));
+  return jsonResponse(request, libraryPublicView(code, record));
 }
 
 async function handleLibraryDelete(code, request, env) {
   var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, 'lib-write', RATE_LIMIT_WRITE_PER_HOUR))) {
-    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  if (!(await checkLimit(env.RL_LIB_WRITE, ip))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
-  if (!CODE_RE.test(code)) return jsonResponse({ error: 'invalid code' }, 400);
+  if (!CODE_RE.test(code)) return jsonResponse(request, { error: 'invalid code' }, 400);
 
   var object = await env.FAVORITES_BUCKET.get('library/' + code + '.json');
-  if (!object) return jsonResponse({ error: 'not found' }, 404);
+  if (!object) return jsonResponse(request, { error: 'not found' }, 404);
   var record = await object.json();
 
   var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
   if (body.error) return body.error;
   var auth = validateLibraryAuth(body.value);
-  if (!auth) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  if (!auth) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
 
   var authorized = await verifyLibraryAuth(record, code, auth);
   if (!authorized) {
-    return jsonResponse({ error: 'invalid edit token' }, 403);
+    return jsonResponse(request, { error: 'invalid edit token' }, 403);
   }
 
   await env.FAVORITES_BUCKET.delete('library/' + code + '.json');
@@ -575,31 +636,31 @@ async function handleLibraryDelete(code, request, env) {
       }
     } catch (e) {}
   }
-  return jsonResponse({ ok: true });
+  return jsonResponse(request, { ok: true });
 }
 
 async function handleLibraryClaimOwner(code, request, env) {
   var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, 'lib-write', RATE_LIMIT_WRITE_PER_HOUR))) {
-    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  if (!(await checkLimit(env.RL_LIB_WRITE, ip))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
-  if (!CODE_RE.test(code)) return jsonResponse({ error: 'invalid code' }, 400);
+  if (!CODE_RE.test(code)) return jsonResponse(request, { error: 'invalid code' }, 400);
 
   var object = await env.FAVORITES_BUCKET.get('library/' + code + '.json');
-  if (!object) return jsonResponse({ error: 'not found' }, 404);
+  if (!object) return jsonResponse(request, { error: 'not found' }, 404);
   var record = await object.json();
 
   var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
   if (body.error) return body.error;
   if (!body.value || typeof body.value.editToken !== 'string' || !body.value.editToken) {
-    return jsonResponse({ error: 'invalid payload shape' }, 400);
+    return jsonResponse(request, { error: 'invalid payload shape' }, 400);
   }
   var personalCode = cleanPersonalCode(body.value.personalCode);
-  if (personalCode === null) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
 
   var providedHash = await sha256Hex(body.value.editToken);
   if (providedHash !== record.editTokenHash) {
-    return jsonResponse({ error: 'invalid edit token' }, 403);
+    return jsonResponse(request, { error: 'invalid edit token' }, 403);
   }
 
   // 이미 공개된 내용을 그대로 둔 채 소유권 표지만 붙인다 — name/items는 물론
@@ -617,23 +678,23 @@ async function handleLibraryClaimOwner(code, request, env) {
   });
   await addToOwnerIndex(env, personalCode, code);
 
-  return jsonResponse({ ok: true });
+  return jsonResponse(request, { ok: true });
 }
 
 async function handleOwnerLookup(request, env) {
   var ip = clientIp(request);
-  if (!(await checkRateLimit(env, ip, 'owner-lookup', RATE_LIMIT_OWNER_LOOKUP_PER_HOUR))) {
-    return jsonResponse({ error: 'too many requests, try again later' }, 429);
+  if (!(await checkLimit(env.RL_OWNER_LOOKUP, ip))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
 
   var body = await readJsonBody(request, LIBRARY_MAX_BODY_BYTES);
   if (body.error) return body.error;
   var personalCode = cleanPersonalCode(body.value && body.value.personalCode);
-  if (personalCode === null) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
 
   var indexKey = await ownerIndexKey(personalCode);
   var indexObject = await env.FAVORITES_BUCKET.get(indexKey);
-  if (!indexObject) return jsonResponse({ items: [], total: 0 });
+  if (!indexObject) return jsonResponse(request, { items: [], total: 0 });
 
   var indexData = await indexObject.json();
   var codes = (indexData && Array.isArray(indexData.codes))
@@ -669,7 +730,7 @@ async function handleOwnerLookup(request, env) {
     } catch (e) {}
   }
 
-  return jsonResponse({ items: items, total: items.length });
+  return jsonResponse(request, { items: items, total: items.length });
 }
 
 // ---- 유저 계정 스토어 ----
@@ -778,37 +839,45 @@ function userStorePutOptions(record) {
   };
 }
 
-async function readUserBody(request, env, bucket, limit, windowMs) {
-  // bucket 이 없으면 rate limit 자체를 건너뛴다 — /user/head 가 이 경로다.
-  // KV 는 요청마다 get+put 두 번을 쓰는데, head 는 60초 폴링(userData.js)이
-  // 계속 때리는 엔드포인트라 여기서만 KV 를 아끼면 일일 무료 한도 소모가
-  // 크게 줄어든다. head 자체는 R2 head() 조회뿐이라 남용돼도 부담이 훨씬
-  // 가벼운 R2 Class B 요청만 늘어난다(무료 한도가 KV 쓰기보다 훨씬 넉넉함).
-  if (bucket) {
+// limiter 는 네이티브 Rate Limiting 바인딩(env.RL_*) 또는 null 이다. null 이면
+// 레이트리밋을 건너뛴다 — /user/head 와 /user/signup 이 그 경로다. head 는
+// 원래부터 의도적으로 열어둔 쪽이고(R2 head() 조회뿐이라 남용돼도 부담이 가볍다),
+// signup 은 하루 단위 창이라 네이티브 바인딩으로 표현할 수 없어서 자기 핸들러
+// 안에서 KV 카운터를 직접 다룬다(handleUserSignup 참고).
+async function readUserBody(request, env, limiter) {
+  if (limiter) {
     var ip = clientIp(request);
-    if (!(await checkRateLimit(env, ip, bucket, limit, windowMs))) {
-      return { error: jsonResponse({ error: 'too many requests, try again later' }, 429) };
+    if (!(await checkLimit(limiter, ip))) {
+      return { error: jsonResponse(request, { error: 'too many requests, try again later' }, 429) };
     }
   }
   var body = await readJsonBody(request, USER_MAX_BODY_BYTES);
   if (body.error) return { error: body.error };
   var personalCode = cleanPersonalCode(body.value && body.value.personalCode);
-  if (personalCode === null) return { error: jsonResponse({ error: 'invalid payload shape' }, 400) };
+  if (personalCode === null) return { error: jsonResponse(request, { error: 'invalid payload shape' }, 400) };
   return { personalCode: personalCode, raw: body.value };
 }
 
 async function handleUserSignup(request, env) {
-  // 회원가입은 로그인(handleUserGet)과 다른 버킷·다른 창(하루)을 쓴다 —
-  // 같은 IP에서 계정을 계속 새로 찍어내는 걸 막는 게 목적이라, 시간당
-  // 한도로는 너무 느슨하다.
-  var parsed = await readUserBody(request, env, 'user-signup', RATE_LIMIT_USER_SIGNUP_PER_DAY, DAY_MS);
+  // 회원가입만 하루 단위 창을 쓴다 — 같은 IP에서 계정을 계속 새로 찍어내는 걸
+  // 막는 게 목적이라 60초 창(네이티브 바인딩의 최대치)으로는 의미가 없다.
+  // 그래서 이 핸들러만 KV 카운터를 직접 다루는데, 예전처럼 "먼저 올리고 본다"가
+  // 아니라 여기선 조회만 한다. 실제 증가는 아래에서 계정이 정말 만들어졌을
+  // 때만 일어난다 — authModal.js 의 renderSignUp() 이 가입 화면을 여는 즉시
+  // signup 을 쏘기 때문에, 예전 코드는 화면을 열기만 해도 하루치가 소진됐다.
+  var ip = clientIp(request);
+  if (!(await peekRateLimit(env, ip, 'user-signup', RATE_LIMIT_USER_SIGNUP_PER_DAY, DAY_MS))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+
+  var parsed = await readUserBody(request, env, null);
   if (parsed.error) return parsed.error;
 
   var key = await userStoreKey(parsed.personalCode);
   var existing = await env.FAVORITES_BUCKET.head(key);
   if (existing) {
     var meta = existing.customMetadata || {};
-    return jsonResponse({ ok: true, existed: true, syncVersion: parseInt(meta.syncVersion || '1', 10) || 1 });
+    return jsonResponse(request, { ok: true, existed: true, syncVersion: parseInt(meta.syncVersion || '1', 10) || 1 });
   }
 
   var now = Date.now();
@@ -819,9 +888,12 @@ async function handleUserSignup(request, env) {
     key, JSON.stringify(record),
     Object.assign({ onlyIf: { etagDoesNotMatch: '*' } }, userStorePutOptions(record))
   );
-  if (!written) return jsonResponse({ ok: true, existed: true, syncVersion: 1 });
+  if (!written) return jsonResponse(request, { ok: true, existed: true, syncVersion: 1 });
 
-  return jsonResponse({ ok: true, createdAt: now, syncVersion: 1 }, 201);
+  // 여기까지 왔다 = 새 오브젝트가 실제로 만들어졌다. 이때만 하루치를 센다.
+  await bumpRateLimit(env, ip, 'user-signup', DAY_MS);
+
+  return jsonResponse(request, { ok: true, createdAt: now, syncVersion: 1 }, 201);
 }
 
 // 구버전 개인 코드 사용자를 위한 1회성 통합. 예전엔 "공개한 북마크"만 서버에
@@ -880,28 +952,28 @@ async function migrateFromOwnerIndex(env, personalCode, userKey) {
 }
 
 async function handleUserGet(request, env) {
-  var parsed = await readUserBody(request, env, 'user-auth', RATE_LIMIT_USER_AUTH_PER_HOUR);
+  var parsed = await readUserBody(request, env, env.RL_USER_AUTH);
   if (parsed.error) return parsed.error;
 
   var key = await userStoreKey(parsed.personalCode);
   var object = await env.FAVORITES_BUCKET.get(key);
-  if (object) return jsonResponse({ userStore: await object.json() });
+  if (object) return jsonResponse(request, { userStore: await object.json() });
 
   var migrated = await migrateFromOwnerIndex(env, parsed.personalCode, key);
-  if (migrated) return jsonResponse({ userStore: migrated, migrated: true });
+  if (migrated) return jsonResponse(request, { userStore: migrated, migrated: true });
 
-  return jsonResponse({ error: 'account not found' }, 404);
+  return jsonResponse(request, { error: 'account not found' }, 404);
 }
 
 async function handleUserHead(request, env) {
-  var parsed = await readUserBody(request, env, null, 0);
+  var parsed = await readUserBody(request, env, null);
   if (parsed.error) return parsed.error;
 
   var head = await env.FAVORITES_BUCKET.head(await userStoreKey(parsed.personalCode));
-  if (!head) return jsonResponse({ error: 'account not found' }, 404);
+  if (!head) return jsonResponse(request, { error: 'account not found' }, 404);
 
   var meta = head.customMetadata || {};
-  return jsonResponse({
+  return jsonResponse(request, {
     syncVersion: parseInt(meta.syncVersion || '0', 10) || 0,
     updatedAt: parseInt(meta.updatedAt || '0', 10) || 0
   });
@@ -912,26 +984,26 @@ async function handleUserHead(request, env) {
 // 서버는 syncVersion 비교 + etag CAS 로 "덮어써도 되는가"만 판정하고,
 // 뒤처진 요청에는 409와 함께 서버 사본을 돌려줘 클라이언트가 병합하게 한다.
 async function handleUserSync(request, env) {
-  var parsed = await readUserBody(request, env, 'user-sync', RATE_LIMIT_USER_SYNC_PER_HOUR);
+  var parsed = await readUserBody(request, env, env.RL_USER_SYNC);
   if (parsed.error) return parsed.error;
 
   var raw = parsed.raw;
   var data = cleanUserData(raw && raw.data);
-  if (data === null) return jsonResponse({ error: 'invalid payload shape' }, 400);
+  if (data === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
   var clientSyncVersion = raw.clientSyncVersion;
   if (typeof clientSyncVersion !== 'number' || !Number.isInteger(clientSyncVersion) || clientSyncVersion < 0) {
-    return jsonResponse({ error: 'invalid payload shape' }, 400);
+    return jsonResponse(request, { error: 'invalid payload shape' }, 400);
   }
 
   var key = await userStoreKey(parsed.personalCode);
   for (var attempt = 0; attempt < USER_SYNC_MAX_ATTEMPTS; attempt++) {
     var object = await env.FAVORITES_BUCKET.get(key);
-    if (!object) return jsonResponse({ error: 'account not found' }, 404);
+    if (!object) return jsonResponse(request, { error: 'account not found' }, 404);
 
     var etag = object.etag;
     var current = await object.json();
     if (clientSyncVersion !== current.syncVersion) {
-      return jsonResponse({ error: 'sync version conflict', serverStore: current }, 409);
+      return jsonResponse(request, { error: 'sync version conflict', serverStore: current }, 409);
     }
 
     var now = Date.now();
@@ -947,62 +1019,75 @@ async function handleUserSync(request, env) {
       Object.assign({ onlyIf: { etagMatches: etag } }, userStorePutOptions(next))
     );
     if (written) {
-      return jsonResponse({ ok: true, serverSyncVersion: next.syncVersion, updatedAt: now });
+      return jsonResponse(request, { ok: true, serverSyncVersion: next.syncVersion, updatedAt: now });
     }
     // etag 가 어긋났다 = 방금 사이에 누가 썼다. 다시 읽어서 판정한다.
   }
 
   var latest = await env.FAVORITES_BUCKET.get(key);
-  return jsonResponse({
+  return jsonResponse(request, {
     error: 'sync version conflict',
     serverStore: latest ? await latest.json() : null
   }, 409);
 }
 
+// 라우팅 본체. 예외 처리는 아래 fetch() 가 한 겹 감싸서 담당한다.
+async function route(request, env) {
+  var url = new URL(request.url);
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }
+
+  if (url.pathname === '/library' && request.method === 'POST') {
+    return handleLibraryCreate(request, env);
+  }
+  if (url.pathname === '/library' && request.method === 'GET') {
+    return handleLibraryList(url, request, env);
+  }
+  if (url.pathname === '/owner/lookup' && request.method === 'POST') {
+    return handleOwnerLookup(request, env);
+  }
+  // 개인 코드가 URL/서버 로그에 남지 않도록 조회도 POST 로 받는다
+  // (/owner/lookup 이 POST 인 것과 같은 이유).
+  if (url.pathname === '/user/signup' && request.method === 'POST') {
+    return handleUserSignup(request, env);
+  }
+  if (url.pathname === '/user/get' && request.method === 'POST') {
+    return handleUserGet(request, env);
+  }
+  if (url.pathname === '/user/head' && request.method === 'POST') {
+    return handleUserHead(request, env);
+  }
+  if (url.pathname === '/user/sync' && request.method === 'PUT') {
+    return handleUserSync(request, env);
+  }
+  if (url.pathname.indexOf('/library/') === 0) {
+    var libRest = url.pathname.slice('/library/'.length);
+    var claimSuffix = '/claim-owner';
+    if (request.method === 'POST' && libRest.length > claimSuffix.length &&
+        libRest.slice(-claimSuffix.length) === claimSuffix) {
+      var claimCode = libRest.slice(0, libRest.length - claimSuffix.length);
+      return handleLibraryClaimOwner(claimCode, request, env);
+    }
+    if (request.method === 'GET') return handleLibraryGet(libRest, request, env);
+    if (request.method === 'PUT') return handleLibraryUpdate(libRest, request, env);
+    if (request.method === 'DELETE') return handleLibraryDelete(libRest, request, env);
+  }
+
+  return jsonResponse(request, { error: 'not found' }, 404);
+}
+
 export default {
+  // 어떤 예외든 여기서 잡아 500 JSON 으로 떨어뜨린다. 이게 없으면 핸들러가
+  // 던진 예외가 그대로 런타임까지 올라가 Cloudflare 1101 흰 화면이 나가고,
+  // 클라이언트(userData.js/bookmarkLibrary.js)는 JSON 을 기대하다 파싱에서
+  // 또 한 번 깨진다.
   async fetch(request, env) {
-    var url = new URL(request.url);
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    try {
+      return await route(request, env);
+    } catch (e) {
+      return jsonResponse(request, { error: 'internal error' }, 500);
     }
-
-    if (url.pathname === '/library' && request.method === 'POST') {
-      return handleLibraryCreate(request, env);
-    }
-    if (url.pathname === '/library' && request.method === 'GET') {
-      return handleLibraryList(url, request, env);
-    }
-    if (url.pathname === '/owner/lookup' && request.method === 'POST') {
-      return handleOwnerLookup(request, env);
-    }
-    // 개인 코드가 URL/서버 로그에 남지 않도록 조회도 POST 로 받는다
-    // (/owner/lookup 이 POST 인 것과 같은 이유).
-    if (url.pathname === '/user/signup' && request.method === 'POST') {
-      return handleUserSignup(request, env);
-    }
-    if (url.pathname === '/user/get' && request.method === 'POST') {
-      return handleUserGet(request, env);
-    }
-    if (url.pathname === '/user/head' && request.method === 'POST') {
-      return handleUserHead(request, env);
-    }
-    if (url.pathname === '/user/sync' && request.method === 'PUT') {
-      return handleUserSync(request, env);
-    }
-    if (url.pathname.indexOf('/library/') === 0) {
-      var libRest = url.pathname.slice('/library/'.length);
-      var claimSuffix = '/claim-owner';
-      if (request.method === 'POST' && libRest.length > claimSuffix.length &&
-          libRest.slice(-claimSuffix.length) === claimSuffix) {
-        var claimCode = libRest.slice(0, libRest.length - claimSuffix.length);
-        return handleLibraryClaimOwner(claimCode, request, env);
-      }
-      if (request.method === 'GET') return handleLibraryGet(libRest, env);
-      if (request.method === 'PUT') return handleLibraryUpdate(libRest, request, env);
-      if (request.method === 'DELETE') return handleLibraryDelete(libRest, request, env);
-    }
-
-    return jsonResponse({ error: 'not found' }, 404);
   }
 };

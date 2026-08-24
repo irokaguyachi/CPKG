@@ -53,11 +53,15 @@
     var logos = document.querySelectorAll('img[data-light-src][data-dark-src]');
     logos.forEach(function (img) {
       var rawSrc = theme === 'dark' ? img.getAttribute('data-dark-src') : img.getAttribute('data-light-src');
-      if (rawSrc) {
-        var targetSrc = window.resolveAssetUrl ? window.resolveAssetUrl(rawSrc) : rawSrc;
-        if (img.getAttribute('src') !== targetSrc) {
-          img.src = targetSrc;
-        }
+      if (!rawSrc) return;
+      // 헤더 로고는 R2 가 아니라 오리진에서 직접 서빙한다(src/img/logo/).
+      // cdnConfig.js 의 resolveAssetUrl()은 경로에 assets/ 가 없으면 붙여서
+      // R2 로 보내버리기 때문에, 이 예외가 없으면 ../img/logo/... 가
+      // R2/assets/img/logo/... 라는 없는 주소로 변환된다.
+      var isLocal = rawSrc.indexOf('../img/') === 0 || rawSrc.indexOf('/img/') === 0;
+      var targetSrc = (!isLocal && window.resolveAssetUrl) ? window.resolveAssetUrl(rawSrc) : rawSrc;
+      if (img.getAttribute('src') !== targetSrc) {
+        img.src = targetSrc;
       }
     });
   }

@@ -182,33 +182,38 @@
     return section;
   }
 
-  // Fetch real Novel & Series data
-  Promise.all([
-    fetch(DATA('../data/PageData/Novel.json')).then(function (r) { return r.json(); }).catch(function () { return []; }),
-    fetch(DATA('../data/PageData/Series.json')).then(function (r) { return r.json(); }).catch(function () { return []; })
-  ]).then(function (results) {
-    var novels = Array.isArray(results[0]) ? results[0] : [];
-    var series = Array.isArray(results[1]) ? results[1] : [];
+  // 최신 10 + 10장만 그리면서 Novel.json(약 600KB) + Series.json(약 170KB)을
+  // 통째로 받아 slice(0, 10) 두 번만 쓰던 걸 걷어냈다. 랜딩 페이지라 방문자당
+  // 무조건 발생하는 요청이었다. Recent.json 은 src/scripts/8_build_recent_page_data.py
+  // 가 빌드 시점에 만들어 두는 파일로, 두 배열의 앞 10건을 필드 손실 없이
+  // 그대로 담고 있어서 카드와 상세 모달이 예전과 똑같이 동작한다.
+  // (데이터를 다시 빌드했으면 cdnConfig.js 의 DATA_VERSION 을 올릴 것)
+  fetch(DATA('../data/PageData/Recent.json'))
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var novels = (data && Array.isArray(data.novels)) ? data.novels : [];
+      var series = (data && Array.isArray(data.series)) ? data.series : [];
+      var totals = (data && data.totals) || {};
 
-    // 총 게시물 수 업데이트
-    var statEl = document.querySelector('.site-info-stat');
-    if (statEl) {
-      var totalPosts = novels.length + series.length;
-      statEl.textContent = formatCount(totalPosts) + '개의 게시물이 있습니다!';
-    }
+      // 총 게시물 수 업데이트 — 전체 배열을 더 이상 안 받으므로 길이를 셀 수
+      // 없다. 빌드 스크립트가 넣어둔 totals 를 쓴다.
+      var statEl = document.querySelector('.site-info-stat');
+      if (statEl) {
+        var totalPosts = (totals.novel || 0) + (totals.series || 0);
+        statEl.textContent = formatCount(totalPosts) + '개의 게시물이 있습니다!';
+      }
 
-    contentEl.innerHTML = '';
+      contentEl.innerHTML = '';
 
-    // 1. 최신 등록 문학 (Novel.json 최신 10개)
-    if (novels.length) {
-      var recentNovels = novels.slice(0, 10);
-      contentEl.appendChild(createRecentSection('최신 등록 문학', recentNovels, 'novelPage.html', 'novel'));
-    }
+      // 1. 최신 등록 문학
+      if (novels.length) {
+        contentEl.appendChild(createRecentSection('최신 등록 문학', novels, 'novelPage.html', 'novel'));
+      }
 
-    // 2. 최신 등록 시리즈 (Series.json 최신 10개)
-    if (series.length) {
-      var recentSeries = series.slice(0, 10);
-      contentEl.appendChild(createRecentSection('최신 등록 시리즈', recentSeries, 'seriesPage.html', 'series'));
-    }
-  }).catch(function () {});
+      // 2. 최신 등록 시리즈
+      if (series.length) {
+        contentEl.appendChild(createRecentSection('최신 등록 시리즈', series, 'seriesPage.html', 'series'));
+      }
+    })
+    .catch(function () {});
 })(window);

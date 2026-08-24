@@ -21,6 +21,54 @@ html_handling = "none"
 binding = "FAVORITES_BUCKET"
 bucket_name = "chokaguya-assets"
 
+# RATE_LIMIT_KV 는 이제 회원가입 일당 창(하루 5회/IP) 하나에만 쓰인다.
+# 나머지 레이트리밋은 아래 [[ratelimits]] 네이티브 바인딩이 담당한다 —
+# 지우면 회원가입 한도가 사라지므로 그대로 둔다.
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "564a89b518d544eeabec62fb758d17ed"
+
+# ---- 네이티브 Rate Limiting 바인딩 ----
+# KV 카운터(get→비교→put)를 대체한다. 원자적이고 KV 할당량을 전혀 쓰지 않아서
+# "레이트리밋이 API 전체의 단일 장애점"이던 구조가 없어진다.
+#
+# ⚠️ period 는 10 또는 60(초)만 허용된다. 예전의 시간당 창을 그대로 옮길 수
+#    없어서 전부 60초 창으로 다시 잡았다 — 장시간 누적 상한은 사라지지만
+#    실제 위협인 폭주는 더 확실히 막힌다. 3600 같은 값을 넣으면 배포가 실패한다.
+# namespace_id 는 이 Worker 안에서만 유효한 식별자라 임의의 숫자면 되고,
+# 서로 겹치지만 않으면 된다(1001~1005 로 잡았다).
+
+[[ratelimits]]
+binding = "RL_LIB_WRITE"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[ratelimits]]
+binding = "RL_LIB_LIST"
+namespace_id = "1002"
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[ratelimits]]
+binding = "RL_OWNER_LOOKUP"
+namespace_id = "1003"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[ratelimits]]
+binding = "RL_USER_AUTH"
+namespace_id = "1004"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[ratelimits]]
+binding = "RL_USER_SYNC"
+namespace_id = "1005"
+  [ratelimits.simple]
+  limit = 20
+  period = 60

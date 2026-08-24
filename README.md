@@ -52,6 +52,8 @@ CPK_Literature_Site/
 │       ├── 2_parse_series.py  # 시리즈 원본 마크다운 파싱
 │       ├── 3_build_data.py    # 통합 MoonHakdata.json 생성
 │       ├── 5_build_series_page_data.py # 시리즈 페이지용 Series.json 빌드
+│       ├── 7_build_novel_page_data.py  # 문학 페이지용 Novel.json 빌드
+│       ├── 8_build_recent_page_data.py # 메인 페이지용 Recent.json 빌드
 │       └── sync_to_r2.py      # Cloudflare R2 이미지 CDN 자동 동기화
 ├── CLAUDE.md                  # 프로젝트 최우선 개발 가이드라인 (커스텀 에셋 보호 수칙)
 ├── CurrentStats.md            # 크롤링 및 수집 통계 현황
@@ -90,7 +92,16 @@ python 3_build_data.py
 
 # 4. 시리즈 페이지용 Series.json 데이터 빌드
 python 5_build_series_page_data.py
+
+# 5. 문학 페이지용 Novel.json 데이터 빌드
+python 7_build_novel_page_data.py
+
+# 6. 메인 페이지용 Recent.json 데이터 빌드 (4·5의 결과에서 최신 10+10건만 추림)
+python 8_build_recent_page_data.py
 ```
+
+> 데이터를 다시 빌드했으면 `src/js/cdnConfig.js` 의 `DATA_VERSION` 을 올려야
+> 브라우저가 새 JSON 을 받아 갑니다.
 
 ---
 

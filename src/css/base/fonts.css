@@ -1,10 +1,16 @@
-@font-face {
-  font-family: "Pretendard";
-  src: url("../../fonts/Pretendard-1.3.9/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");
-  font-weight: 45 920;
-  font-style: normal;
-  font-display: swap;
-}
+/* Pretendard — 동적 서브셋(unicode-range 92청크)을 자체 호스팅한다.
+   예전엔 통짜 가변 폰트 하나(PretendardVariable.woff2, 2,057KB)를 여기서
+   직접 @font-face 로 걸고 각 페이지가 <link rel="preload"> 로 최우선 다운로드까지
+   시켰다. 브라우저는 이제 페이지에 실제로 쓰인 글자 구간의 청크만 받는다.
+   벤더링본 안에서 font-family 이름을 "Pretendard" 로 맞춰놨으므로
+   reset.css 의 body { font-family: "Pretendard", ... } 는 그대로 둔다.
+   (2,057KB 짜리 원본 파일 자체는 src/fonts/Pretendard-1.3.9/ 에 그대로 남아
+    있다 — 참조만 끊었다. 저장소 정리는 별건이다.)
+
+   ⚠️ @import 라서 이 파일이 파싱된 뒤에야 92개 @font-face 가 발견된다.
+      CSS 왕복이 한 단계 늘어나는 건 알고 있는 트레이드오프이고,
+      common.css 의 @import 폭포수를 빌드로 합칠 때(T5) 같이 없어진다. */
+@import url("../../fonts/Pretendard-dynamic/pretendardvariable-dynamic-subset.css");
 
 @font-face {
   font-family: "CCElephantmen";
