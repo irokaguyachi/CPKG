@@ -39,35 +39,35 @@ id = "564a89b518d544eeabec62fb758d17ed"
 # 서로 겹치지만 않으면 된다(1001~1005 로 잡았다).
 
 [[ratelimits]]
-binding = "RL_LIB_WRITE"
+name = "RL_LIB_WRITE"
 namespace_id = "1001"
   [ratelimits.simple]
   limit = 10
   period = 60
 
 [[ratelimits]]
-binding = "RL_LIB_LIST"
+name = "RL_LIB_LIST"
 namespace_id = "1002"
   [ratelimits.simple]
   limit = 30
   period = 60
 
 [[ratelimits]]
-binding = "RL_OWNER_LOOKUP"
+name = "RL_OWNER_LOOKUP"
 namespace_id = "1003"
   [ratelimits.simple]
   limit = 10
   period = 60
 
 [[ratelimits]]
-binding = "RL_USER_AUTH"
+name = "RL_USER_AUTH"
 namespace_id = "1004"
   [ratelimits.simple]
   limit = 10
   period = 60
 
 [[ratelimits]]
-binding = "RL_USER_SYNC"
+name = "RL_USER_SYNC"
 namespace_id = "1005"
   [ratelimits.simple]
   limit = 20
