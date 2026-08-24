@@ -447,6 +447,10 @@ html.theme-transitioning *:after {
   background: #1c1d22;
 }
 
+[data-theme="dark"] .pds-toolbar {
+  background: #1c1d22;
+}
+
 [data-theme="dark"] .pds-sort-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 0.5px solid rgba(255, 255, 255, 0.18);
