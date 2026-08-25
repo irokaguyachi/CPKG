@@ -274,6 +274,32 @@ html.theme-transitioning *:after {
   color: #ffffff;
 }
 
+/* MainPage_Content row cards (recent posts list) in dark mode */
+[data-theme="dark"] .post-row {
+  --post-row-bg: #1c1d22;
+  background: #1c1d22;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .post-row:hover {
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .post-row-image {
+  background-color: #25272d;
+}
+
+[data-theme="dark"] .post-row-name,
+[data-theme="dark"] .post-row-episode {
+  color: #f1f3f5;
+}
+
+[data-theme="dark"] .post-row-id {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 /* ==========================================================================
    Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
    ========================================================================== */
@@ -754,6 +780,10 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .auth-header-btn.is-logged-in:hover {
   background: #2058c9;
+}
+
+[data-theme="dark"] .auth-version-tag {
+  color: rgba(241, 243, 245, 0.4);
 }
 
 /* 동기화 버튼 — 어두운 배경에서는 점 색을 한 단계 밝게 올려야

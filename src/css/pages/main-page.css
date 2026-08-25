@@ -67,94 +67,129 @@ body.is-top .header-logo {
   transform: translateX(4px);
 }
 
+/* Recent post list — mirrors Figma "MainPage_Content" (#2243:3): a wide
+   horizontal row card, stacked vertically instead of scrolled sideways. */
 .post-list {
   display: flex;
+  flex-direction: column;
   gap: 16px;
   padding: 8px 4px 18px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
 }
 
-.post-list::-webkit-scrollbar {
-  height: 6px;
+.post-row {
+  display: flex;
+  align-items: stretch;
+  background: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, opacity 0.3s ease;
 }
-.post-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 999px;
-}
-.post-list::-webkit-scrollbar-track {
-  background: transparent;
+.post-row:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
 }
 
-.post-list .series-card {
-  width: 290px;
-  height: 340px;
+.post-row-image {
+  position: relative;
   flex-shrink: 0;
-  scroll-snap-align: start;
+  width: 322px;
+  min-height: 167px;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.post-row-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, transparent 60%, var(--post-row-bg, #ffffff) 100%);
+  pointer-events: none;
 }
 
-.post-image {
-  flex-shrink: 0;
-  width: 100%;
-  height: 187px;
-  background: #d9d9d9;
-}
-
-.post-info {
+.post-row-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 16px 21px;
-  background: #ffffff;
-  border-top: 0.5px solid rgba(0, 0, 0, 0.3);
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
 }
 
-.post-title {
+.post-row-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-row-name {
+  font-size: 26px;
+  font-weight: 700;
   color: #000000;
 }
 
-.post-title-id {
-  font-size: 10px;
+.post-row-id {
+  margin-left: 6px;
+  font-size: 15px;
+  font-weight: 400;
   color: rgba(0, 0, 0, 0.5);
 }
 
-.post-tag {
+.post-row-tags {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
-.post-tag-pill {
-  display: inline-block;
-  width: 75px;
-  height: 28px;
-  background: #daf5f3;
-  border-radius: 24px;
-}
-
-.post-stats {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.post-stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  color: #000000;
-}
-
-.post-stat-icon {
-  width: 15px;
-  height: 15px;
+.post-row-episode {
   flex-shrink: 0;
+  align-self: center;
+  padding: 0 24px 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #000000;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .post-row-image {
+    width: 140px;
+    min-height: 120px;
+  }
+  .post-row-name {
+    font-size: 20px;
+  }
+  .post-row-id {
+    font-size: 13px;
+  }
+  .post-row-info {
+    padding: 12px 16px;
+  }
+  .post-row-episode {
+    font-size: 16px;
+    padding: 0 16px 0 6px;
+  }
+}
+
+@media (max-width: 520px) {
+  .post-row-image {
+    width: 96px;
+    min-height: 96px;
+  }
+  .post-row-name {
+    font-size: 17px;
+  }
+  .post-row-id {
+    display: none;
+  }
+  .post-row-episode {
+    display: none;
+  }
 }
 
 /* 문의 섹션 — Figma "Frame_Report" #2214:9 / "문의 버튼" #2214:2 기준 */
