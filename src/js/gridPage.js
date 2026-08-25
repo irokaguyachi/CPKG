@@ -387,8 +387,8 @@
       icon.className = 'series-loading-icon';
       if (miniLoadingIcons.length) {
         var pick = miniLoadingIcons[Math.floor(Math.random() * miniLoadingIcons.length)];
-        var rawPick = '../assets/Image/LoadingIcon/' + pick;
-        icon.style.backgroundImage = 'url("' + (global.resolveAssetUrl ? global.resolveAssetUrl(rawPick) : rawPick) + '")';
+        // served from the origin, not R2 — src/offline_src/LoadingLogo/
+        icon.style.backgroundImage = 'url("../offline_src/LoadingLogo/' + pick + '")';
       }
       sentinelEl.appendChild(icon);
 
@@ -454,7 +454,8 @@
 
       var tagsWrap = document.createElement('div');
       tagsWrap.className = 'series-card-tags';
-      sortTags(s.tags).forEach(function (tag) {
+      // 4개째부터는 2줄로 넘어가면서 형제 카드와 높이가 어긋나므로 3개까지만 보여준다
+      sortTags(s.tags).slice(0, 3).forEach(function (tag) {
         var pill = document.createElement('span');
         pill.className = 'series-card-tag';
         pill.dataset.tag = tag;

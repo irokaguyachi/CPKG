@@ -1,21 +1,3 @@
-(function () {
-  var TOP_THRESHOLD = 10;
-
-  function onScroll() {
-    if (window.scrollY > TOP_THRESHOLD) {
-      document.body.classList.remove('is-top');
-      window.removeEventListener('scroll', onScroll);
-    }
-  }
-
-  if (window.scrollY <= TOP_THRESHOLD) {
-    document.body.classList.add('is-top');
-    window.addEventListener('scroll', onScroll, { passive: true });
-  } else {
-    document.body.classList.remove('is-top');
-  }
-})();
-
 (function (global) {
   var contentEl = document.getElementById('content');
   if (!contentEl) return;

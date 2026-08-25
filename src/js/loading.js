@@ -48,8 +48,9 @@
         window.__loaderShowIcon = function () {
           var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10);
           var idx = ((counter % files.length) + files.length) % files.length;
-          var rawSrc = '../assets/Image/LoadingIcon/' + files[idx];
-          var src = window.resolveAssetUrl ? window.resolveAssetUrl(rawSrc) : rawSrc;
+          // served from the origin, not R2 (see theme.js's isLocal exception
+          // for the same reasoning) — src/offline_src/LoadingLogo/
+          var src = '../offline_src/LoadingLogo/' + files[idx];
           iconEl.style.backgroundImage = 'url("' + src + '")';
         };
         window.__loaderShowIcon();

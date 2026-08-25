@@ -362,8 +362,14 @@
   line-height: 1.6;
   color: rgba(0, 0, 0, 0.55);
 }
+/* 사이드바 로그인 버튼(민트 알약, src/css/layout/sidebar.css)과 색을 맞춤 */
 .bkm-login-gate-btn {
   margin-top: 8px;
+  color: #000000;
+  background: #00ffcc;
+}
+.bkm-login-gate-btn:hover {
+  background: #00e6b8;
 }
 
 /* 북마크 상세 — 타입 필터 칩 */

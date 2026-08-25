@@ -32,6 +32,9 @@ body.is-top .header-logo {
   width: 100%;
   margin: 0 auto;
   padding: 10px var(--content-padding);
+  /* padding-top is set inline by mainPage.js to clear the hero logo
+     (body.is-top) and eased back to 0 once you scroll past it */
+  transition: padding-top 0.4s ease;
 }
 
 .recent {

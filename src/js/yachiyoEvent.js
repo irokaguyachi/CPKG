@@ -3,7 +3,7 @@
 
   // Local-only easter egg. Click the locked "번역" nav link — cumulative
   // clicks (persisted in localStorage) hit five milestones, each popping
-  // Yachiyo (src/img/ForEvent/yachiyo.png — not part of the deploy
+  // Yachiyo (src/offline_src/ForEvent/yachiyo.png — not part of the deploy
   // pipeline) in from the side with one of the dialogue1..dialogue5 arrays
   // from src/data/ForEvent/YachiyoDialogue.json. A full-page overlay blocks
   // every other click on the site for as long as she's on screen; lines
@@ -62,7 +62,7 @@
     wrap.className = 'yachiyo-event';
     wrap.innerHTML =
       '<div class="yachiyo-event-bubble"></div>' +
-      '<img class="yachiyo-event-img" src="../img/ForEvent/yachiyo.png" alt="야치요" />';
+      '<img class="yachiyo-event-img" src="../offline_src/ForEvent/yachiyo.png" alt="야치요" />';
     var bubble = wrap.querySelector('.yachiyo-event-bubble');
     var img = wrap.querySelector('.yachiyo-event-img');
 

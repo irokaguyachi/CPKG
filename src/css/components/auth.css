@@ -212,6 +212,16 @@
   background: #2058c9;
 }
 
+/* 사이트 버전 표시 (src/js/auth.js) — 로그인/개인 코드 관리 버튼 바로
+   아래에 붙는다. */
+.auth-version-tag {
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.4);
+}
+
 /* 클라우드 동기화 버튼 (src/js/auth.js) — 로그인 버튼 바로 아래에 붙는다.
    자동 동기화가 없으므로(userData.js) 이건 상태 표시가 아니라 눌러야
    동작하는 버튼이다. 사이드바의 .header-nav 가 세로 flex 라 줄바꿈 걱정

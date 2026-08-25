@@ -67,3 +67,17 @@ body.is-top .site-info {
     line-height: 32px;
   }
 }
+
+/* 북마크 페이지: bookmarksPage.js 가 탭 전환마다 이 안의 텍스트를 계속
+   갱신하므로 요소 자체는 남겨두고 화면에서만(공간까지) 없앤다. */
+.site-info--hidden {
+  display: none !important;
+}
+
+/* body.is-top(히어로 로고 확대) 상태일 때만 src/js/heroLogo.js 가 채우는
+   빈 spacer. 로고 위쪽 여백과 대칭이 되도록 height 를 실측해서 넣고,
+   스크롤하면 0으로 줄어들며 자연스럽게 접힌다. */
+.hero-space {
+  height: 0;
+  transition: height 0.4s ease;
+}
