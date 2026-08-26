@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-import re, glob, json, os, sys
+import re, glob, json, os, sys, time
+import requests
+from bs4 import BeautifulSoup
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -24,6 +26,81 @@ all_entries = []
 tag_counter = {}
 series_counter = {}
 fail_blocks = []
+
+# ---- 첨부 사진 다운로드 ----
+# "첨부 사진" 필드에는 이미 저장될 경로(예: 사진/2026-08-23/295464_1.jpg)가
+# 적혀 있지만, 지금까지 이 스크립트는 그 문자열만 옮겨 적었을 뿐 실제 파일을
+# 받아온 적이 없었다(저장소에 사진/ 폴더 자체가 없음). crawl_translations.py가
+# 쓰는 방식(모바일 페이지 파싱 + Referer 헤더)을 그대로 따라 여기서도 받는다.
+# 이미 받아둔 파일(0바이트 아님)은 건너뛰므로 재실행해도 새 글만 받는다.
+PHOTO_SESSION = requests.Session()
+PHOTO_SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+})
+IMAGE_DOWNLOAD_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36",
+}
+photo_stats = {"skipped": 0, "downloaded": 0, "failed": 0, "no_images_found": 0}
+
+
+def fetch_post_html(post_id, retries=3, delay=1.2):
+    url = f"https://m.dcinside.com/board/chokaguyahime/{post_id}"
+    for attempt in range(retries):
+        try:
+            resp = PHOTO_SESSION.get(url, timeout=15)
+            if resp.status_code == 200 and resp.text:
+                return resp.text
+        except Exception:
+            pass
+        time.sleep(delay * (attempt + 1))
+    return ""
+
+
+def download_attached_photos(post_id, photo_field):
+    """'첨부 사진' 필드에 이미 적힌 상대경로 그대로 실제 파일을 받는다."""
+    if not photo_field or photo_field == "없음":
+        return
+    targets = [(p.strip(), os.path.join(BASE, p.strip()))
+               for p in photo_field.split(",") if p.strip()]
+    if all(os.path.exists(path) and os.path.getsize(path) > 0 for _, path in targets):
+        photo_stats["skipped"] += len(targets)
+        return
+
+    html = fetch_post_html(post_id)
+    soup = BeautifulSoup(html, "html.parser")
+    body_el = soup.select_one("div.thum-txt") or soup.select_one("div.writing_view_box")
+    img_urls = []
+    if body_el:
+        for img in body_el.select("img"):
+            src = img.get("data-original") or img.get("src")
+            if src and "gallview_loading" not in src:
+                img_urls.append(src)
+
+    if not img_urls:
+        photo_stats["no_images_found"] += 1
+        return
+
+    referer = f"https://m.dcinside.com/board/chokaguyahime/{post_id}"
+    # 페이지에서 찾은 이미지 순서를 파일명의 _1, _2... 순서와 그대로 맞춘다
+    # (crawl_translations.py도 같은 순서 가정을 씀 — 다만 거긴 첫 장만 받음).
+    for (rel_path, local_path), img_url in zip(targets, img_urls):
+        if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+            photo_stats["skipped"] += 1
+            continue
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        try:
+            resp = requests.get(img_url, headers={**IMAGE_DOWNLOAD_HEADERS, "Referer": referer}, timeout=20)
+            if resp.status_code == 200 and resp.content:
+                with open(local_path, "wb") as f:
+                    f.write(resp.content)
+                photo_stats["downloaded"] += 1
+            else:
+                photo_stats["failed"] += 1
+        except Exception as e:
+            print(f"   [!] 이미지 다운로드 실패 [{post_id}]: {img_url} ({e})")
+            photo_stats["failed"] += 1
+    time.sleep(1.2)
 
 
 def parse_block(pid, title, block, source):
@@ -144,6 +221,15 @@ for t, c in sorted(tag_counter.items(), key=lambda x: -x[1]):
     print(f"  {t}: {c}")
 
 deduped.sort(key=lambda e: -e["id"])
+
+print("\n=== 첨부 사진 다운로드 ===")
+to_download = [e for e in deduped if e.get("photo") and e["photo"] != "없음"]
+print(f"사진 첨부된 글: {len(to_download)}개")
+for i, e in enumerate(to_download, 1):
+    download_attached_photos(e["id"], e["photo"])
+    if i % 50 == 0 or i == len(to_download):
+        print(f"  진행: {i}/{len(to_download)}  {photo_stats}")
+print("사진 다운로드 결과:", photo_stats)
 
 out_path = os.path.join(os.path.dirname(__file__), "crawl_entries.json")
 with open(out_path, "w", encoding="utf-8") as f:
