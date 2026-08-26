@@ -16,6 +16,19 @@
     return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;
   }
 
+  // loading.js(전체 화면 로더 아이콘)와 gridPage.js(미니 로딩 스피너)가
+  // 같은 LoadingIcons.json을 각자 fetch하고 있었다 — 페이지당 왕복 하나가
+  // 그냥 중복이었다. 같은 URL을 요청한 첫 호출의 프라미스를 그대로
+  // 돌려줘서 두 번째 호출부터는 새 네트워크 요청을 만들지 않는다.
+  var jsonCache = {};
+  function fetchJsonCached(path) {
+    var url = dataUrl(path);
+    if (!jsonCache[url]) {
+      jsonCache[url] = fetch(url).then(function (r) { return r.json(); });
+    }
+    return jsonCache[url];
+  }
+
   function resolveAssetUrl(path) {
     if (!path) return '';
     if (/^https?:\/\//i.test(path) || path.startsWith('data:')) {
@@ -117,6 +130,7 @@
   global.resolveAssetUrl = resolveAssetUrl;
   global.resolveThumbUrl = resolveThumbUrl;
   global.dataUrl = dataUrl;
+  global.fetchJsonCached = fetchJsonCached;
   global.DATA_VERSION = DATA_VERSION;
   global.R2_CDN_BASE = R2_CDN_BASE;
   global.lazyLoadBackground = lazyLoadBackground;

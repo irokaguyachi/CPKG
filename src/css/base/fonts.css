@@ -8,11 +8,12 @@
     차지한 채 매 배포마다 업로드되고 있어서 삭제했다. OFL 라이선스 파일은
     파생물인 이 서브셋 옆 Pretendard-dynamic/LICENSE.txt 로 옮겼다.)
 
-   ⚠️ @import 라서 이 파일이 파싱된 뒤에야 92개 @font-face 가 발견된다.
-      CSS 왕복이 한 단계 늘어나는 건 알고 있는 트레이드오프이고,
-      common.css 의 @import 폭포수를 빌드로 합칠 때(T5) 같이 없어진다. */
-@import url("../../fonts/Pretendard-dynamic/pretendardvariable-dynamic-subset.css");
-
+   서브셋 자체는 더 이상 여기서 @import 하지 않는다 — @import는 부모 CSS가
+   파싱된 뒤에야 자식이 발견되는 직렬 요청이라, 92개 @font-face의 다운로드
+   시작이 한 왕복 늦어졌었다(콜드 로드 전송량의 93%가 폰트인데 가장 늦게
+   출발하는 구조였다). 각 페이지 HTML이 pretendardvariable-dynamic-subset.css를
+   이 파일과 나란히 직접 <link>해서 병렬로 받도록 바꿨다 — 이 파일은 이제
+   CCElephantmen @font-face 하나만 남는다. */
 @font-face {
   font-family: "CCElephantmen";
   src: url("../../fonts/CCElephantmen Italic/CCElephantmen Italic.woff2") format("woff2"),

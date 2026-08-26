@@ -137,13 +137,13 @@
 
     // versioned URL so the browser may cache these normally (see cdnConfig.js)
     var DATA = global.dataUrl || function (p) { return p; };
+    var fetchJson = global.fetchJsonCached || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
     // MiniLoading (Figma #2183:2) reuses the same mascot gifs as the full-page
     // loader — pick a random one per sentinel instead of the counter-based
     // rotation loading.js uses for the intro screen
     var miniLoadingIcons = [];
-    fetch(DATA('../data/LoadingIcons.json'))
-      .then(function (r) { return r.json(); })
+    fetchJson('../data/LoadingIcons.json')
       .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })
       .catch(function () {});
 

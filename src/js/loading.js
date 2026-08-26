@@ -3,6 +3,7 @@
   var iconEl = document.getElementById('loader-icon');
   // versioned URL so the browser may cache these normally (see cdnConfig.js)
   var DATA = window.dataUrl || function (p) { return p; };
+  var fetchJson = window.fetchJsonCached || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
   if (tipEl) {
     fetch(DATA('../data/Tip.json'))
@@ -38,8 +39,7 @@
   }
 
   if (iconEl) {
-    fetch(DATA('../data/LoadingIcons.json'))
-      .then(function (r) { return r.json(); })
+    fetchJson('../data/LoadingIcons.json')
       .then(function (files) {
         if (!Array.isArray(files) || !files.length) return;
         // shows one icon per loading occurrence (not a timed cycle); the
