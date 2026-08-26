@@ -38,7 +38,7 @@
   color: #000000;
   cursor: pointer;
   outline: none;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.25s var(--ease-out-site);
 }
 .sidebar-toggle-btn:hover {
   transform: translateY(-50%) translateY(-3px) scale(1.05);
@@ -96,7 +96,7 @@
   transform: translateX(100%);
   visibility: hidden;
   pointer-events: none;
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.3s ease;
+  transition: transform 0.3s var(--ease-out-site), visibility 0.3s ease;
 }
 .sidebar.is-open {
   transform: translateX(0);

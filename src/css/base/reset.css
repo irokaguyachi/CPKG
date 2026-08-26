@@ -1,6 +1,13 @@
 :root {
   --content-max-width: 1360px;
   --content-padding: 24px;
+
+  /* 테마와 무관하게 항상 같은 값 — 라이트/다크 어디서도 안 바뀐다.
+     border-radius: 999px 이 23곳, cubic-bezier(0.22, 1, 0.36, 1) 이 21곳,
+     #2f6fed 이 17곳(모두 같은 값)에 손으로 복사돼 있던 것을 여기 하나로 모았다. */
+  --radius-pill: 999px;
+  --ease-out-site: cubic-bezier(0.22, 1, 0.36, 1);
+  --accent: #2f6fed;
 }
 
 * {
@@ -47,7 +54,7 @@ body {
 
 *::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.25);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 *::-webkit-scrollbar-thumb:hover {

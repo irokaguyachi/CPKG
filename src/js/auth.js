@@ -20,50 +20,30 @@
 (function (global) {
   var SITE_VERSION = 'v0.0';
   var manageEl = null;
-  var manageBound = false;
+
+  // popoverKit.js — bookmarkPicker.js/bookmarksPage.js와 동일한 앵커
+  // 팝오버 메커니즘(싱글턴 + 바깥클릭/Escape로 닫힘 + 뷰포트 클램프).
+  var managePopover = global.PopoverKit.createPopover('bkm-picker auth-manage-panel', 280);
 
   function ensureManagePanel() {
-    if (manageEl) return manageEl;
-    manageEl = document.createElement('div');
-    manageEl.className = 'bkm-picker auth-manage-panel';
-    manageEl.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.body.appendChild(manageEl);
-    if (!manageBound) {
-      document.addEventListener('click', closeManagePanel);
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeManagePanel();
-      });
-      manageBound = true;
-    }
+    manageEl = managePopover.ensure();
     return manageEl;
   }
 
   function closeManagePanel() {
-    if (manageEl) manageEl.classList.remove('is-open');
+    managePopover.close();
   }
 
   function positionManagePanel(anchorEl) {
-    var rect = anchorEl.getBoundingClientRect();
-    var panelW = manageEl.offsetWidth || 280;
-    var left = Math.max(8, Math.min(rect.right - panelW, global.innerWidth - panelW - 8));
-    var top = Math.min(rect.bottom + 8, global.innerHeight - 8);
-    manageEl.style.left = Math.round(left) + 'px';
-    manageEl.style.top = Math.round(top) + 'px';
+    managePopover.position(anchorEl);
   }
 
   function panelHeader(text) {
-    var header = document.createElement('div');
-    header.className = 'sfp-header';
-    header.textContent = text;
-    return header;
+    return global.PopoverKit.header(text);
   }
 
   function panelButton(label, variant) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'bkm-share-btn' + (variant ? ' ' + variant : '');
-    btn.textContent = label;
-    return btn;
+    return global.PopoverKit.button(label, variant);
   }
 
   function openManagePanel(anchorEl) {

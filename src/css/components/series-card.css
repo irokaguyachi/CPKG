@@ -40,7 +40,7 @@
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease;
 }
 .series-card:hover {
   transform: translateY(-8px);
@@ -131,7 +131,7 @@
   font-size: 12px;
   font-weight: 600;
   color: #2c2d30;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 

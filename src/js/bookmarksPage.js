@@ -144,55 +144,31 @@
   }
 
   // ---- 공개(공유) 패널 ----
-  // bookmarkPicker.js 의 팝오버와 같은 이유로 body 싱글턴 + position:fixed 다
-  // (.series-card 의 overflow:hidden 이 카드 밖 절대배치 자식을 잘라버림).
-  // 다만 내용이 체크리스트가 아니라 버튼 두어 개뿐이라 그 모듈을 재사용하지
-  // 않고 여기서 최소한으로 구현한다.
+  // bookmarkPicker.js/auth.js와 같은 앵커 팝오버 메커니즘(싱글턴 +
+  // 바깥클릭/Escape로 닫힘 + 뷰포트 클램프) — popoverKit.js가 담당하고,
+  // 여기는 내용(버튼 두어 개)만 그린다.
   var sharePanelEl = null;
-  var sharePanelBound = false;
+  var sharePanel = global.PopoverKit.createPopover('bkm-picker bkm-share-panel', 280);
 
   function ensureSharePanel() {
-    if (sharePanelEl) return sharePanelEl;
-    sharePanelEl = document.createElement('div');
-    sharePanelEl.className = 'bkm-picker bkm-share-panel';
-    sharePanelEl.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.body.appendChild(sharePanelEl);
-    if (!sharePanelBound) {
-      document.addEventListener('click', closeSharePanel);
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeSharePanel();
-      });
-      sharePanelBound = true;
-    }
+    sharePanelEl = sharePanel.ensure();
     return sharePanelEl;
   }
 
   function closeSharePanel() {
-    if (sharePanelEl) sharePanelEl.classList.remove('is-open');
+    sharePanel.close();
   }
 
   function positionSharePanel(anchorEl) {
-    var rect = anchorEl.getBoundingClientRect();
-    var panelW = sharePanelEl.offsetWidth || 280;
-    var left = Math.max(8, Math.min(rect.right - panelW, global.innerWidth - panelW - 8));
-    var top = Math.min(rect.bottom + 8, global.innerHeight - 8);
-    sharePanelEl.style.left = Math.round(left) + 'px';
-    sharePanelEl.style.top = Math.round(top) + 'px';
+    sharePanel.position(anchorEl);
   }
 
   function sharePanelHeader(text) {
-    var header = document.createElement('div');
-    header.className = 'sfp-header';
-    header.textContent = text;
-    return header;
+    return global.PopoverKit.header(text);
   }
 
   function sharePanelButton(label, variant) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'bkm-share-btn' + (variant ? ' ' + variant : '');
-    btn.textContent = label;
-    return btn;
+    return global.PopoverKit.button(label, variant);
   }
 
   function sharePanelNote(text) {
@@ -386,7 +362,7 @@
       input.type = 'text';
       input.className = 'bkm-share-code';
       input.value = bookmark.name;
-      input.maxLength = 40;
+      input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
       panel.appendChild(input);
 
       var saveBtn = sharePanelButton('저장', 'is-primary');
@@ -498,7 +474,7 @@
     newInput.type = 'text';
     newInput.className = 'bkm-inline-create-input';
     newInput.placeholder = '새 북마크 이름';
-    newInput.maxLength = 40;
+    newInput.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
     var newBtn = document.createElement('button');
     newBtn.type = 'button';
     newBtn.className = 'bkm-inline-create-btn';
@@ -780,7 +756,45 @@
   }
 
   // ---- 라이브러리 상세 모드 ----
-  var TYPE_LABELS = { novel: '문학', series: '시리즈', hof: '명예관', official: '공식' };
+  // libraryConfig.js — worker의 LIBRARY_ITEM_TYPES와 짝을 맞춰야 하는 값이라 옮김
+  var TYPE_LABELS = global.LibraryConfig.TYPE_LABELS;
+
+  // renderLibraryDetail(남의 공개 북마크, 읽기 전용)과 renderDetail(내
+  // 북마크, 항목 해제 가능)이 타입별 개수 세기와 필터 칩 바를 완전히
+  // 동일한 코드로 각자 구현하고 있었다 — 그 두 조각만 여기로 뽑았다.
+  // 카드 렌더링/빈 상태 문구/개수 문구는 두 화면이 실제로 다르므로
+  // (예: 항목 해제 가능 여부, "공개돼 있어요" vs "있어요!") 그대로 각자 둔다.
+  function countOfType(resolved, type) {
+    if (type === 'all') return resolved.length;
+    var n = 0;
+    for (var i = 0; i < resolved.length; i++) if (resolved[i].type === type) n++;
+    return n;
+  }
+
+  // state: 호출부가 들고 있는 { activeType } — 칩 클릭 시 여기 값을 바꾸고
+  // onSelect 를 부른다. 호출부의 renderGrid/updateCount/showEmptyIfNeeded도
+  // 같은 state.activeType 을 읽어야 필터가 맞물린다.
+  function renderTypeChips(chipBar, state, countOf, onSelect) {
+    chipBar.innerHTML = '';
+    var types = ['all'].concat(Object.keys(TYPE_LABELS).filter(function (t) {
+      return countOf(t) > 0;
+    }));
+    if (state.activeType !== 'all' && types.indexOf(state.activeType) === -1) state.activeType = 'all';
+
+    types.forEach(function (t) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'bkm-chip' + (t === state.activeType ? ' is-active' : '');
+      chip.textContent = (t === 'all' ? '전체' : TYPE_LABELS[t]) + ' ' + countOf(t);
+      chip.addEventListener('click', function () {
+        if (state.activeType === t) return;
+        state.activeType = t;
+        onSelect();
+      });
+      chipBar.appendChild(chip);
+    });
+    chipBar.hidden = types.length <= 2;
+  }
 
   function renderLibraryDetail(code) {
     setTitle('북마크 라이브러리');
@@ -805,7 +819,7 @@
     grid.className = 'series-grid';
     contentEl.appendChild(grid);
 
-    var activeType = 'all';
+    var state = { activeType: 'all' };
 
     Promise.all([global.BookmarkLibrary.getOne(code), loadItemLookup()])
       .then(function (results) {
@@ -822,17 +836,12 @@
           if (s) resolved.push({ type: entry.type, data: s });
         });
 
-        function countOf(type) {
-          if (type === 'all') return resolved.length;
-          var n = 0;
-          for (var i = 0; i < resolved.length; i++) if (resolved[i].type === type) n++;
-          return n;
-        }
+        function countOf(type) { return countOfType(resolved, type); }
 
         function updateCount() {
-          countEl.textContent = activeType === 'all'
+          countEl.textContent = state.activeType === 'all'
             ? resolved.length + '개의 항목이 공개돼 있어요!'
-            : countOf(activeType) + '개의 ' + TYPE_LABELS[activeType] + ' 항목';
+            : countOf(state.activeType) + '개의 ' + TYPE_LABELS[state.activeType] + ' 항목';
         }
 
         function showEmptyIfNeeded() {
@@ -840,7 +849,7 @@
           var empty = document.createElement('p');
           empty.className = 'series-empty';
           empty.textContent = resolved.length
-            ? (TYPE_LABELS[activeType] || '') + ' 항목이 없어요.'
+            ? (TYPE_LABELS[state.activeType] || '') + ' 항목이 없어요.'
             : '이 북마크에는 볼 수 있는 항목이 없어요.';
           grid.appendChild(empty);
         }
@@ -848,7 +857,7 @@
         function renderGrid() {
           grid.innerHTML = '';
           var shown = resolved.filter(function (r) {
-            return activeType === 'all' || r.type === activeType;
+            return state.activeType === 'all' || r.type === state.activeType;
           });
           // 카드의 북마크 버튼은 opts 없이 붙는다 — 그러면 BookmarkPicker 가
           // 기본 동작(내 북마크에 담기)을 하므로, 마음에 드는 항목을 바로
@@ -860,27 +869,11 @@
         }
 
         function updateChips() {
-          chipBar.innerHTML = '';
-          var types = ['all'].concat(Object.keys(TYPE_LABELS).filter(function (t) {
-            return countOf(t) > 0;
-          }));
-          if (activeType !== 'all' && types.indexOf(activeType) === -1) activeType = 'all';
-
-          types.forEach(function (t) {
-            var chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'bkm-chip' + (t === activeType ? ' is-active' : '');
-            chip.textContent = (t === 'all' ? '전체' : TYPE_LABELS[t]) + ' ' + countOf(t);
-            chip.addEventListener('click', function () {
-              if (activeType === t) return;
-              activeType = t;
-              updateChips();
-              updateCount();
-              renderGrid();
-            });
-            chipBar.appendChild(chip);
+          renderTypeChips(chipBar, state, countOf, function () {
+            updateChips();
+            updateCount();
+            renderGrid();
           });
-          chipBar.hidden = types.length <= 2;
         }
 
         updateChips();
@@ -947,7 +940,7 @@
     grid.className = 'series-grid';
     contentEl.appendChild(grid);
 
-    var activeType = 'all';
+    var state = { activeType: 'all' };
 
     loadItemLookup().then(function (byId) {
       // 실제로 데이터에서 찾아진 항목만 대상으로 삼는다 (원본이 사라진
@@ -958,17 +951,12 @@
         if (s) resolved.push({ type: entry.type, data: s });
       });
 
-      function countOf(type) {
-        if (type === 'all') return resolved.length;
-        var n = 0;
-        for (var i = 0; i < resolved.length; i++) if (resolved[i].type === type) n++;
-        return n;
-      }
+      function countOf(type) { return countOfType(resolved, type); }
 
       function renderGrid() {
         grid.innerHTML = '';
         var shown = resolved.filter(function (r) {
-          return activeType === 'all' || r.type === activeType;
+          return state.activeType === 'all' || r.type === state.activeType;
         });
 
         shown.forEach(function (r) {
@@ -983,10 +971,10 @@
               // 마지막 항목을 지워 그 타입 칩이 사라지면 updateChips 가
               // activeType 을 'all' 로 되돌린다 — 이때는 필터가 바뀐 것이므로
               // 그리드를 다시 그려야 남은 다른 타입 카드들이 나타난다
-              var prevType = activeType;
+              var prevType = state.activeType;
               updateChips();
               updateCount();
-              if (activeType !== prevType) renderGrid();
+              if (state.activeType !== prevType) renderGrid();
               else showEmptyIfNeeded();
             }
           });
@@ -1001,41 +989,23 @@
         var empty = document.createElement('p');
         empty.className = 'series-empty';
         empty.textContent = resolved.length
-          ? (TYPE_LABELS[activeType] || '') + ' 항목이 없어요.'
+          ? (TYPE_LABELS[state.activeType] || '') + ' 항목이 없어요.'
           : '이 북마크에는 아직 항목이 없어요.';
         grid.appendChild(empty);
       }
 
       function updateCount() {
-        countEl.textContent = activeType === 'all'
+        countEl.textContent = state.activeType === 'all'
           ? resolved.length + '개의 항목이 있어요!'
-          : countOf(activeType) + '개의 ' + TYPE_LABELS[activeType] + ' 항목';
+          : countOf(state.activeType) + '개의 ' + TYPE_LABELS[state.activeType] + ' 항목';
       }
 
       function updateChips() {
-        chipBar.innerHTML = '';
-        var types = ['all'].concat(Object.keys(TYPE_LABELS).filter(function (t) {
-          return countOf(t) > 0;   // 비어 있는 타입은 칩 자체를 숨긴다
-        }));
-        // 지금 보고 있던 타입이 비었으면 전체로 되돌린다
-        if (activeType !== 'all' && types.indexOf(activeType) === -1) activeType = 'all';
-
-        types.forEach(function (t) {
-          var chip = document.createElement('button');
-          chip.type = 'button';
-          chip.className = 'bkm-chip' + (t === activeType ? ' is-active' : '');
-          chip.textContent = (t === 'all' ? '전체' : TYPE_LABELS[t]) + ' ' + countOf(t);
-          chip.addEventListener('click', function () {
-            if (activeType === t) return;
-            activeType = t;
-            updateChips();
-            updateCount();
-            renderGrid();
-          });
-          chipBar.appendChild(chip);
+        renderTypeChips(chipBar, state, countOf, function () {
+          updateChips();
+          updateCount();
+          renderGrid();
         });
-        // 타입이 한 종류뿐이면 굳이 칩을 보여줄 필요가 없다
-        chipBar.hidden = types.length <= 2;
       }
 
       updateChips();

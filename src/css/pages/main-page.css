@@ -64,7 +64,7 @@ body.is-top .header-logo {
 .content-heading-arrow {
   width: 10px;
   height: 16px;
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.2s var(--ease-out-site);
 }
 .content-heading:hover .content-heading-arrow {
   transform: translateX(4px);
@@ -88,7 +88,7 @@ body.is-top .header-logo {
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, opacity 0.3s ease;
+  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease, opacity 0.3s ease;
 }
 .post-row:hover {
   transform: translateY(-4px);
@@ -238,7 +238,7 @@ body.is-top .header-logo {
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
   text-decoration: none;
   text-align: center;
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+  transition: transform 0.2s var(--ease-out-site), box-shadow 0.2s ease;
 }
 .report-button:hover {
   transform: translateY(-4px);
