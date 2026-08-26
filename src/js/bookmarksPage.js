@@ -20,6 +20,27 @@
     { type: 'official', dataUrl: '../data/PageData/Official.json' }
   ];
 
+  // ---- 이 페이지 안에서만 쓰는 라우팅 + 캐시 ----
+  // "내 북마크"/"라이브러리" 탭, 목록/상세 전환이 전부 <a href="bookmarksPage.html?...">
+  // 진짜 페이지 이동이었다 — 왔다갔다할 때마다 로더 애니메이션이 다시 재생되고,
+  // 라이브러리 쪽은 서버 요청도 매번 새로 나갔다. pushState + 다시 그리기로
+  // 바꾸고, 서버에서 받은 것들은 이 세션(페이지를 안 벗어나는 동안) 안에서
+  // 재사용한다.
+  var itemLookupPromise = null;   // PageData 4개(~805KB) — 상세를 몇 번 열어도 1회만
+  var libraryListCache = null;    // 라이브러리 목록 — 탭을 오갈 때 재요청 방지
+  var libraryDetailCache = {};    // code -> 라이브러리 상세 Promise
+
+  function navigate(url) {
+    global.history.pushState(null, '', url);
+    // 원래는(진짜 페이지 이동이었을 때) 새로고침 자체가 사이드바를 닫힌
+    // 상태로 되돌렸다 — pushState로 안 바뀌므로 여기서 직접 닫아준다
+    // (loading.js의 같은-페이지 링크 보호 로직이 하던 것과 동일).
+    if (global.Sidebar && typeof global.Sidebar.close === 'function') {
+      global.Sidebar.close();
+    }
+    renderCurrentView();
+  }
+
   var KEBAB_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>';
   var SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>';
   var DELETE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>';
@@ -48,11 +69,16 @@
   // 상세 모드(내 북마크 / 라이브러리)가 공통으로 쓰는 조회맵 로더 —
   // PageData 4개를 병렬로 받아 { type: { 대표게시물id: 항목 } } 로 만든다.
   function loadItemLookup() {
+    // 상세를 여러 번 열어도(내 북마크든 라이브러리든) 이 세션 안에서는
+    // PageData 4개를 한 번만 받는다 — 개별 fetch가 이미 실패를 빈 배열로
+    //삼키므로(catch) 이 Promise는 사실상 항상 resolve된다.
+    if (itemLookupPromise) return itemLookupPromise;
+
     var fetches = SECTIONS.map(function (section) {
       return fetch(DATA(section.dataUrl)).then(function (r) { return r.json(); }).catch(function () { return []; });
     });
 
-    return Promise.all(fetches).then(function (results) {
+    itemLookupPromise = Promise.all(fetches).then(function (results) {
       var byId = {};
       SECTIONS.forEach(function (section, i) {
         var items = Array.isArray(results[i]) ? results[i] : [];
@@ -65,6 +91,7 @@
       });
       return byId;
     });
+    return itemLookupPromise;
   }
 
   // 목록 모드 상단의 "내 북마크 | 북마크 라이브러리" 알약 토글
@@ -248,6 +275,8 @@
             // 시점의 스냅샷이라 따로 갱신 안 하면 이 화면 안에서는 여전히
             // "공개 안 됨"으로 보인다.
             bookmark.publishedCode = data.code;
+            // 방금 공개한 게 라이브러리 탭에 바로 보여야 하니 캐시를 비운다
+            libraryListCache = null;
             renderPublishedResult(panel, data.code);
             positionSharePanel(anchorEl);
             if (onStateChange) onStateChange();
@@ -298,6 +327,9 @@
         global.BookmarkLibrary.update(publishedCode, { name: bookmark.name, items: bookmark.items })
           .then(function () {
             updateBtn.textContent = '업데이트 완료!';
+            // 이름/항목이 바뀌었으니 목록·상세 캐시 둘 다 낡은 값이다
+            libraryListCache = null;
+            delete libraryDetailCache[publishedCode];
           })
           .catch(function (err) {
             updateBtn.disabled = false;
@@ -324,6 +356,9 @@
           .then(function () {
             global.Bookmarks.setPublishedCode(bookmark.id, null);
             bookmark.publishedCode = null;
+            // 목록에서 빠져야 하고, 상세는 더 이상 존재하지 않는다
+            libraryListCache = null;
+            delete libraryDetailCache[publishedCode];
             closeSharePanel();
             if (onStateChange) onStateChange();
           })
@@ -394,7 +429,11 @@
     deleteBtn.addEventListener('click', function () {
       if (!global.confirm('"' + bookmark.name + '" 북마크를 삭제할까요?')) return;
       var publishedCode = getPublishedCode(bookmark);
-      if (publishedCode) global.BookmarkLibrary.unpublish(publishedCode).catch(function () {});
+      if (publishedCode) {
+        global.BookmarkLibrary.unpublish(publishedCode).catch(function () {});
+        libraryListCache = null;
+        delete libraryDetailCache[publishedCode];
+      }
       global.Bookmarks.deleteBookmark(bookmark.id);
       closeSharePanel();
       if (callbacks.onDeleted) callbacks.onDeleted();
@@ -552,7 +591,11 @@
         e.stopPropagation();
         if (!global.confirm('"' + bookmark.name + '" 북마크를 삭제할까요?')) return;
         var publishedCode = getPublishedCode(bookmark);
-        if (publishedCode) global.BookmarkLibrary.unpublish(publishedCode).catch(function () {});
+        if (publishedCode) {
+          global.BookmarkLibrary.unpublish(publishedCode).catch(function () {});
+          libraryListCache = null;
+          delete libraryDetailCache[publishedCode];
+        }
         global.Bookmarks.deleteBookmark(bookmark.id);
         card.remove();
         countEl.textContent = global.Bookmarks.getAllBookmarks().length + '개의 북마크가 있습니다!';
@@ -563,7 +606,7 @@
       card.appendChild(right);
 
       card.addEventListener('click', function () {
-        global.location.href = 'bookmarksPage.html?id=' + encodeURIComponent(bookmark.id);
+        navigate('bookmarksPage.html?id=' + encodeURIComponent(bookmark.id));
       });
 
       return card;
@@ -591,7 +634,6 @@
   function renderLibraryList() {
     setTitle('북마크 라이브러리');
     subEl.textContent = '다른 사람들이 공개한 북마크를 둘러보세요';
-    countEl.textContent = '불러오는 중...';
 
     contentEl.innerHTML = '';
     contentEl.appendChild(createTabs('library'));
@@ -630,7 +672,7 @@
       card.appendChild(count);
 
       card.addEventListener('click', function () {
-        global.location.href = 'bookmarksPage.html?libraryId=' + encodeURIComponent(entry.code);
+        navigate('bookmarksPage.html?libraryId=' + encodeURIComponent(entry.code));
       });
 
       return card;
@@ -639,9 +681,12 @@
     // 서버가 전체를 훑어 정렬·검색한 뒤 잘라주므로 offset 페이징을 쓴다
     // (정렬이 바뀌면 커서가 의미를 잃는다 — worker/favoritesShareWorker.js 참고).
     var LIB_PAGE = 20;
-    var libSort = 'new';
-    var libQuery = '';
+    // 탭을 나갔다 돌아왔을 때 마지막으로 보던 정렬/검색을 그대로 이어가려고
+    // libraryListCache 에서 초기값을 가져온다(없으면 기본값).
+    var libSort = (libraryListCache && libraryListCache.sort) || 'new';
+    var libQuery = (libraryListCache && libraryListCache.query) || '';
     var libOffset = 0;
+    var loadedItems = [];
     var searchTimer = null;
     // 빠르게 입력하면 이전 요청이 늦게 도착해 목록을 덮어쓰거나 '더 보기'
     // 버튼을 중복으로 붙일 수 있어, 세대 번호로 낡은 응답을 버린다
@@ -655,6 +700,7 @@
     searchInput.className = 'bkm-inline-create-input bkm-library-search';
     searchInput.placeholder = '북마크 이름으로 검색';
     searchInput.autocomplete = 'off';
+    searchInput.value = libQuery;
 
     var sortSelect = document.createElement('select');
     sortSelect.className = 'bkm-library-sort';
@@ -664,6 +710,7 @@
       o.textContent = opt[1];
       sortSelect.appendChild(o);
     });
+    sortSelect.value = libSort;
 
     toolbar.appendChild(searchInput);
     toolbar.appendChild(sortSelect);
@@ -676,10 +723,11 @@
 
     function resetAndLoad() {
       libOffset = 0;
+      loadedItems = [];
       grid.innerHTML = '';
       clearLoadMore();
       countEl.textContent = '불러오는 중...';
-      loadPage(null, null);
+      loadPage();
     }
 
     searchInput.addEventListener('input', function () {
@@ -692,54 +740,65 @@
       resetAndLoad();
     });
 
-    function loadPage(_ignored, loadMoreBtn) {
+    // 새로 받아온 페이지(또는 캐시에서 복원한 페이지)를 그리고, 이 세션의
+    // 최신 상태로 libraryListCache 를 갱신한다 — 다음에 이 탭에 다시
+    // 들어오면(정렬/검색이 그대로라면) 여기서 그린 결과를 그대로 재사용한다.
+    function renderPage(items, data) {
+      items.forEach(function (entry) { grid.appendChild(createLibraryCard(entry)); });
+      loadedItems = loadedItems.concat(items);
+      libOffset += items.length;
+      total = data.total || 0;
+
+      if (libQuery) {
+        countEl.textContent = total
+          ? '"' + libQuery + '" 검색 결과 ' + total + '개'
+          : '"' + libQuery + '" 검색 결과가 없어요';
+      } else {
+        countEl.textContent = total + '개의 공개 북마크가 있어요!';
+      }
+
+      clearLoadMore();
+
+      if (data.hasMore) {
+        var moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'bkm-load-more';
+        moreBtn.textContent = '더 보기 (' + libOffset + '/' + total + ')';
+        moreBtn.addEventListener('click', function () {
+          moreBtn.disabled = true;
+          moreBtn.textContent = '불러오는 중...';
+          loadPage();
+        });
+        contentEl.appendChild(moreBtn);
+      } else if (!libOffset) {
+        var empty = document.createElement('p');
+        empty.className = 'series-empty';
+        empty.textContent = libQuery
+          ? '검색 결과가 없어요. 다른 이름으로 찾아보세요.'
+          : '아직 공개된 북마크가 없어요. 내 북마크 탭에서 공유 버튼을 눌러 처음으로 공개해보세요!';
+        grid.appendChild(empty);
+      }
+
+      if (data.truncated) {
+        var warn = document.createElement('p');
+        warn.className = 'bkm-share-note';
+        warn.textContent = '공개 북마크가 너무 많아 일부만 정렬해 보여주고 있어요.';
+        contentEl.appendChild(warn);
+      }
+
+      libraryListCache = {
+        sort: libSort, query: libQuery, items: loadedItems.slice(),
+        offset: libOffset, total: total,
+        hasMore: !!data.hasMore, truncated: !!data.truncated
+      };
+    }
+
+    function loadPage() {
       var seq = ++loadSeq;
       return global.BookmarkLibrary.list({ sort: libSort, q: libQuery, offset: libOffset, limit: LIB_PAGE })
         .then(function (data) {
           if (seq !== loadSeq) return;   // 낡은 응답 — 버린다
-          var items = data.items || [];
-          items.forEach(function (entry) {
-            grid.appendChild(createLibraryCard(entry));
-          });
-          libOffset += items.length;
-          total = data.total || 0;
-
-          if (libQuery) {
-            countEl.textContent = total
-              ? '"' + libQuery + '" 검색 결과 ' + total + '개'
-              : '"' + libQuery + '" 검색 결과가 없어요';
-          } else {
-            countEl.textContent = total + '개의 공개 북마크가 있어요!';
-          }
-
-          clearLoadMore();
-
-          if (data.hasMore) {
-            var moreBtn = document.createElement('button');
-            moreBtn.type = 'button';
-            moreBtn.className = 'bkm-load-more';
-            moreBtn.textContent = '더 보기 (' + libOffset + '/' + total + ')';
-            moreBtn.addEventListener('click', function () {
-              moreBtn.disabled = true;
-              moreBtn.textContent = '불러오는 중...';
-              loadPage(null, moreBtn);
-            });
-            contentEl.appendChild(moreBtn);
-          } else if (!libOffset) {
-            var empty = document.createElement('p');
-            empty.className = 'series-empty';
-            empty.textContent = libQuery
-              ? '검색 결과가 없어요. 다른 이름으로 찾아보세요.'
-              : '아직 공개된 북마크가 없어요. 내 북마크 탭에서 공유 버튼을 눌러 처음으로 공개해보세요!';
-            grid.appendChild(empty);
-          }
-
-          if (data.truncated) {
-            var warn = document.createElement('p');
-            warn.className = 'bkm-share-note';
-            warn.textContent = '공개 북마크가 너무 많아 일부만 정렬해 보여주고 있어요.';
-            contentEl.appendChild(warn);
-          }
+          renderPage(data.items || [], data);
         })
         .catch(function (err) {
           if (seq !== loadSeq) return;
@@ -752,7 +811,15 @@
         });
     }
 
-    loadPage(null, null);
+    // 캐시가 있고 지금 정렬/검색과 일치하면 서버에 다시 묻지 않고 그대로
+    // 복원한다 — publish/unpublish/update 가 일어나면 libraryListCache 를
+    // null 로 비워서 다음 진입 때는 이 분기를 안 타고 새로 받아오게 한다.
+    if (libraryListCache && libraryListCache.sort === libSort && libraryListCache.query === libQuery) {
+      renderPage(libraryListCache.items, libraryListCache);
+    } else {
+      countEl.textContent = '불러오는 중...';
+      loadPage();
+    }
   }
 
   // ---- 라이브러리 상세 모드 ----
@@ -821,7 +888,16 @@
 
     var state = { activeType: 'all' };
 
-    Promise.all([global.BookmarkLibrary.getOne(code), loadItemLookup()])
+    // 같은 code를 이 세션에서 다시 열면(뒤로 갔다 다시 들어오는 등) 서버에
+    // 재요청하지 않는다. 실패는 캐시하지 않는다 — 잠깐의 네트워크 문제였을
+    // 수 있으니 다음 진입에서 다시 시도할 수 있어야 한다.
+    if (!libraryDetailCache[code]) {
+      libraryDetailCache[code] = global.BookmarkLibrary.getOne(code).catch(function (err) {
+        delete libraryDetailCache[code];
+        throw err;
+      });
+    }
+    Promise.all([libraryDetailCache[code], loadItemLookup()])
       .then(function (results) {
         var shared = results[0];
         var byId = results[1];
@@ -921,7 +997,7 @@
       e.stopPropagation();
       openBookmarkMenu(menuBtn, bookmark, {
         onRenamed: function (newName) { setTitle(newName); },
-        onDeleted: function () { global.location.href = 'bookmarksPage.html'; }
+        onDeleted: function () { navigate('bookmarksPage.html'); }
       });
     });
     subEl.appendChild(menuBtn);
@@ -1014,11 +1090,12 @@
     });
   }
 
-  var params = new URLSearchParams(global.location.search);
-  var bkmId = params.get('id');
-  var libId = params.get('libraryId');
-
+  // pushState 로 URL만 바뀔 수 있으므로 전역 변수로 한 번만 읽어두면 안
+  // 되고, 호출할 때마다 지금 URL을 새로 읽어야 한다.
   function renderCurrentView() {
+    var params = new URLSearchParams(global.location.search);
+    var bkmId = params.get('id');
+    var libId = params.get('libraryId');
     if (bkmId) renderDetail(bkmId);
     else if (libId) renderLibraryDetail(libId);
     else renderList(params.get('tab') === 'library' ? 'library' : 'mine');
@@ -1028,6 +1105,32 @@
   // 안내판에서 로그인한 사람이 새로고침하지 않아도 목록을 바로 보게 하고,
   // 반대로 로그아웃하면 남아 있던 목록이 즉시 안내판으로 바뀌게 한다.
   global.addEventListener('chokaguya:auth-change', renderCurrentView);
+
+  // 뒤로/앞으로 가기 — pushState 로 바뀐 히스토리 항목으로 돌아오면
+  // location.search 는 브라우저가 이미 되돌려놓은 뒤이므로 다시 그리기만
+  // 하면 된다.
+  global.addEventListener('popstate', renderCurrentView);
+
+  // 이 페이지 안의 링크(bookmarksPage.html?... 로 가는 <a>)를 전부 가로채
+  // 진짜 페이지 이동 대신 pushState + 다시 그리기로 바꾼다. 탭 전환
+  // (createTabs), 뒤로가기 링크(bkm-back-link), 공유 패널의 "공개된 모습
+  // 보기" 링크가 전부 여기 한 곳에서 처리된다 — 매번 개별 <a> 마다 클릭
+  // 핸들러를 달 필요가 없다.
+  // 캡처 단계에서 잡는 이유: popoverKit.js 의 팝오버들이 "바깥 클릭 감지"용
+  // document 클릭 리스너를 버블링 단계에 걸어두고, 패널 내부 클릭은
+  // stopPropagation 으로 그 리스너에 안 닿게 막아둔다(예: 공유 패널의
+  // "공개된 모습 보기" 링크). 버블링 단계에 있으면 그 stopPropagation에
+  // 걸려 이 리스너까지 이벤트가 못 올라온다 — 캡처 단계는 target에
+  // 도달하기 전에 먼저 실행되므로 그 문제와 무관하게 항상 잡힌다.
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a');
+    if (!a) return;
+    if (a.target && a.target !== '_self') return;
+    var href = a.getAttribute('href');
+    if (!href || href.indexOf('bookmarksPage.html') !== 0) return;
+    e.preventDefault();
+    navigate(href);
+  }, true);
 
   renderCurrentView();
 })(window);
