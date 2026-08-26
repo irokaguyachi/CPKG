@@ -95,6 +95,38 @@
     probe.src = thumb;
   }
 
+  // Like revealBackground(), but for callers that need the full-resolution
+  // original as the final image (e.g. the detail modal, which shows it at a
+  // large scale) rather than settling for the thumbnail. Originals average
+  // 755KB and run up to 17MB, so waiting for one before showing anything
+  // makes the modal feel frozen. Both requests start immediately in
+  // parallel; the (much smaller) thumbnail almost always paints first, then
+  // gets replaced the moment the original finishes loading. Final image is
+  // always the original — this only changes how long the wait feels.
+  function revealBackgroundProgressive(target, rawPath) {
+    var thumb = resolveThumbUrl(rawPath);
+    var full = resolveAssetUrl(rawPath);
+    if (thumb === full) {
+      target.style.backgroundImage = 'url("' + full + '")';
+      return;
+    }
+    var thumbProbe = new Image();
+    thumbProbe.onload = function () {
+      target.style.backgroundImage = 'url("' + thumb + '")';
+    };
+    thumbProbe.src = thumb;
+
+    var fullProbe = new Image();
+    fullProbe.onload = function () {
+      target.style.backgroundImage = 'url("' + full + '")';
+    };
+    fullProbe.onerror = function () {
+      // original 404s — keep whatever the thumbnail probe already set
+      // (or nothing, if that hasn't resolved yet either)
+    };
+    fullProbe.src = full;
+  }
+
   function lazyLoadBackground(el, rawPath) {
     if (!el || !rawPath) return;
     if (!('IntersectionObserver' in global)) {
@@ -134,5 +166,6 @@
   global.DATA_VERSION = DATA_VERSION;
   global.R2_CDN_BASE = R2_CDN_BASE;
   global.lazyLoadBackground = lazyLoadBackground;
+  global.revealBackgroundProgressive = revealBackgroundProgressive;
   global.unobserveAllLazy = unobserveAllLazy;
 })(window);

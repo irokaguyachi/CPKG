@@ -72,8 +72,15 @@
     var image = document.createElement('div');
     image.className = 'pds-image';
     if (data.imageUrl) {
-      var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(data.imageUrl) : data.imageUrl;
-      image.style.backgroundImage = 'url("' + finalImg + '")';
+      // 원본 평균 755KB, 최대 17MB — 카드가 --pds-scale로 축소 표시되는데도
+      // 그 원본을 그대로 받아 모달이 뜨는 동안 멈춘 것처럼 보였다. 썸네일을
+      // 먼저 배경으로 깔고 원본이 도착하면 교체한다(최종 화질은 동일).
+      if (window.revealBackgroundProgressive) {
+        window.revealBackgroundProgressive(image, data.imageUrl);
+      } else {
+        var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(data.imageUrl) : data.imageUrl;
+        image.style.backgroundImage = 'url("' + finalImg + '")';
+      }
     }
 
     var imageEffect = document.createElement('div');
