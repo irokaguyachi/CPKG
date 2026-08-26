@@ -5,33 +5,26 @@
  *   뜨는 "담을 북마크 고르기" 팝오버를 여기서 전부 만든다.
  * - 팝오버는 document.body 에 하나만 붙는 싱글턴 + position:fixed 다.
  *   .series-card 에 overflow:hidden 이 걸려있어서(카드 밖으로 나가는
- *   절대배치 자식은 잘림) 카드 안에 상대배치로 넣을 수가 없다 —
- *   postDetailSeries.js 의 ensureOverlay() 싱글턴 패턴 + 버튼 위치 기준
- *   getBoundingClientRect() 좌표 계산을 합친 방식.
+ *   절대배치 자식은 잘림) 카드 안에 상대배치로 넣을 수가 없다 — 싱글턴 +
+ *   버튼 위치 기준 클램프는 popoverKit.js(auth.js/bookmarksPage.js의
+ *   공유 패널과 동일한 메커니즘)가 담당하고, 여기는 내용(체크리스트)만
+ *   그린다.
  */
 (function (global) {
   var BOOKMARK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   var popoverEl = null;
-  var docListenersBound = false;
   // 지금 팝오버가 어떤 버튼/항목을 위해 열려있는지 — 체크 토글이나 새
   // 북마크 만들기가 이 항목 기준으로 동작함
   var state = null;
 
+  // popoverKit.js — 바깥 클릭/Escape로 닫힐 때도 state를 비워야 하므로
+  // onClose 훅을 넘긴다(다른 두 팝오버는 이런 부가 상태가 없어서 안 씀).
+  var popover = global.PopoverKit.createPopover('bkm-picker', 260, function () { state = null; });
+
   function ensurePopoverEl() {
-    if (popoverEl) return popoverEl;
-    popoverEl = document.createElement('div');
-    popoverEl.className = 'bkm-picker';
-    popoverEl.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.body.appendChild(popoverEl);
-    if (!docListenersBound) {
-      document.addEventListener('click', function () { close(); });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') close();
-      });
-      docListenersBound = true;
-    }
+    popoverEl = popover.ensure();
     return popoverEl;
   }
 
@@ -128,14 +121,8 @@
     popoverEl.appendChild(renderNewRow());
   }
 
-  // 버튼 우측 하단에 붙이되 화면 밖으로 안 나가게 클램프
   function position(anchorEl) {
-    var rect = anchorEl.getBoundingClientRect();
-    var popW = popoverEl.offsetWidth || 260;
-    var left = Math.max(8, Math.min(rect.right - popW, global.innerWidth - popW - 8));
-    var top = Math.min(rect.bottom + 8, global.innerHeight - 8);
-    popoverEl.style.left = Math.round(left) + 'px';
-    popoverEl.style.top = Math.round(top) + 'px';
+    popover.position(anchorEl);
   }
 
   function open(anchorEl, type, id, opts) {
@@ -147,8 +134,8 @@
   }
 
   function close() {
-    if (popoverEl) popoverEl.classList.remove('is-open');
-    state = null;
+    // popover.close()가 DOM 클래스 제거 + onClose 훅(state = null)을 둘 다 한다
+    popover.close();
   }
 
   function toggle(anchorEl, type, id, opts) {

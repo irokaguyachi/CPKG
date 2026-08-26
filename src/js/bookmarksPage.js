@@ -144,55 +144,31 @@
   }
 
   // ---- 공개(공유) 패널 ----
-  // bookmarkPicker.js 의 팝오버와 같은 이유로 body 싱글턴 + position:fixed 다
-  // (.series-card 의 overflow:hidden 이 카드 밖 절대배치 자식을 잘라버림).
-  // 다만 내용이 체크리스트가 아니라 버튼 두어 개뿐이라 그 모듈을 재사용하지
-  // 않고 여기서 최소한으로 구현한다.
+  // bookmarkPicker.js/auth.js와 같은 앵커 팝오버 메커니즘(싱글턴 +
+  // 바깥클릭/Escape로 닫힘 + 뷰포트 클램프) — popoverKit.js가 담당하고,
+  // 여기는 내용(버튼 두어 개)만 그린다.
   var sharePanelEl = null;
-  var sharePanelBound = false;
+  var sharePanel = global.PopoverKit.createPopover('bkm-picker bkm-share-panel', 280);
 
   function ensureSharePanel() {
-    if (sharePanelEl) return sharePanelEl;
-    sharePanelEl = document.createElement('div');
-    sharePanelEl.className = 'bkm-picker bkm-share-panel';
-    sharePanelEl.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.body.appendChild(sharePanelEl);
-    if (!sharePanelBound) {
-      document.addEventListener('click', closeSharePanel);
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeSharePanel();
-      });
-      sharePanelBound = true;
-    }
+    sharePanelEl = sharePanel.ensure();
     return sharePanelEl;
   }
 
   function closeSharePanel() {
-    if (sharePanelEl) sharePanelEl.classList.remove('is-open');
+    sharePanel.close();
   }
 
   function positionSharePanel(anchorEl) {
-    var rect = anchorEl.getBoundingClientRect();
-    var panelW = sharePanelEl.offsetWidth || 280;
-    var left = Math.max(8, Math.min(rect.right - panelW, global.innerWidth - panelW - 8));
-    var top = Math.min(rect.bottom + 8, global.innerHeight - 8);
-    sharePanelEl.style.left = Math.round(left) + 'px';
-    sharePanelEl.style.top = Math.round(top) + 'px';
+    sharePanel.position(anchorEl);
   }
 
   function sharePanelHeader(text) {
-    var header = document.createElement('div');
-    header.className = 'sfp-header';
-    header.textContent = text;
-    return header;
+    return global.PopoverKit.header(text);
   }
 
   function sharePanelButton(label, variant) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'bkm-share-btn' + (variant ? ' ' + variant : '');
-    btn.textContent = label;
-    return btn;
+    return global.PopoverKit.button(label, variant);
   }
 
   function sharePanelNote(text) {
