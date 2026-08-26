@@ -9,6 +9,13 @@
 # 갇힌다"는 실제 장애로 바뀐다. 5분은 그 상수가 계속 안 올라가도 안전하다.
 #
 # 폰트는 내용이 바뀌면 파일명(서브셋 청크)이 바뀌는 구조라 immutable이 안전하다.
+#
+# /js/*, /css/* 는 예전엔 7일(604800초)로 캐시했었는데, .js/.css 파일에는
+# DATA_VERSION 같은 캐시버스터가 전혀 없어서 배포된 새 코드가 재방문자
+# 브라우저에 최대 7일간 안 닿는 문제가 있었다(2026-08-26, bookmarksPage.js
+# 수정이 실제로 이걸로 안 퍼진 사례). 지금은 둘 다 규칙을 빼서 기본값
+# (max-age=0, must-revalidate)으로 돌아간다 — 방문마다 조건부 요청(304)은
+# 다시 나가지만, 배포하면 바로 반영된다.
 
 /*
   X-Content-Type-Options: nosniff
@@ -18,12 +25,6 @@
 
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
-
-/js/*
-  Cache-Control: public, max-age=604800
-
-/css/*
-  Cache-Control: public, max-age=604800
 
 /data/*
   Cache-Control: public, max-age=300
