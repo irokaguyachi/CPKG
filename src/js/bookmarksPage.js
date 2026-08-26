@@ -386,7 +386,7 @@
       input.type = 'text';
       input.className = 'bkm-share-code';
       input.value = bookmark.name;
-      input.maxLength = 40;
+      input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
       panel.appendChild(input);
 
       var saveBtn = sharePanelButton('저장', 'is-primary');
@@ -498,7 +498,7 @@
     newInput.type = 'text';
     newInput.className = 'bkm-inline-create-input';
     newInput.placeholder = '새 북마크 이름';
-    newInput.maxLength = 40;
+    newInput.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
     var newBtn = document.createElement('button');
     newBtn.type = 'button';
     newBtn.className = 'bkm-inline-create-btn';
@@ -780,7 +780,8 @@
   }
 
   // ---- 라이브러리 상세 모드 ----
-  var TYPE_LABELS = { novel: '문학', series: '시리즈', hof: '명예관', official: '공식' };
+  // libraryConfig.js — worker의 LIBRARY_ITEM_TYPES와 짝을 맞춰야 하는 값이라 옮김
+  var TYPE_LABELS = global.LibraryConfig.TYPE_LABELS;
 
   function renderLibraryDetail(code) {
     setTitle('북마크 라이브러리');

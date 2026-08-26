@@ -32,6 +32,9 @@
  */
 (function (global) {
   var STORAGE_KEY = 'chokaguya_bookmarks';
+  // worker/favoritesShareWorker.js의 USER_DATA_VERSION과 맞물린 값 —
+  // 한쪽만 올리면 동기화가 조용히 어긋나므로 반드시 같이 올릴 것
+  // (그쪽 주석에도 이 파일을 가리키는 문구가 있다).
   var STORE_VERSION = 2;
   var TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 

@@ -99,6 +99,9 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 const CODE_LENGTH = 8;
 const EDIT_TOKEN_LENGTH = 24;
 
+// 클라이언트 쪽 src/js/libraryConfig.js의 TYPE_LABELS 키 목록/
+// MAX_NAME_LENGTH와 맞물린 값이다 — 브라우저와 이 Worker는 런타임이 달라
+// import로 공유할 수 없으니, 한쪽을 바꾸면 반드시 다른 쪽도 같이 볼 것.
 const LIBRARY_ITEM_TYPES = ['novel', 'series', 'hof', 'official'];
 const LIBRARY_MAX_NAME = 40;
 const LIBRARY_MAX_ITEMS = 300;
