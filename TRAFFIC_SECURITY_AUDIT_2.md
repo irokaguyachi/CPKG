@@ -23,11 +23,15 @@
 
 > ⚠️ **여전히 확인 못 한 것**: 배포본(Worker)의 응답 헤더와 KV/Worker 실사용 지표. 도메인에 A 레코드가 없고 `cpkg.nwb10102.workers.dev` / `chokaguya-favorites-share.nwb10102.workers.dev` 둘 다 NXDOMAIN이라 API 엔드포인트에 닿을 수 없었습니다(→ **N-S8** 참고).
 >
+> 🔁 **[2026-08-26 정정]** 시도했던 workers.dev 서브도메인(`nwb10102`)이 틀렸을 뿐, 실제 계정 서브도메인은 `cpkg`였습니다. `https://cpkg.cpkg.workers.dev/`로 배포본에 정상적으로 닿습니다 — 이 문서가 "확인 못 했다"고 적은 배포본 응답 헤더는 이제 실측 가능합니다(N-T1 항목의 재확인 노트 참고, `/js/*`·`/css/*`·`/data/*`·`/fonts/*` 헤더를 실제로 검증함).
+>
 > 📌 **표기 규칙**: 각 항목에 `[실측]`(직접 측정/실행해 확인) · `[코드확인]`(소스에서 직접 확인) · `[문서확인]`(Cloudflare 공식 문서로 확인) · `[추정]`(근거는 있으나 확증 못 함)을 붙였습니다.
 
 ### 1차에서 "수정 진행 중"인 항목 (재보고하지 않음)
 
 `Nwb10102/cpkg-audit-fixes` 브랜치에서 작업 중: **S1, S2, S3, S5, T1, T2, T4**. `main`에는 아직 코드가 그대로 있지만 여기서 다시 지적하지 않습니다. 다만 **S1/S2는 이번에 찾은 N-S3 때문에 원래 알려진 것보다 더 잘 터진다**는 점만 아래에 덧붙였습니다.
+
+> 🔁 **[2026-08-26 재점검]** 위 브랜치는 더 이상 존재하지 않습니다(`git branch -a` 확인, `origin/main`만 남음) — 작업이 브랜치 병합이 아니라 `main`에 직접 커밋되는 방식으로 이어진 것으로 보입니다. 이 재점검은 **이 문서(2차)가 신규로 제기한 N- 항목들이 현재 `main`에서 실제로 고쳐졌는지**를 코드 대조 + 일부 라이브 재측정으로 확인한 결과입니다. 각 항목 제목 아래 `[2026-08-26 재확인]` 블록에 결과를 적었습니다. 1차 문서(S1~T11) 자체의 재검증은 이번 범위 밖입니다.
 
 ---
 
@@ -51,6 +55,37 @@
 | **N-S5** | `claimToken`의 "아무것도 안 바꾸는 PUT"이 실제로는 `updatedAt`을 바꿈 | 🟡 낮음 | 데이터 정합성 | 코드확인 |
 | **N-S9~S12** | 동기화 무한 재시도, 인덱스 CAS 없음, 코드 할당 실패, 페이로드 팽창 | 🟡 낮음 | 위생 | 코드확인 |
 | **N-T7~T10** | 죽은 스크립트 2개, 라이브러리 검색 증폭, 고아 파일, 배포 71.5 MB 재해석 | 🟡 낮음 | 위생 | 실측+코드확인 |
+
+---
+
+## 🔁 2026-08-26 재점검 — 그때 이후 뭐가 바뀌었나
+
+이 문서가 지적한 항목들을 오늘 `main` 기준 코드와 대조하고, 가능한 것은 R2에 직접 HEAD 요청을 다시 보내 실측했습니다(방법은 각 항목 아래 `[2026-08-26 재확인]`에 적음). 요약하면 **치명·높음 등급 중 절반이 실제로 고쳐졌습니다.**
+>
+> ⚠️ 이 재점검은 처음에 **N-S8("사이트가 안 열린다")을 잘못 재확인**했습니다 — `cpkg.nwb10102.workers.dev`가 NXDOMAIN인 것만 보고 "여전히 접속 불가"로 결론 냈는데, 실제 workers.dev 서브도메인은 `cpkg`였고 `https://cpkg.cpkg.workers.dev/`로 사이트가 정상적으로 열립니다(사용자가 직접 확인해줌). 이후 사용자가 **새 도메인 `ckpg.cloud`를 구매해 Cloudflare Custom Domain으로 직접 연결**했고, 지금은 이게 정식 프로덕션 주소입니다 — `cpkg.by-works.net`은 이 프로젝트에서 완전히 손을 뗐습니다. 아래 표와 N-S8 항목은 이 정정·해결을 반영했습니다.
+
+| # | 상태 | 한 줄 요약 |
+|---|---|---|
+| **N-S1** | ✅ 완전 해결 | `OWNER_MAX_PUBLISHED` 500 → **5**로 하드 상한 (커밋 `7c417ca`, 코드 주석에 이 문서를 직접 인용) |
+| **N-S2** | ⚠️ 부분 (주석만 정정) | 버킷 분리는 안 됐지만, 문제였던 "GET은 Worker만 거친다"는 틀린 주석은 사실에 맞게 다시 씀 |
+| **N-S3** | ✅ 완전 해결 | KV 카운터 → Cloudflare 네이티브 Rate Limiting 바인딩 5종으로 교체 (`wrangler.toml` `[[ratelimits]]`) |
+| **N-S4** | ❌ 그대로 | 죽은 export 6개·라우트 2개 여전히 외부 호출 0건 (재확인함) |
+| **N-S6** | ❌ 그대로 | `/user/head` 레이트리밋 여전히 의도적으로 건너뜀, 1MB 사전읽기도 그대로 |
+| **N-S7** | ✅ 대부분 해결 | `.assetsignore`에 `scripts/`, `data/문학 정리/`, `data/MoonHakdata.json`, `data/*.md` 추가 + **GitHub 저장소 PRIVATE 전환 확인**(실측) |
+| **N-S8** | ✅ 완전 해결 (2026-08-26) | `cpkg.by-works.net`은 포기하고 **새 도메인 `ckpg.cloud`를 구매해 Cloudflare Custom Domain으로 연결** — A 레코드(104.21.96.20 등)로 정상 해석, `https://ckpg.cloud/`가 200으로 응답함(실측) |
+| **N-S5 / S9 / S10 / S11 / S12** | ❌ 그대로 | 코드 변경 없음 (S10은 N-S1 덕에 노출 규모만 축소) |
+| **N-T1** | ⚠️ 부분 해결 | `src/_headers` 생김 — 보안헤더 4종 + 폰트 immutable + `/data/*` 5분 캐시는 적용. **`/js/*`·`/css/*`는 배포 반영 지연 사고 때문에 오히려 도로 뺌** — 재검증 요청 다수는 여전함 |
+| **N-T2** | ⚠️ 부분 완화 | `revealBackgroundProgressive` 도입으로 체감(권장조치 3번)은 개선. 중간 프리셋(1200px)은 미도입 — 최종 전송량은 그대로 |
+| **N-T3** | ❌ 그대로(실측) | 확인한 원본 5건 모두 썸네일 여전히 404, 깨진 이미지 11건 전부 원본·썸네일 그대로 404 |
+| **N-T4** | ❌ 그대로 | `sync_to_r2.py`에 해시 기반 중복 제거 로직 없음 (재측정은 비용상 생략) |
+| **N-T5** | ⚠️ 완화 | 상수 자동화는 안 됐지만 값은 최신으로 수동 갱신됨 + `/data/*` 캐시를 문서 권장대로 5분으로 짧게 잡아 실질 위험 낮춤 |
+| **N-T6** | ❌ 그대로 | `bookmarksPage.js`가 여전히 카탈로그 4개(792KB) 전량 로드 |
+| **N-T7** | ✅ 완전 해결 | `postCard.js`/`recentSection.js` 파일 자체 삭제, `mainPage.html` 참조 제거 |
+| **N-T8** | ❌ 그대로 | 디바운스 250ms 그대로 (다만 N-S3의 `RL_LIB_LIST`가 최악의 경우를 완충) |
+| **N-T9** | ✅ 대부분 해결 | 고아 CSS 4개 + `loadingScreen.html/css` 삭제됨. 루트 `index.html` 중복만 남음 |
+| **N-T10** | (근거 그대로 유효) | `.assetsignore` 확장으로 정보노출 목적은 N-S7에서 같이 해결됨 |
+
+---
 
 **가장 먼저 볼 것은 N-S1과 N-T1입니다.** N-S1은 "북마크를 50개 넘게 공개한 사용자는 자기 계정에 로그인할 수 없게 된다"는 재현 가능한 고장이고, N-T1은 한 줄짜리 파일 하나(`src/_headers`)로 페이지 이동당 30여 건의 왕복을 없애면서 1차의 S8(보안 헤더 부재)까지 같이 해결됩니다.
 
@@ -95,6 +130,8 @@ for (var i = 0; i < codes.length && bookmarks.length < USER_MAX_BOOKMARKS; i++) 
 3. `migrateFromOwnerIndex`는 `get()` 대신 `head()` + `customMetadata`로 충분한지 검토하세요 — 현재는 `items`가 필요해서 `get`을 쓰지만, 마이그레이션을 여러 요청으로 쪼개면 그대로 둬도 됩니다.
 4. 유료 플랜이라면 한도가 10,000이라 지금 당장은 안 터집니다. **어느 플랜인지부터 확인하세요** — 이 항목의 심각도가 🔴에서 🟡로 바뀝니다. *(플랜은 코드로 알 수 없어 확인 못 했습니다.)*
 
+> ✅ **[2026-08-26 재확인] 완전 해결됨.** `worker/favoritesShareWorker.js:134`에 `OWNER_MAX_PUBLISHED = 5`가 도입됐고(원래 500), 주석이 이 문서의 N-S1 문제를 그대로 인용하며 이유를 설명합니다. `handleLibraryCreate`(:461-468)와 `handleLibraryClaimOwner`(:709-713)가 게시/연결 시점에 이 상한을 직접 강제하므로 `handleOwnerLookup`·`migrateFromOwnerIndex`의 순차 루프는 이제 최대 5회만 돕니다 — 50개 서브요청 한도에 걸릴 수 없습니다. 커밋 `7c417ca fix(worker): 개인 코드당 공개 북마크 수를 5개로 제한 (N-S1)`. 위 권장 조치 1번(하드 상한)과 다른 방식(개수 자체를 원천 축소)으로 같은 목적을 달성했습니다 — 4번(플랜 확인)은 여전히 미확인이지만 상한이 낮아져 무료 플랜이어도 더는 위험하지 않습니다.
+
 ---
 
 ## 🟠 N-S2. 계정·라이브러리 데이터가 공개 읽기 버킷에 그대로 있고, 서버 마스킹이 우회된다 `[실측 + 코드확인]`
@@ -134,6 +171,8 @@ function libraryPublicView(code, record) {
 2. 분리가 부담스럽다면 최소한 **`worker/favoritesShareWorker.js:34-38` 주석을 사실에 맞게 고치고**, "이 버킷에 쓰는 모든 값은 공개된다고 가정한다"를 불변 규칙으로 못박아 두세요.
 3. `r2.dev` 공개 도메인은 Cloudflare가 프로덕션 용도로 권장하지 않고 자체 레이트리밋을 겁니다. 커스텀 도메인을 붙이면 이 문제도 같이 정리됩니다.
 
+> ⚠️ **[2026-08-26 재확인] 부분 조치.** 권장 조치 2번(주석 정정)은 됐습니다 — `worker/favoritesShareWorker.js:34-38`이 이제 "GET이 반드시 Worker를 거쳐야 마스킹된다"는 틀린 전제 대신, "r2.dev 버킷은 `Access-Control-Allow-Origin` 헤더가 없어 브라우저 JS의 교차 출처 fetch가 막힌다"는 사실에 맞는 이유로 바뀌어 있습니다. 다만 **1번(버킷 분리)은 안 됐습니다** — `wrangler.toml`의 `FAVORITES_BUCKET`은 여전히 `chokaguya-assets` 하나뿐이고, 실측으로도 `pub-908f….r2.dev/assets/Image/...`가 그대로 200을 반환합니다(같은 버킷). 원래 분석대로 지금 당장 비밀이 새는 건 아니지만(에디트토큰/오너해시 둘 다 강한 해시), 구조적 위험은 그대로 남아 있습니다.
+
 ---
 
 ## 🟠 N-S3. KV는 키당 **초당 1회**만 쓸 수 있다 — 레이트리밋이 버스트에서 정확히 무력화된다 `[문서확인]`
@@ -154,6 +193,8 @@ var key = 'rl:' + bucket + ':' + ip + ':' + windowStart;
 - **남용 억제** (1차 S2와 곱해짐): 하필 **버스트일 때** 리미터가 동작을 멈춥니다. 리미터가 막아야 할 유일한 상황에서 정확히 무력해지는 구조입니다.
 
 **권장 조치**: 1차 S1의 `try/catch` fail-open은 필수이되 그것만으로는 억제 효과가 사라집니다. 결국 1차가 이미 권한 **Cloudflare 네이티브 Rate Limiting 바인딩**이 정답입니다 — KV 할당량을 안 쓰고, 원자적이며, 초당 한도가 없습니다.
+
+> ✅ **[2026-08-26 재확인] 완전 해결됨, 권장안 그대로 채택.** `src/wrangler.toml`에 `[[ratelimits]]`가 5개(`RL_LIB_WRITE`, `RL_LIB_LIST`, `RL_OWNER_LOOKUP`, `RL_USER_AUTH`, `RL_USER_SYNC`, 전부 60초 창) 생겼고, 라이브러리·조회·로그인·동기화 전부 KV 대신 이걸 씁니다(`checkLimit()`). KV 카운터(`rateLimitKey`/`peekRateLimit`/`bumpRateLimit`)는 **회원가입 일일 한도 하나에만** 남았고, 그마저 조회(peek)와 증가(bump)를 분리해 실제 계정 생성 성공 시에만 KV 쓰기가 일어나도록 바꿨습니다 — "버스트에서 정확히 무력화"되던 원래 문제 자체가 사라졌습니다. try/catch fail-open도 `checkLimit`/`peekRateLimit`/`bumpRateLimit` 전부에 그대로 있습니다.
 
 ---
 
@@ -179,6 +220,8 @@ var key = 'rl:' + bucket + ':' + ip + ':' + windowStart;
 2. 나중에 되살릴 계획이 있다면 최소한 N-S1의 상한부터 먼저 넣으세요.
 3. `src/js/bookmarkLibrary.js`의 죽은 export 6개도 정리하면 클라이언트 번들이 줄고, "이 기능이 아직 살아 있다"는 오해도 사라집니다.
 
+> ❌ **[2026-08-26 재확인] 그대로.** `src/js/bookmarkLibrary.js`의 `claimToken`, `claimAllByPersonalCode`, `linkToPersonalCode`, `restorePublishedToLocal`, `linkLocalBookmark`, `confirmPersonalCode` 6개 export를 `src/js/`, `src/page/` 전수 grep으로 다시 확인했는데 여전히 외부 호출 0건입니다(서로만 내부 호출). `/owner/lookup`, `/library/<code>/claim-owner` 라우트도 `route()`에 그대로 남아 있습니다. 흥미롭게도 파일 상단 주석은 "이 코드로 전체 되찾기"를 마치 살아 있는 기능처럼 자세히 설명하는데, 실제로는 새로 생긴 계정 시스템(`userData.js`의 `/user/get` → 서버 내부 `migrateFromOwnerIndex`)이 **HTTP 라우트를 안 거치고** 같은 일을 대신하고 있어서, 이 죽은 코드가 여전히 죽어 있는 이유만 더 분명해졌을 뿐입니다.
+
 ---
 
 ## 🟠 N-S6. `POST /user/head`는 레이트리밋 없이 1 MB 본문을 먼저 읽는다 `[코드확인]`
@@ -199,6 +242,8 @@ async function handleUserHead(request, env) {
 1. `readUserBody`에 `Content-Length` 선검사를 넣어 초과분은 본문을 읽기 전에 413으로 끊으세요(1차 S6과 같은 수정).
 2. `/user/head`에도 느슨한 레이트리밋(예: 시간당 300)을 다시 붙이되, **KV가 아니라 네이티브 Rate Limiting 바인딩**을 쓰세요 — 원래 KV를 아끼려고 뺀 것이므로 N-S3의 해결책과 같이 가면 이유가 사라집니다.
 3. 개인 코드는 최대 64자입니다. `/user/head`는 본문에서 `personalCode` 하나만 쓰므로 **이 라우트 전용으로 본문 상한을 1 KB 정도로 낮추면** 위 문제 대부분이 한 줄로 사라집니다.
+
+> ❌ **[2026-08-26 재확인] 그대로.** `handleUserHead`(:1017-1029)는 여전히 `readUserBody(request, env, null)`로 레이트리밋을 건너뛰고, `readJsonBody`(:425-433)도 여전히 `Content-Length` 확인 없이 `request.text()`로 전체를 먼저 읽습니다. 다만 코드 주석(:891-895)이 이제 이걸 실수가 아니라 **의도**라고 밝힙니다 — "head는 R2 `head()` 조회뿐이라 남용돼도 부담이 가볍다"는 이유로 일부러 열어뒀다는 것. N-S3에서 네이티브 Rate Limiting 바인딩을 이미 도입했으므로(`RL_USER_AUTH` 등), 권장 조치 2번(같은 바인딩을 `/user/head`에도 붙이기)은 지금 구조에서 비용이 사실상 0에 가깝습니다 — 여전히 검토해볼 만합니다.
 
 ---
 
@@ -240,9 +285,11 @@ github.com/irokaguyachi/CPKG  →  visibility: PUBLIC
 3. 원문을 사이트에서 열람 가능하게 할 계획이 아니라면 `src/data/문학 정리/`와 `src/scripts/*_entries.json`을 아예 저장소 밖(로컬 또는 별도 Private 저장소)으로 옮기는 게 가장 확실합니다. 지금은 어차피 빌드 입력물이지 배포물이 아닙니다.
 4. 작성자 핸들이 사이트 UI에 표시되지 않는다면, `7_build_novel_page_data.py`가 `Novel.json`을 만들 때 `author` 필드를 아예 빼는 것도 검토할 만합니다. 표시하지 않는 개인정보를 전 방문자에게 내려보낼 이유는 없습니다.
 
+> ✅ **[2026-08-26 재확인] 1·2번 완료, 3·4번은 아직.** ① 저장소 visibility를 `gh repo view`로 직접 조회 — **`PRIVATE`로 전환되어 있습니다**(`github.com/irokaguyachi/CPKG`). ② `src/.assetsignore`에 `scripts/`, `data/문학 정리/`, `data/MoonHakdata.json`, `data/*.md`가 전부 추가돼 있어 `crawl_entries.json`/`series_entries.json`도 `scripts/` 프리픽스로 같이 빠집니다 — 이제 배포물에는 안 실립니다(단, 저장소 자체 히스토리에는 그대로 남아있고 이제 Private이라 그건 괜찮습니다). 저장소가 Private으로 바뀌면서 애초에 3번(저장소 밖으로 이전)의 긴급성은 낮아졌습니다. ④(author 필드 제거)는 아직 코드 변경 없음 — `Novel.json`에 `author` 필드가 여전히 포함됩니다(UI 미표시는 그대로).
+
 ---
 
-## 🟠 N-S8. 배포 도메인에 A/AAAA 레코드가 없다 — 사이트가 지금 안 열린다 `[실측]`
+## ✅ N-S8. 배포 도메인에 A/AAAA 레코드가 없다 — ~~사이트가 지금 안 열린다~~ **해결됨: 새 도메인 `ckpg.cloud` 연결 완료** `[실측 · 2026-08-26 해결]`
 
 ```
 cpkg.by-works.net   A     → (없음)
@@ -257,7 +304,13 @@ by-works.net        NS    → ns1-1.ns-ncloud.com, ns1-2.ns-ncloud.com
 
 **왜 중요한가**: 이 문서와 1차 문서에서 지적한 트래픽 최적화가 전부 "배포본이 살아 있을 때"의 이야기입니다. 지금은 그 앞 단계가 막혀 있습니다. 그리고 6개 페이지 푸터(`src/page/*.html:63/76/83`)가 이 도메인 메일을 문의처로 안내하고 있어, 사용자가 사이트에 못 들어오면 문의 경로도 같이 닫힙니다.
 
+> ⚠️ **[2026-08-26 정정] 푸터 문의 메일은 애초에 이 도메인과 무관했습니다.** 6개 페이지(`bookmarksPage.html`, `HOFPage.html`, `mainPage.html`, `novelPage.html`, `OfficialPage.html`, `seriesPage.html`) 푸터를 직접 grep해보니 `문의 : iroyachikagu168@gmail.com`으로, `by-works.net` 도메인 메일이 아니라 일반 Gmail 주소입니다. 저장소 전체(`src/`)에 `by-works.net` 문자열 자체가 없습니다 — 이 문단의 "문의 경로도 같이 닫힌다"는 원래도 사실이 아니었던 것으로 보입니다. 어느 쪽이든 지금은 N-S8이 해결돼서 무의미해진 우려입니다.
+
 **권장 조치**: Cloudflare 대시보드에서 `cpkg` Worker의 라우트/커스텀 도메인 설정 상태부터 확인하세요. 임시로는 `*.workers.dev` 서브도메인을 켜두면 즉시 접근 가능해집니다.
+
+> ⚠️ **[2026-08-26 재확인 → 정정] "사이트가 안 열린다"는 틀렸습니다. `https://cpkg.cpkg.workers.dev/`로 실제로 열립니다.** 커스텀 도메인(`cpkg.by-works.net`)에 A/AAAA 레코드가 없다는 사실 자체는 지금도 맞습니다 — Google DoH로 다시 조회해도 `Answer` 없이 `by-works.net`의 SOA만 도는 `Authority` 응답뿐이고, `curl https://cpkg.by-works.net/`은 여전히 `Could not resolve host`로 실패합니다. **하지만 처음에 이 재확인에서 `cpkg.nwb10102.workers.dev`를 찔러보고 NXDOMAIN이 나오자 "workers.dev도 안 열려 있다"고 잘못 결론 내렸습니다** — 계정의 실제 workers.dev 서브도메인은 `nwb10102`가 아니라 **`cpkg`**였습니다(사용자가 직접 `https://cpkg.cpkg.workers.dev/page/mainPage.html`로 확인해줌). 이 URL로 `curl`을 다시 보내니 `200 OK`, `/library` API도 실제 데이터(공개 라이브러리 2건)를 정상 반환합니다. 덕분에 **N-T1의 실배포 캐시 헤더도 직접 검증**했습니다 — `/js/*`·`/css/*`는 `max-age=0, must-revalidate`, `/data/*`는 `max-age=300`, `/fonts/*`는 `max-age=31536000, immutable`, 보안 헤더 4종 전부 응답에 실제로 붙어 있어 `src/_headers` 코드 분석과 라이브 결과가 정확히 일치합니다. 즉 **실제 위험은 "사이트 다운"이 아니라 "정식 도메인/문의 메일 경로가 막혀 있고, 지금 켜져 있는 접속 경로가 사람이 외우기 힘든 workers.dev 임시 주소뿐"**입니다 — 심각도를 🟠에서 🟡로 낮춥니다. 원래 권장 조치(커스텀 도메인 설정 확인)는 여전히 유효합니다.
+
+> ✅ **[2026-08-26 완전 해결]** `cpkg.by-works.net`(Naver Cloud 관리, MX 때문에 건드리기 부담스러웠던 도메인)은 포기하고, **새 도메인 `ckpg.cloud`를 구매해 Cloudflare 존으로 추가 → 가비아 네임서버를 Cloudflare 네임서버로 교체 → Workers 대시보드에서 `cpkg` Worker에 Custom Domain으로 `ckpg.cloud` 연결**하는 방식으로 해결했습니다. 실측 확인: Google DoH로 `ckpg.cloud` A 레코드 조회 시 `104.21.96.20`, `172.67.150.68`(Cloudflare Anycast IP) 정상 응답, `curl https://ckpg.cloud/`와 `https://ckpg.cloud/page/mainPage.html` 둘 다 `200 OK`. **이제 `ckpg.cloud`가 이 사이트의 정식 프로덕션 도메인입니다** — 이 문서와 1차 문서에서 "배포 도메인"을 언급하는 다른 항목들도 이 주소를 기준으로 읽으면 됩니다. `cpkg.by-works.net`은 더 이상 이 프로젝트와 무관하며, 그 도메인의 이메일(MX)은 이 변경과 별개로 그대로 살아 있습니다(네임서버를 옮긴 게 아니라 아예 다른 도메인으로 갈아탔으므로).
 
 ---
 
@@ -287,6 +340,8 @@ await env.FAVORITES_BUCKET.put(...)          // ← Class A 쓰기 1회
 
 **권장 조치**: 인증 전용 라우트(`POST /library/<code>/verify`)를 따로 두거나, `handleLibraryUpdate`에서 `clean.name`/`clean.items`가 둘 다 `undefined`면 R2 쓰기 없이 `libraryPublicView`만 돌려주도록 하세요.
 
+> ❌ **[2026-08-26 재확인] 그대로.** `handleLibraryUpdate`(:598-635)는 지금도 `clean.name`/`clean.items`가 둘 다 없어도 `record.updatedAt = Date.now()`를 무조건 실행하고 R2 `put`을 한 번 합니다. 다만 실질 영향은 이전과 같이 없습니다 — N-S4대로 `claimToken`이 여전히 죽은 코드라 아무도 이 경로를 타지 않습니다.
+
 ## 🟡 N-S9. `pushNow()`의 409 재시도에 횟수 제한이 없다 `[코드확인]`
 
 `src/js/userData.js:312-339`
@@ -312,17 +367,23 @@ if (res.status === 409) {
 
 **권장 조치**: `pushNow`에 시도 카운터(3회)와 지수 백오프를 넣고, 넘으면 `status = 'error'`로 끝내세요.
 
+> ❌ **[2026-08-26 재확인] 그대로.** `src/js/userData.js:335-338`은 지금도 `if (pendingPush) { pendingPush = false; return pushNow(); }`로 상한·백오프 없이 재귀합니다.
+
 ## 🟡 N-S10. owner 인덱스 갱신에 CAS가 없다 `[코드확인]`
 
 `worker/favoritesShareWorker.js:207-228`(`addToOwnerIndex`), `:562-577`(delete 시 정리), `:661-670`(lookup GC) 세 곳 모두 `get` → 수정 → `put` 패턴인데 `onlyIf`/etag 검사가 없습니다. `handleUserSync`(`:945-948`)와 `handleUserSignup`(`:818-821`)이 `etagMatches`/`etagDoesNotMatch`로 제대로 CAS를 쓰는 것과 대조적입니다.
 
 같은 개인 코드로 두 기기에서 동시에 공개하면 한쪽 code가 인덱스에서 조용히 사라집니다. `:75-78` 주석대로 인덱스는 권한의 근거가 아니라 조회 편의용이므로 데이터가 소실되진 않지만, "되찾기 목록에 안 뜨는" 증상이 재현될 수 있습니다. N-S4대로 조회 경로가 이미 죽어 있어 현재 영향은 거의 없습니다.
 
+> ❌ **[2026-08-26 재확인] 그대로, 다만 노출 규모는 줄었습니다.** `addToOwnerIndex`(:242-266)는 여전히 `get`→수정→`put`이고 `onlyIf`/etag가 없습니다. 다만 N-S1 해결로 `OWNER_MAX_PUBLISHED = 5`가 되면서 인덱스 배열 자체가 최대 5칸으로 작아져, 경합이 나도 잃어버릴 수 있는 항목 수가 원래(최대 500)보다 훨씬 작아졌습니다.
+
 ## 🟡 N-S11. 코드 할당 실패 시 500 / 개인 코드는 철회·교체 수단이 없다 `[코드확인]`
 
 - `worker/favoritesShareWorker.js:370-375`: 8자 코드를 3번 뽑아 전부 충돌하면 500을 냅니다. 48비트라 현실적으로 안 일어나지만, 재시도 횟수를 10으로 올리는 데 드는 비용이 사실상 0입니다.
 - **개인 코드는 이 시스템의 유일한 자격증명**이고 `localStorage`(`chokaguya_personal_code`)에만 있습니다. 로테이션·폐기·재발급 경로가 없습니다. 코드가 새면(스크린샷 공유, 공용 PC, 확장 프로그램) **그 계정은 영구히 열립니다.** 지금은 XSS가 없어서(아래 확인 목록 참조) 실현 경로가 좁지만, 설계상 단일 실패점이라는 점은 기록해 둡니다.
   → 조치: `PUT /user/rotate`(옛 코드로 인증 → 새 코드로 오브젝트 이전 → 옛 키 삭제)를 두면 사고 대응이 가능해집니다.
+
+> ❌ **[2026-08-26 재확인] 그대로.** 코드 할당 재시도는 여전히 3회(`handleLibraryCreate:471`)이고, `/user/rotate` 같은 라우트는 `route()`에 없습니다.
 
 ## 🟡 N-S12. `cleanUserData`가 페이로드를 팽창시켜 1 MB 검사가 저장 크기를 못 묶는다 `[코드확인]`
 
@@ -336,6 +397,8 @@ if (res.status === 409) {
 북마크 단위로도 `createdAt`/`updatedAt`/`publishedCode`/`publishedCodeUpdatedAt`이 붙습니다(`:747-759`). 따라서 `USER_MAX_BODY_BYTES = 1048576` 검사를 통과한 본문이 **1.5~2배로 부풀어 R2에 기록**될 수 있습니다. 1차 S6이 지적한 "UTF-16 길이 vs UTF-8 바이트" 문제와 방향이 반대인, 두 번째 팽창 경로입니다.
 
 **권장 조치**: 본문 크기가 아니라 **`JSON.stringify(next)`의 최종 크기**를 `put` 직전에 확인해 상한을 넘으면 413으로 거절하세요.
+
+> ❌ **[2026-08-26 재확인] 그대로.** `cleanUserItems`(:798-813)와 `cleanUserData`(:837-876)는 지금도 `addedAt`/`createdAt`/`updatedAt`/`publishedCode`/`publishedCodeUpdatedAt`을 무조건 채워 넣고, `handleUserSync`(:1035-1081)의 `put` 직전에 최종 크기 검사가 없습니다.
 
 ---
 
@@ -387,6 +450,8 @@ Cloudflare Workers Static Assets 문서를 확인했습니다.
 >
 > ⚠️ `.assetsignore`는 `.gitignore` 문법을 씁니다 `[문서확인]`. `_headers`를 추가할 때 실수로 무시 목록에 걸리지 않게 확인하세요.
 
+> ⚠️ **[2026-08-26 재확인, 실배포로 직접 검증] 부분 해결 — 그리고 새로운 사건이 하나 있었습니다.** `src/_headers`가 실제로 생겼고, `https://cpkg.cpkg.workers.dev/`(실제 배포본)에 직접 요청해 응답 헤더로 확인했습니다: `/fonts/*`는 `max-age=31536000, immutable`, `/data/*`는 `max-age=300`, 보안 헤더 4종 전부 실제 응답에 붙어 있어 코드와 라이브 동작이 일치합니다. 그런데 **`/js/*`, `/css/*`는 여전히 `max-age=0, must-revalidate`(기본값)** — 604800초(7일) 캐시 규칙이 빠져 있는 것도 실측으로 확인됩니다. `_headers` 파일의 주석에 이유가 적혀 있습니다: `.js`/`.css`에는 `DATA_VERSION` 같은 캐시버스터가 없어서, 배포한 새 코드가 재방문자 브라우저에 최대 7일간 안 닿는 문제가 실제로 있었고(2026-08-26, `bookmarksPage.js` 수정이 이걸로 퍼지지 않은 사례) — 커밋 `5a66fbb fix(cache): js/css 7일 캐시 제거 - 배포 반영 지연 문제 해결`로 되돌렸습니다. 즉 **JS/CSS 29건(15개+14개)의 재검증 왕복은 여전히 매 페이지 이동마다 발생**합니다 — 캐시버스터 없이 장기 캐시를 걸었다가 사고가 나서 롤백한 것이므로, 다시 켜려면 파일명에 콘텐츠 해시를 붙이는 등 버스팅 메커니즘부터 갖춰야 합니다.
+
 ## 🔴 N-T2. 상세 모달이 원본을 받는다 — 평균 755 KB, **최대 17.09 MB** `[실측]`
 
 1차 T9가 "확인 못 했다"고 남긴 부분을 R2에서 직접 측정했습니다.
@@ -425,6 +490,8 @@ if (data.imageUrl) {
 1. `6_build_thumbnails.py`에 **중간 프리셋(예: 1200px webp, `assets/Image/detail/`)**을 추가하고, `postDetailSeries.js:94`가 그걸 쓰게 하세요. 평균 755 KB → 100 KB 수준으로 떨어집니다.
 2. 최소한 **GIF만이라도** 별도 처리하세요. GIF 21개가 원본 총량의 150 MB(32%)를 차지합니다. 정지 이미지로 충분하다면 첫 프레임 webp로, 애니메이션이 필요하면 webp/mp4 변환이 극적으로 작습니다.
 3. 즉시 적용 가능한 완충책: 상세 모달을 열 때 **먼저 썸네일을 배경으로 깔고**, 원본은 뒤에서 받아 도착하면 교체하세요(`cdnConfig.js:66-83`의 `revealBackground`와 같은 패턴). 체감이 즉시 좋아집니다.
+
+> ⚠️ **[2026-08-26 재확인] 3번(체감 완충)만 적용됨.** `cdnConfig.js`에 `revealBackgroundProgressive()`가 새로 생겼고, `postDetailSeries.js:74-81`이 `resolveAssetUrl` 대신 이걸 씁니다 — 썸네일을 먼저 배경으로 깔고 원본이 도착하면 교체하는, 정확히 권장 조치 3번 패턴입니다(커밋 `c10006e perf(modal): 상세 모달 이미지 점진적 로딩(썸네일 우선) 적용`). 다만 **1번(중간 프리셋)과 2번(GIF 별도 처리)은 아직입니다** — `6_build_thumbnails.py`에 1200px급 프리셋이 없고, 최종적으로 화면에 남는 이미지는 여전히 원본(평균 755KB~최대 17MB)입니다. 체감 대기시간은 줄었지만 실제 전송량은 그대로입니다.
 
 ## 🟠 N-T3. 썸네일 없는 카드 17건, 그중 11건은 **완전히 깨져 있다** `[실측]`
 
@@ -466,6 +533,8 @@ probe.src = thumb;
 2. `python src/scripts/6_build_thumbnails.py` 재실행 → (a) 해결.
 3. 빌드 파이프라인 끝에 **"PageData의 모든 `image` 경로가 R2에 실제로 있는지" 검증 단계**를 추가하세요. 이 문서의 실측이 바로 그 검사입니다 — 스크립트 20줄이면 CI에서 돌릴 수 있습니다.
 
+> ❌ **[2026-08-26 재확인] 둘 다 그대로 — R2에 직접 다시 HEAD 요청을 보내 확인함.** (b) 깨진 11건 전부(`282314_1.jpg` ~ `293575_1.jpg`) 원본·썸네일 모두 지금도 404입니다. (a) 원본은 있고 썸네일만 없던 항목 중 확인 가능했던 5건(`66956_4.jpg`, 공식 페이지의 `소설.png`/`가이드북.webp`/`코믹스.webp`/`초카밥.jpg` — 마지막 파일은 이름이 `초카구야.jpg`에서 바뀐 것으로 보임)도 원본은 그대로 살아있지만 썸네일은 여전히 404입니다. 즉 `sync_to_r2.py`와 `6_build_thumbnails.py`가 이 항목들에 대해 재실행되지 않았습니다 — CLAUDE.md 규칙상 R2 업로드/이미지 재빌드는 사용자가 직접 실행해야 하는 작업이라 이번 재점검에서도 실행하지 않았습니다.
+
 ## 🟠 N-T4. 참조 원본의 23%(110 MB)가 바이트 단위 중복이다 `[실측]`
 
 638개 원본의 ETag를 비교했습니다.
@@ -490,6 +559,8 @@ probe.src = thumb;
 
 **권장 조치**: `sync_to_r2.py`에 콘텐츠 해시 기반 중복 제거를 넣거나(같은 해시면 기존 키를 재사용), 빌드 단계에서 동일 이미지를 하나의 정식 경로로 모으고 PageData가 그 경로를 가리키게 하세요.
 > 🚨 이때 **CLAUDE.md 최우선 규칙**을 반드시 지키세요 — 사용자가 수동으로 매핑해 둔 `image` 경로(로고, 시리즈 대표 이미지 등)는 자동 정리 대상에서 제외해야 합니다.
+
+> ❌ **[2026-08-26 재확인] 코드 변경 없음.** `src/scripts/sync_to_r2.py`에 해시/dedup 관련 코드가 없습니다(`hash`/`sha256`/`md5`/`중복` 어떤 키워드로도 안 걸림) — 여전히 키+크기 기준 델타 동기화뿐입니다. 638개 원본 전수를 다시 HEAD로 훑어 23%를 재계산하는 건 이번 재점검 범위에서 비용 대비 실익이 낮다고 판단해 실측은 생략했지만, 구조가 그대로이므로 결론(23% 중복)도 그대로일 가능성이 높습니다.
 
 ## 🟠 N-T5. `DATA_VERSION`이 4일째 고정 — 캐시 버스팅이 죽어 있다 `[코드확인]`
 
@@ -521,6 +592,8 @@ DATA_VERSION 마지막 변경:  9d05215  2026-08-20
 1. 사람이 손으로 올리는 상수를 없애세요. 빌드 스크립트(`3_build_data.py` 등)가 마지막에 `cdnConfig.js`의 `DATA_VERSION`을 오늘 날짜 또는 파일 해시로 자동 갱신하게 하면 됩니다.
 2. 더 나은 방법: 버전 쿼리를 아예 버리고 **ETag 재검증에만 의존**하되, `/data/*`에는 짧은 `max-age`(예: 300~3600초)만 주세요. 지금 구조에서는 이쪽이 더 안전합니다.
 
+> ⚠️ **[2026-08-26 재확인] 2번 채택, 1번은 미완.** `DATA_VERSION`은 여전히 `cdnConfig.js`의 손으로 올리는 상수이고(`3_build_data.py`류 빌드 스크립트에서 자동 갱신하는 코드는 없음 — `8_build_recent_page_data.py`는 "DATA_VERSION을 올리세요"라는 안내 문구만 출력합니다), 값 자체는 오늘 날짜(`20260826`)로 수동 갱신되어 있습니다. 대신 정확히 권장 조치 2번대로 **`src/_headers`가 `/data/*`에 `max-age=300`(5분)의 짧은 캐시만 줍니다** — `_headers` 파일 주석에 "이 상수가 최근 여러 번 안 올라간 이력이 있어서 5분은 그래도 안전한 값"이라고 이유까지 적혀 있습니다. 즉 근본 원인(수동 상수)은 안 고쳐졌지만, 문서가 제안한 안전장치가 정확히 그 이유로 적용되어 실질 위험은 크게 줄었습니다.
+
 ## 🟡 N-T6. 북마크 상세를 열면 카탈로그 4개(792 KB)를 전부 받는다 `[코드확인]`
 
 `src/js/bookmarksPage.js:16-21`, `:50-68`
@@ -539,6 +612,8 @@ var SECTIONS = [
 
 **권장 조치**: 1차 T1의 `Recent.json` 작업을 할 때, 같은 자리에서 **id → {name, image, tags, posts[0]} 만 담은 경량 조회 인덱스**(`Lookup.json`, 약 100~150 KB)를 하나 더 만들어 이 경로가 그걸 쓰게 하세요.
 
+> ❌ **[2026-08-26 재확인] 그대로.** `bookmarksPage.js:16-21`의 `SECTIONS`는 지금도 `Novel.json`/`Series.json`/`HOF.json`/`Official.json` 4개 전체를 `loadItemLookup()`(:71-83)으로 로드합니다. `Lookup.json` 같은 경량 인덱스는 아직 없습니다.
+
 ## 🟡 N-T7. 메인 페이지가 죽은 스크립트 2개를 로드한다 `[코드확인]`
 
 `src/page/mainPage.html:89-90`
@@ -552,6 +627,8 @@ var SECTIONS = [
 **비용**: 메인 페이지 방문마다 렌더 블로킹 요청 2건 + 4,954 B. N-T1과 곱해지면 재방문에서도 매번 재검증 2건입니다.
 
 **권장 조치**: `<script>` 두 줄을 지우고, 파일도 삭제하세요.
+
+> ✅ **[2026-08-26 재확인] 완전 해결됨.** `src/js/postCard.js`, `src/js/recentSection.js` 파일 자체가 삭제됐고, `mainPage.html`에서도 참조가 사라졌습니다. 덤으로 `mainPage.html`의 나머지 `<script>` 태그들도 전부 `defer`가 붙어 렌더 블로킹까지 같이 줄었습니다.
 
 ## 🟡 N-T8. 라이브러리 검색이 키 입력마다 버킷 전체 스캔을 유발한다 `[코드확인]`
 
@@ -577,6 +654,8 @@ KV get 1 + KV put 1          (checkRateLimit — worker:268-278)
 1. 디바운스를 500~700 ms로 늘리고, 2글자 미만이면 요청 자체를 보내지 마세요.
 2. **더 근본적으로는** 1차 T6의 권고(`caches.default`로 `GET /library` 30~60초 캐시)를 적용하세요. 검색어별로 캐시 키가 갈리긴 하지만, 같은 사람이 같은 글자를 다시 지웠다 쓰는 흔한 패턴이 전부 캐시에 맞습니다.
 
+> ❌ **[2026-08-26 재확인] 그대로, 다만 안전망은 새로 생겼습니다.** `bookmarksPage.js:736`은 여전히 250ms 디바운스만 있고 최소 글자수 제한이 없습니다. 다만 N-S3에서 `GET /library`에 네이티브 `RL_LIB_LIST`(60초당 30회)가 새로 붙었으므로, 예전처럼 "레이트리밋 자체가 KV 초당-1회 제한에 걸려 무력화"되는 일은 없습니다 — 폭주해도 31번째 요청부터는 429로 깔끔하게 막힙니다.
+
 ## 🟡 N-T9. 배포에 고아 파일이 섞여 있다 `[코드확인]`
 
 | 파일 | 크기 | 상태 |
@@ -593,6 +672,8 @@ KV get 1 + KV put 1          (checkRateLimit — worker:268-278)
 크기는 작지만 **`loadingScreen.html`은 실제로 열리는 페이지**라, 사이트 UI 밖에 노출된 별도 화면이 하나 존재합니다. 1차 T3의 `.assetsignore` 확장 작업에 같이 넣으세요.
 
 > ✅ 참고: `CCElephantmen` 폰트는 **실제로 존재하고 사용됩니다**(`components/loader.css:64`, `components/series-card.css:170`). 404가 나지 않습니다 — 파일이 없을까 우려할 필요는 없었습니다.
+
+> ✅ **[2026-08-26 재확인] 대부분 해결됨.** `src/page/pageCommon.css`, `mainPage.css`, `theme.css`, `loadingScreen.css`, `loadingScreen.html`, `src/css/loader.css` 전부 저장소에서 삭제됐습니다(커밋 `2b31afd refactor(cleanup): 고아 파일·죽은 CSS 셀렉터·도달 불가 코드 제거`로 보임). 다만 루트 `index.html`과 `src/index.html`의 중복은 **그대로 남아 있습니다**.
 
 ## 🟡 N-T10. 배포 71.5 MB — 1차 T3의 비용 판단을 정정합니다 `[실측 + 문서확인]`
 
@@ -620,6 +701,8 @@ Cloudflare 문서 확인 결과:
 - ✅ **정보 노출** (N-S7: 원문 229편, 작성자 핸들 1.36 MB, 빌드 파이프라인 전체)
 - ✅ **배포 시간** (매 배포마다 71.5 MB 업로드 검증)
 - ✅ **잘못된 파일이 열릴 위험** (`loadingScreen.html`, `.py` 소스)
+
+> ✅ **[2026-08-26 재확인] 세 이유 모두 해소됨.** "정보 노출"은 N-S7(저장소 Private 전환 + `.assetsignore` 확장)로, "잘못된 파일이 열릴 위험"은 N-T9(`loadingScreen.html` 삭제 + `.assetsignore`의 `scripts/` 제외)로 이미 같이 정리됐습니다. "배포 시간"만 근본적으로는 그대로지만(폰트 66.9MB는 여전히 배포에 포함), 애초에 이 항목의 핵심 논지("대역폭 비용은 해당 없다")는 바뀌지 않았습니다.
 
 ---
 
@@ -669,8 +752,8 @@ Cloudflare 문서 확인 결과:
 
 # ✅ 권장 조치 순서 (1차 문서와 통합)
 
-**0단계 — 사이트를 먼저 살리세요**
-1. **N-S8** — `cpkg.by-works.net`에 A/AAAA 또는 커스텀 도메인 바인딩. 이게 안 되면 나머지가 다 무의미합니다.
+**0단계 — ~~정식 주소를 연결하세요~~ 완료됨**
+1. ~~**N-S8** — `cpkg.by-works.net`에 A/AAAA 또는 커스텀 도메인 바인딩.~~ **[2026-08-26 완료]** `ckpg.cloud`를 새로 구매해 Cloudflare Custom Domain으로 연결 완료. `https://ckpg.cloud/`가 정식 프로덕션 주소입니다.
 
 **1단계 — 지금 (한 파일, 두 명령)**
 2. **N-T1 + 1차 S8** — `src/_headers` 추가. 페이지 이동당 33~36건 재검증 제거 + 보안 헤더 4종. ⚠️ 단 N-T5를 먼저.
@@ -708,4 +791,5 @@ Cloudflare 문서 확인 결과:
 | 저장소 | git 전체 히스토리 시크릿 재스캔, `DATA_VERSION` 변경 이력, `git ls-files` 기반 배포 크기 실측, GitHub 저장소 공개 여부 |
 | **라이브 실측** | R2 공개 버킷에 **1,300여 건 HEAD** — 원본/썸네일 존재·크기·ETag·응답 헤더. DNS 조회(8.8.8.8 / 1.1.1.1)로 도메인·MX·NS 확인 |
 | **문서 검증** | Cloudflare 공식 문서 5종 — Workers 한도(서브요청), Workers 요금(정적 자산 무료), KV 한도(일 1,000 쓰기 / 키당 초당 1회), R2 요금(Class A/B, 이그레스 무료), R2 Workers API(`list` limit/include), Static Assets 헤더(기본 `max-age=0, must-revalidate`) 및 라우팅(assets-first) |
-| **미확인** | 배포 Worker의 실제 응답 헤더, KV/R2/Worker 실사용 지표, **Cloudflare 플랜(무료/유료)** — N-S1의 심각도가 여기에 달려 있습니다 |
+| **미확인** | ~~배포 Worker의 실제 응답 헤더~~(2026-08-26 확인 완료 — 아래 참고), KV/R2/Worker 실사용 지표, **Cloudflare 플랜(무료/유료)** — N-S1은 이제 상한 자체가 낮아져(N-S1 참고) 이 미확인 사실의 영향이 크지 않습니다 |
+| **2026-08-26 추가 확인** | `https://cpkg.cpkg.workers.dev/`(실제 배포본, 워크스 서브도메인이 `nwb10102`가 아니라 `cpkg`)에 직접 요청해 정적 자산 캐시 헤더(N-T1)와 `GET /library` API 응답을 라이브로 검증함. KV/R2 사용량 지표와 Cloudflare 플랜 등급은 대시보드 접근이 필요해 여전히 미확인 |
