@@ -29,62 +29,12 @@
 
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  var TAG_COLORS = {
-    '일상': '#e2f4f2',
-    '소설': '#f3ebe4',
-    '장편': '#e6f4df',
-    '로맨스': '#fae4ec',
-    '슬픔': '#e8ecf8',
-    '코미디': '#faf1d2',
-    '피폐': '#fae4e4',
-    '후방주의': '#fae4e4',
-    '짧문': '#f5e4f2',
-    '단편': '#eee4fb',
-    '감동': '#fbf0df',
-    '명예관': '#faeed4',
-    '대회': '#e4eefb',
-    '미스테리': '#ece8f7',
-    'SF': '#e0f1f6',
-    '글카스': '#ebecee'
-  };
-  var TAG_EMOJI = {
-    '일상': '☕',
-    '소설': '📕',
-    '장편': '📖',
-    '로맨스': '❤️',
-    '슬픔': '💧',
-    '코미디': '🎭',
-    '피폐': '🥀',
-    '후방주의': '🔞',
-    '짧문': '✏️',
-    '단편': '📄',
-    '감동': '✨',
-    '글카스': '🗃️',
-    '명예관': '🏆'
-  };
-  var DEFAULT_TAG_COLOR = '#efefef';
-  var DEFAULT_EMOJI = '🏷️';
-
-  // matches the classification order in .agent/rules/tag.md (분량 태그 →
-  // 명예관/대회 → 장르 태그 순) so the filter list and card pills read in a
-  // consistent, intentional order instead of alphabetically
-  var TAG_ORDER = [
-    '짧문', '소설', '장편', '단편',
-    '명예관', '대회',
-    '피폐', '슬픔', '감동', '로맨스', '후방주의', '코미디', '일상', '미스테리', 'SF',
-    '글카스', '이모티콘', 'IF 스토리',
-    '분류 안함', '로카'
-  ];
-  function tagOrderIndex(t) {
-    var i = TAG_ORDER.indexOf(t);
-    return i === -1 ? TAG_ORDER.length : i;
-  }
-  function sortTags(tags) {
-    return tags.slice().sort(function (a, b) {
-      var d = tagOrderIndex(a) - tagOrderIndex(b);
-      return d !== 0 ? d : a.localeCompare(b);
-    });
-  }
+  // 태그 색상/이모지/정렬 — tagConfig.js(mainPage.js와 공유하는 단일 소스)로 옮김
+  var TAG_COLORS = global.TagConfig.TAG_COLORS;
+  var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
+  var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
+  var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
+  var sortTags = global.TagConfig.sortTags;
 
   // 초성 검색: "ㅅㅋㅇㄹ ㅇㄹㅎ" 같은 자음만으로도 "사카요리 이로하"를 찾을 수
   // 있도록, 검색어가 자음으로만 이루어져 있으면 이름을 초성으로 변환해 비교함
