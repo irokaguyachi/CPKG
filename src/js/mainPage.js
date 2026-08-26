@@ -4,57 +4,15 @@
 
   var DATA = global.dataUrl || function (p) { return p; };
 
-  var TAG_COLORS = {
-    '일상': '#e2f4f2',
-    '소설': '#f3ebe4',
-    '장편': '#e6f4df',
-    '로맨스': '#fae4ec',
-    '슬픔': '#e8ecf8',
-    '코미디': '#faf1d2',
-    '피폐': '#fae4e4',
-    '후방주의': '#fae4e4',
-    '짧문': '#f5e4f2',
-    '단편': '#eee4fb',
-    '감동': '#fbf0df',
-    '명예관': '#faeed4',
-    '대회': '#e4eefb',
-    'IF 스토리': '#fbebe4',
-    '로카': '#fde2e4'
-  };
-  var DEFAULT_TAG_COLOR = '#efefef';
-
-  var TAG_EMOJI = {
-    '일상': '☀️',
-    '소설': '📖',
-    '장편': '📚',
-    '로맨스': '💖',
-    '슬픔': '💧',
-    '코미디': '🤣',
-    '피폐': '🩸',
-    '후방주의': '🔞',
-    '짧문': '✍️',
-    '단편': '📄',
-    '감동': '🥹',
-    '명예관': '👑',
-    '대회': '🏆',
-    'IF 스토리': '🔮',
-    '로카': '🌸'
-  };
-  var DEFAULT_EMOJI = '🏷️';
-
-  var TAG_PRIORITY = ['로카', 'IF 스토리', '장편', '단편', '소설', '명예관', '대회'];
-
-  function sortTags(tags) {
-    if (!Array.isArray(tags)) return [];
-    return tags.slice().sort(function (a, b) {
-      var ia = TAG_PRIORITY.indexOf(a);
-      var ib = TAG_PRIORITY.indexOf(b);
-      if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
-      return a.localeCompare(b, 'ko');
-    });
-  }
+  // 태그 색상/이모지/정렬 — gridPage.js와 공유하는 단일 소스(tagConfig.js)로 옮김.
+  // 예전엔 이 파일이 직접 들고 있었는데, gridPage.js가 쓰던 표와 이모지 9개가
+  // 실제로 어긋나 있었다(같은 태그가 페이지마다 다르게 보임) — tagConfig.js의
+  // 헤더 주석에 병합 기준을 적어뒀다.
+  var TAG_COLORS = global.TagConfig.TAG_COLORS;
+  var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
+  var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
+  var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
+  var sortTags = global.TagConfig.sortTags;
 
   function formatCount(n) {
     if (n === null || n === undefined) return '0';
