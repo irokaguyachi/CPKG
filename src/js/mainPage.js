@@ -192,16 +192,27 @@
           });
         }
 
+        // 백그라운드 탭에서는 타이머가 지연됐다가 한꺼번에 몰아서 실행될 수
+        // 있다 — 그러면 이전 showNext() 의 300ms 제거 타이머가 아직 안 끝난
+        // 채로 다음 showNext() 가 또 시작돼서, oldCard 가 이미 다른 호출에
+        // 의해 제거된 상태라 removeChild 는 조용히 스킵되는데 insertCard() 는
+        // 그대로 실행돼 카드가 지워지지 않고 계속 쌓였다. isTransitioning 으로
+        // 겹치는 호출을 막고, 혹시 이미 쌓여있는 카드가 있어도 매 주기마다
+        // list 에 남아있는 자식을 전부 정리해서 항상 카드 1개만 남긴다.
+        var isTransitioning = false;
         function showNext() {
-          var oldCard = list.firstChild;
-          if (!oldCard) {
+          if (isTransitioning) return;
+          var stale = Array.prototype.slice.call(list.children);
+          if (!stale.length) {
             insertCard();
             return;
           }
-          oldCard.style.opacity = '0';
+          isTransitioning = true;
+          stale.forEach(function (el) { el.style.opacity = '0'; });
           setTimeout(function () {
-            if (oldCard.parentNode === list) list.removeChild(oldCard);
+            stale.forEach(function (el) { if (el.parentNode === list) list.removeChild(el); });
             insertCard();
+            isTransitioning = false;
           }, 300);
         }
 
@@ -240,10 +251,13 @@
         contentEl.appendChild(createRecentSection('최신 등록 문학', novels, 'novelPage.html', 'novel'));
       }
 
-      // 2. 랜덤 시리즈 — 5초마다 다른 시리즈로 자동 전환
+      // 2. 랜덤 문학 — 5초마다 다른 문학으로 자동 전환
+      contentEl.appendChild(createRandomSection('랜덤 문학', '../data/PageData/Novel.json', 'novelPage.html', 'novel'));
+
+      // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
       contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/PageData/Series.json', 'seriesPage.html', 'series'));
 
-      // 3. 랜덤 명예관 — 동일하게 5초마다 자동 전환
+      // 4. 랜덤 명예관 — 동일하게 5초마다 자동 전환
       contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/PageData/HOF.json', 'HOFPage.html', 'hof'));
     })
     .catch(function () {});

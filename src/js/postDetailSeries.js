@@ -4,6 +4,19 @@
   var overlayEl = null;
   var openCard = null;
 
+  // 오버레이가 뷰포트를 덮고 있어도 그 위에서 휠을 굴리면 배경 페이지가
+  // 대신 스크롤됐다 — 오버레이 자체는 스크롤 대상이 아니라서 브라우저가
+  // 스크롤 가능한 가장 가까운 조상인 html/body로 스크롤을 넘겼기 때문.
+  // loading.js 의 lockScroll/unlockScroll 과 동일한 패턴.
+  function lockScroll() {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+  function unlockScroll() {
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+  }
+
   // The card is sized in vw (80.8333 x 55.4167) and then transform-scaled, so
   // on a short/wide window its scaled height can exceed the viewport. The
   // overlay centres it and cannot scroll, so the excess was simply cut off the
@@ -220,6 +233,7 @@
     overlay.appendChild(card);
     void card.offsetWidth;
     overlay.classList.add('is-open');
+    lockScroll();
     renderEpisodes();
   }
 
@@ -313,6 +327,7 @@
     if (!overlayEl) return;
     openCard = null;
     overlayEl.classList.remove('is-open');
+    unlockScroll();
     // closing only fades the overlay out — the card stays in the document, so
     // the marquee animations would otherwise keep running against an invisible
     // modal until the next open replaced it

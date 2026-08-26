@@ -10,7 +10,7 @@
   // the browser cache entirely and re-downloaded every data file on every
   // navigation. Cache normally instead and bust it explicitly by bumping this
   // when the data under src/data/ changes.
-  var DATA_VERSION = '20260826';
+  var DATA_VERSION = '20260826-2';
   function dataUrl(path) {
     if (!path) return path;
     return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;

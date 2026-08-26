@@ -64,17 +64,17 @@
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
-    // 개인 코드가 사실상 비밀번호 역할이라, 브라우저의 비밀번호 관리자가
-    // 저장·자동채움 대상으로 인식하도록 password 타입 + <form> 으로
-    // 감쌌다(폼 없이 input 단독이면 인식률이 떨어진다).
+    // 개인 코드를 아이디 필드로 취급 — 브라우저의 자동완성이 아이디로
+    // 인식하도록 text 타입 + <form> 으로 감쌌다(폼 없이 input 단독이면
+    // 인식률이 떨어진다).
     var row = document.createElement('form');
     row.className = 'auth-form-row';
     var input = document.createElement('input');
-    input.type = 'password';
-    input.name = 'password';
+    input.type = 'text';
+    input.name = 'username';
     input.className = 'auth-input';
     input.placeholder = '로그인 코드 입력창';
-    input.autocomplete = 'current-password';
+    input.autocomplete = 'username';
     var submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
     submitBtn.className = 'auth-btn';
