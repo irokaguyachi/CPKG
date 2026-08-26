@@ -1,0 +1,29 @@
+# Cloudflare Workers 정적 자산 기본 캐시 헤더는 모든 파일에 동일하게
+# `Cache-Control: public, max-age=0, must-revalidate` 가 붙는다(HTML/JS/CSS/JSON
+# 구분 없음, ETag는 자동 부여). 페이지를 옮길 때마다 그 페이지가 물고 오는
+# 정적 자산 수십 건이 매번 조건부 요청(304)으로 재검증됐다 — 왕복 자체가 낭비다.
+#
+# /data/* 는 일부러 짧게(5분)만 준다. cdnConfig.js의 DATA_VERSION 캐시버스터가
+# 데이터 갱신 때마다 손으로 올려야 하는 상수라 최근 여러 번 안 올라간 이력이
+# 있다 — 여기 긴 max-age를 주면 그 버그가 "재방문자가 며칠 지난 데이터에
+# 갇힌다"는 실제 장애로 바뀐다. 5분은 그 상수가 계속 안 올라가도 안전하다.
+#
+# 폰트는 내용이 바뀌면 파일명(서브셋 청크)이 바뀌는 구조라 immutable이 안전하다.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/*
+  Cache-Control: public, max-age=604800
+
+/css/*
+  Cache-Control: public, max-age=604800
+
+/data/*
+  Cache-Control: public, max-age=300
