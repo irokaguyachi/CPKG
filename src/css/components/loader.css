@@ -22,7 +22,7 @@
   opacity: 0.75;
   transform: translate(-50%, -50%);
   z-index: 10;
-  transition: width 1.3s cubic-bezier(0.22, 1, 0.36, 1), height 1.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.3s ease;
+  transition: width 1.3s var(--ease-out-site), height 1.3s var(--ease-out-site), opacity 1.3s ease;
 }
 .loader-wipe.is-covering {
   width: 300vmax;
