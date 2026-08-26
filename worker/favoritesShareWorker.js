@@ -121,11 +121,17 @@ const LIBRARY_MAX_QUERY = 40;
 // 기대하지만, 서버 검증은 형태만 넉넉하게 확인한다(길이 16~64, URL-safe 문자) —
 // 클라이언트 쪽 알파벳/길이가 나중에 바뀌어도 서버를 같이 고칠 필요가 없도록.
 const PERSONAL_CODE_RE = /^[A-Za-z0-9_-]{16,64}$/;
-// 개인 코드 하나에 연결할 수 있는 공개 북마크 수 상한 — 이 인덱스는 조회
-// 편의용일 뿐 권한 증명 자체는 레코드의 ownerHash가 하므로, 상한을 넘긴
-// 코드도 직접 알고 있으면 여전히 PUT/DELETE는 정상 동작한다(조회 목록에만
-// 안 뜬다).
-const OWNER_MAX_CODES = 500;
+// 개인 코드 하나가 공개(라이브러리 게시)할 수 있는 북마크 수 상한.
+// 원래는 500이었는데, handleOwnerLookup/migrateFromOwnerIndex 둘 다 이
+// 인덱스의 codes 배열을 순회하며 코드마다 R2 요청을 하나씩 순차로
+// 날린다(Promise.all 이 아니라 for 루프 await) — Worker 무료 플랜은 요청
+// 하나당 서브요청 50개 한도라, 500개를 다 채운 사용자는 owner-lookup
+// 자체가 예외를 던져 실패한다(다른 기기에서 개인 코드로 로그인할 때
+// 걸리는 경로라 사실상 로그인 불가가 된다). 5로 낮추면 최악의 경우에도
+// 5회뿐이라 안전하다. handleLibraryCreate/handleLibraryClaimOwner가
+// 이 상수로 상한을 실제로 강제한다(공개 자체를 막는다) — 아래
+// addToOwnerIndex의 체크는 그 위에 얹는 이중 방어일 뿐이다.
+const OWNER_MAX_PUBLISHED = 5;
 
 // 시간당/일당 한도 상수는 더 이상 없다 — 라이브러리·소유권·로그인·동기화의
 // 레이트리밋은 전부 Cloudflare 네이티브 Rate Limiting 바인딩(RL_*)으로 옮겼다.
@@ -245,7 +251,10 @@ async function addToOwnerIndex(env, personalCode, code) {
       }
     }
     if (codes.indexOf(code) === -1) {
-      if (codes.length >= OWNER_MAX_CODES) return;
+      // 정상 경로라면 handleLibraryCreate/handleLibraryClaimOwner가 이미
+      // OWNER_MAX_PUBLISHED로 막았어야 한다 — 여기 걸리는 건 두 요청이
+      // 거의 동시에 들어와 둘 다 사전 검사를 통과한 경합 상황뿐이다.
+      if (codes.length >= OWNER_MAX_PUBLISHED) return;
       codes.push(code);
       await env.FAVORITES_BUCKET.put(key, JSON.stringify({ v: 1, codes: codes }), {
         httpMetadata: { contentType: 'application/json' }
@@ -254,6 +263,21 @@ async function addToOwnerIndex(env, personalCode, code) {
   } catch (e) {
     // 인덱스 갱신 실패 — 개별 레코드는 여전히 personalCode로 정상 인증된다
   }
+}
+
+// handleLibraryCreate/handleLibraryClaimOwner가 실제로 새 공개를 막을지
+// 판단하는 데 쓴다 — addToOwnerIndex 내부의 동일 검사와 달리 여기는
+// 실패를 삼키지 않는다: 인덱스를 못 읽으면 개수를 모르는 채로 공개를
+// 허용해버릴 수 있으니, 이 조회 자체가 실패하면 호출자가 요청을 통째로
+// 실패시켜야 한다(막연히 통과시키는 쪽보다 안전한 기본값). 배열 자체를
+// 돌려주는 이유는 handleLibraryClaimOwner가 "이미 연결된 코드의 재시도"를
+// 상한 체크에서 빼야 하기 때문이다(codes.indexOf(code)로 구분).
+async function getOwnerCodes(env, personalCode) {
+  var object = await env.FAVORITES_BUCKET.get(await ownerIndexKey(personalCode));
+  if (!object) return [];
+  var data = await object.json();
+  if (!data || !Array.isArray(data.codes)) return [];
+  return data.codes.filter(function (c) { return typeof c === 'string'; });
 }
 
 // PUT/DELETE 공용 인증: editToken 또는 personalCode 중 하나만 record와
@@ -429,6 +453,19 @@ async function handleLibraryCreate(request, env) {
 
   var clean = validateLibraryCreate(body.value);
   if (!clean) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+
+  // 개인 코드 하나당 공개(라이브러리 게시) 상한 — 위 OWNER_MAX_PUBLISHED
+  // 주석 참고. personalCode 없이 게시하는(구형/익명) 경우는 애초에
+  // owner-index에 안 걸리므로 owner-lookup의 순차 R2 호출 문제와 무관해
+  // 여기서 막지 않는다.
+  if (clean.personalCode) {
+    var existingCodes = await getOwnerCodes(env, clean.personalCode);
+    if (existingCodes.length >= OWNER_MAX_PUBLISHED) {
+      return jsonResponse(request, {
+        error: '개인 코드당 공개 가능한 북마크는 최대 ' + OWNER_MAX_PUBLISHED + '개예요. 기존 공개를 취소하고 다시 시도해주세요.'
+      }, 409);
+    }
+  }
 
   var code = null;
   for (var attempt = 0; attempt < 3; attempt++) {
@@ -664,6 +701,15 @@ async function handleLibraryClaimOwner(code, request, env) {
   var providedHash = await sha256Hex(body.value.editToken);
   if (providedHash !== record.editTokenHash) {
     return jsonResponse(request, { error: 'invalid edit token' }, 403);
+  }
+
+  // 이미 인덱스에 연결된 코드의 재요청(재시도 등)은 상한 체크에서 뺀다 —
+  // 새로 하나를 더 늘리는 게 아니라 이미 있던 연결을 재확인하는 것뿐이다.
+  var linkedCodes = await getOwnerCodes(env, personalCode);
+  if (linkedCodes.indexOf(code) === -1 && linkedCodes.length >= OWNER_MAX_PUBLISHED) {
+    return jsonResponse(request, {
+      error: '개인 코드당 공개 가능한 북마크는 최대 ' + OWNER_MAX_PUBLISHED + '개예요. 기존 공개를 취소하고 다시 시도해주세요.'
+    }, 409);
   }
 
   // 이미 공개된 내용을 그대로 둔 채 소유권 표지만 붙인다 — name/items는 물론
