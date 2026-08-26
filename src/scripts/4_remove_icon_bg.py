@@ -5,19 +5,17 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 from PIL import Image
 from rembg import new_session, remove
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-BASE = r"C:\Users\kimji\Documents\러블리들\문학"
-ICON_DIR = os.path.join(BASE, "src", "assets", "Image", "LoadingIcon")
+BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+ICON_DIR = os.path.join(BASE, "src", "offline_src", "LoadingLogo")
 JSON_PATH = os.path.join(BASE, "src", "data", "LoadingIcons.json")
-TMP_DIR = os.path.join(
-    r"C:\Users\kimji\AppData\Local\Temp\claude\C--Users-kimji-Documents--------\f5335c05-53ec-40f7-93d6-f5551d46de8b\scratchpad",
-    "loadingicon_frames",
-)
+TMP_DIR = os.path.join(tempfile.gettempdir(), "cpkg_loadingicon_frames")
 
 SUFFIX = "_nobg"
 

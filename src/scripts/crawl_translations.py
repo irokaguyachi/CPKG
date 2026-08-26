@@ -26,8 +26,12 @@ from bs4 import BeautifulSoup
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 디렉토리 경로 설정
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-BASE_DIR = os.path.join(WORKSPACE, "번역 정리")
+# src/scripts/ 기준 두 단계 위(src/)까지만 — 문학 정리(1_parse_crawl.py)와
+# 같은 규칙으로 src/data/ 아래에 둔다. 여기가 저장소 루트로 잘못 나가면
+# .gitignore의 "src/data/번역 정리" 항목이 안 먹혀서 크롤링 사진이 그대로
+# git에 커밋될 수 있다.
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.join(WORKSPACE, "data", "번역 정리")
 CRAWL_DIR = os.path.join(BASE_DIR, "크롤링 파일")
 PHOTO_ROOT = os.path.join(BASE_DIR, "번역 사진")
 CACHE_FILE = os.path.join(BASE_DIR, "translation_posts_index.json")

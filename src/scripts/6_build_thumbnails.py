@@ -108,6 +108,9 @@ def main():
             print(f"  [없음] {rel}")
             failed += 1
             continue
+        if os.path.exists(thumb_abs) and os.path.getmtime(thumb_abs) >= os.path.getmtime(src_abs):
+            skipped += 1
+            continue
         try:
             s, t, note = build_one(src_abs, thumb_abs)
         except Exception as e:  # 한 장 실패가 전체를 막지 않도록

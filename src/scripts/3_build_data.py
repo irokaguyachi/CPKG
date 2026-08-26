@@ -29,7 +29,7 @@ size = os.path.getsize(out_path)
 print("posts:", len(posts), "series:", len(series_out), "bytes:", size)
 
 # ---- loading screen icon manifest ----
-icon_dir = os.path.join(HERE, "..", "assets", "Image", "LoadingIcon")
+icon_dir = os.path.join(HERE, "..", "offline_src", "LoadingLogo")
 icon_exts = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 icons = sorted(f for f in os.listdir(icon_dir) if f.lower().endswith(icon_exts)) if os.path.isdir(icon_dir) else []
 icons_out = os.path.join(HERE, "..", "data", "LoadingIcons.json")
