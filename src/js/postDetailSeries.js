@@ -1,6 +1,4 @@
 (function (global) {
-  var ICON_VIEW = '<svg class="pds-stat-icon" width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true"><path d="M0.5 7.5C2 3.5 5 1.5 7.5 1.5C10 1.5 13 3.5 14.5 7.5C13 11.5 10 13.5 7.5 13.5C5 13.5 2 11.5 0.5 7.5Z" stroke="#ffffff"/><circle cx="7.5" cy="7.5" r="2.5" stroke="#ffffff"/></svg>';
-  var ICON_LIKE = '<svg class="pds-stat-icon" width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true"><path d="M8.5 1.5L10.6 6L15.5 6.6L11.9 9.9L12.9 14.7L8.5 12.2L4.1 14.7L5.1 9.9L1.5 6.6L6.4 6L8.5 1.5Z" stroke="#ffffff" stroke-linejoin="round"/></svg>';
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
 
   var overlayEl = null;
@@ -47,23 +45,6 @@
     });
     document.body.appendChild(overlayEl);
     return overlayEl;
-  }
-
-  function formatCount(n) {
-    if (n === null || n === undefined) return '000,000';
-    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  }
-
-  function createStat(iconMarkup, value) {
-    var wrap = document.createElement('span');
-    wrap.className = 'pds-stat';
-    var iconHost = document.createElement('div');
-    iconHost.innerHTML = iconMarkup;
-    wrap.appendChild(iconHost.firstElementChild);
-    var valueEl = document.createElement('span');
-    valueEl.textContent = formatCount(value);
-    wrap.appendChild(valueEl);
-    return wrap;
   }
 
   // data: { seriesName, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }] }
@@ -115,14 +96,6 @@
     episodeCountEl.textContent = (data.episodes || []).length + ' 화';
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
-
-    /* 추후 조회수 / 북마크(좋아요) 기능 활성화 시 주석 해제
-    var stats = document.createElement('div');
-    stats.className = 'pds-stats';
-    stats.appendChild(createStat(ICON_VIEW, data.views));
-    stats.appendChild(createStat(ICON_LIKE, data.likes));
-    seriesInfo.appendChild(stats);
-    */
 
     card.appendChild(seriesInfo);
 

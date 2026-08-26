@@ -1,7 +1,0 @@
-/* ==========================================================================
-   ChoKaguya Standalone Loading Screen Stylesheet Bundle
-   ========================================================================== */
-
-@import url("./base/fonts.css");
-@import url("./base/reset.css");
-@import url("./components/loader.css");

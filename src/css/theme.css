@@ -230,20 +230,17 @@ html.theme-transitioning *:after {
   color: rgba(255, 255, 255, 0.5);
 }
 
-[data-theme="dark"] .post-card,
 [data-theme="dark"] .series-card {
   background: #1c1d22;
   border: 0.5px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
 }
 
-[data-theme="dark"] .post-card:hover,
 [data-theme="dark"] .series-card:hover {
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-[data-theme="dark"] .post-image,
 [data-theme="dark"] .series-card-image {
   background-color: #25272d;
   background-position: center;
@@ -251,27 +248,17 @@ html.theme-transitioning *:after {
   background-repeat: no-repeat;
 }
 
-[data-theme="dark"] .post-info,
 [data-theme="dark"] .series-card-info {
   background: #1c1d22;
   border-top-color: rgba(255, 255, 255, 0.08);
 }
 
-[data-theme="dark"] .post-title,
 [data-theme="dark"] .series-card-title {
   color: #f1f3f5;
 }
 
-[data-theme="dark"] .post-title-id {
-  color: rgba(255, 255, 255, 0.4);
-}
-
 [data-theme="dark"] .series-card-count {
   color: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="dark"] .recent-section-title {
-  color: #ffffff;
 }
 
 /* MainPage_Content row cards (recent posts list) in dark mode */
@@ -304,8 +291,7 @@ html.theme-transitioning *:after {
    Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
    ========================================================================== */
 [data-theme="dark"] .series-card-tag,
-[data-theme="dark"] .sfp-label,
-[data-theme="dark"] .post-tag-pill {
+[data-theme="dark"] .sfp-label {
   background: rgba(255, 255, 255, 0.08) !important;
   color: #e2e8f0 !important;
   border: 0.5px solid rgba(255, 255, 255, 0.12);
@@ -564,18 +550,6 @@ html.theme-transitioning *:after {
 
 [data-theme="dark"] .loader-tip-tag {
   background: rgba(255, 255, 255, 0.15);
-  color: #f1f3f5;
-}
-
-[data-theme="dark"] .mini-loading {
-  background: transparent;
-}
-[data-theme="dark"] .mini-loading-text {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-/* 즐겨찾기 목록 페이지 */
-[data-theme="dark"] .fav-section-title {
   color: #f1f3f5;
 }
 

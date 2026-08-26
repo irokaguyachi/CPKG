@@ -13,14 +13,14 @@ body.is-top .header-logo {
   transform: translateY(-50%) translate(calc(50vw - 50px - 50%), 202px) scale(3.2);
 }
 
+/* 모바일 body.is-top 전환은 header.css:47-56 의 기본값과 완전히 동일해서
+   여기서 다시 선언하지 않는다 — main-page.css 가 더 늦게 로드되므로 아무것도
+   바꾸지 않는 순수 중복이었다. 크기(left/max-width/height)만 이 페이지 전용. */
 @media (max-width: 768px) {
   .header-logo {
     left: 24px;
     max-width: 170px;
     height: 36px;
-  }
-  body.is-top .header-logo {
-    transform: translateY(-50%) translate(calc(50vw - 24px - 50%), 150px) scale(2.0);
   }
 }
 
