@@ -1,2 +1,29 @@
 wrangler.toml
 _worker.js
+
+# --- 아래는 브라우저가 한 번도 요청하지 않는 것들이다 ---
+# wrangler.toml 의 [assets] directory = "." 때문에 src/ 아래 전부가
+# 업로드·공개 서빙된다. Cloudflare Workers 정적 자산은 Pages 와 달리
+# 자동 제외가 전혀 없으므로 여기 적지 않으면 그대로 나간다.
+# 문법은 .gitignore 와 같다.
+
+# 빌드 파이프라인 (파서/빌더 .py + 중간 산출 JSON 800KB)
+scripts/
+
+# 크롤링 원문 마크다운 229편 — 프론트에서 fetch 하지 않는다.
+# 용량(2.8MB)보다 노출이 문제다: 19금 포함 원문과 작성자 핸들이
+# URL 만 알면 그대로 열린다.
+data/문학 정리/
+
+# PageData/*.json 을 만들어내는 원본 통합 데이터셋.
+# 브라우저는 PageData/* 만 받는다 — 이건 런타임 fetch 0건이다.
+data/MoonHakdata.json
+
+# 빌드/수동 관리용 문서 (ignoreID.md, SeriesID.md)
+data/*.md
+
+README.md
+
+# 저장소 전체에서 참조 0건인 고아 이미지.
+# CLAUDE.md 이미지 보존 수칙에 따라 파일은 지우지 않고 배포에서만 뺀다.
+offline_src/ForEvent/57b96602-3787-47c3-93cb-650d5ece21b6.png
