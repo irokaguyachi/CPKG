@@ -13,14 +13,20 @@ body.is-top .header-logo {
   transform: translateY(-50%) translate(calc(50vw - 50px - 50%), 202px) scale(3.2);
 }
 
-/* 모바일 body.is-top 전환은 header.css:47-56 의 기본값과 완전히 동일해서
-   여기서 다시 선언하지 않는다 — main-page.css 가 더 늦게 로드되므로 아무것도
-   바꾸지 않는 순수 중복이었다. 크기(left/max-width/height)만 이 페이지 전용. */
 @media (max-width: 768px) {
   .header-logo {
     left: 24px;
     max-width: 170px;
     height: 36px;
+  }
+  /* header.css:54-56 의 모바일 값과 값 자체는 같지만, 이 규칙을 지우면
+     안 된다 — 위 :12-14 의 이 파일 자체의 무조건(미디어쿼리 없는) 데스크톱
+     규칙(scale 3.2)이 header.css보다 나중에 로드되어 캐스케이드 후순위라,
+     모바일에서도 그 데스크톱 값이 최종 승자가 돼버린다(로고가 화면 양옆으로
+     넘치는 버그로 실제 발생함). 이 파일 안에서 자기 자신의 데스크톱 규칙을
+     다시 이겨야 하므로, header.css와 값이 같아도 여기 그대로 있어야 한다. */
+  body.is-top .header-logo {
+    transform: translateY(-50%) translate(calc(50vw - 24px - 50%), 150px) scale(2.0);
   }
 }
 
