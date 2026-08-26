@@ -11,7 +11,7 @@
  *    반드시 다른 쪽도 같이 확인할 것.
  */
 (function (global) {
-  var MAX_NAME_LENGTH = 40; // worker: LIBRARY_MAX_NAME
+  var MAX_NAME_LENGTH = 20; // worker: LIBRARY_MAX_NAME
 
   var TYPE_LABELS = {
     novel: '문학',

@@ -565,9 +565,6 @@ html.theme-transitioning *:after {
 }
 
 /* 북마크 페이지 */
-[data-theme="dark"] .bkm-back-link {
-  color: #5c9aff;
-}
 [data-theme="dark"] .bkm-library-sort {
   background: var(--dark-surface);
   color: var(--dark-emphasis);
@@ -609,11 +606,16 @@ html.theme-transitioning *:after {
   color: #ff8080;
   background: rgba(255, 128, 128, 0.16);
 }
+[data-theme="dark"] .bkm-detail-title {
+  color: var(--dark-text);
+}
 [data-theme="dark"] .bkm-detail-menu-btn {
-  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.6);
 }
 [data-theme="dark"] .bkm-detail-menu-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.9);
 }
 [data-theme="dark"] .bkm-picker {
@@ -635,10 +637,13 @@ html.theme-transitioning *:after {
   border-color: rgba(255, 255, 255, 0.08);
 }
 [data-theme="dark"] .bkm-chip:hover { color: rgba(255, 255, 255, 0.8); }
+/* [data-theme="dark"] .bkm-chip (위)과 특이도가 같아서(둘 다 속성+클래스 1개),
+   이 규칙이 없으면 로드 순서상 위 기본 회색이 이겨버린다 — 로그인 버튼과 같은
+   민트색을 라이트/다크 어디서나 그대로 쓰려면 여기서도 명시해야 한다. */
 [data-theme="dark"] .bkm-chip.is-active {
-  color: var(--dark-emphasis);
-  background: var(--accent);
-  border-color: var(--accent);
+  color: #000000;
+  background: #00ffcc;
+  border-color: transparent;
 }
 
 [data-theme="dark"] .bkm-login-gate-title {

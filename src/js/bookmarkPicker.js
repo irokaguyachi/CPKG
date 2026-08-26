@@ -71,7 +71,7 @@
     input.type = 'text';
     input.className = 'bkm-picker-new-input';
     input.placeholder = '새 북마크 이름';
-    input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
+    input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 20;
     row.appendChild(input);
 
     var btn = document.createElement('button');

@@ -397,7 +397,7 @@
       input.type = 'text';
       input.className = 'bkm-share-code';
       input.value = bookmark.name;
-      input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
+      input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 20;
       panel.appendChild(input);
 
       var saveBtn = sharePanelButton('저장', 'is-primary');
@@ -513,7 +513,7 @@
     newInput.type = 'text';
     newInput.className = 'bkm-inline-create-input';
     newInput.placeholder = '새 북마크 이름';
-    newInput.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 40;
+    newInput.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 20;
     var newBtn = document.createElement('button');
     newBtn.type = 'button';
     newBtn.className = 'bkm-inline-create-btn';
@@ -839,7 +839,7 @@
   }
 
   // state: 호출부가 들고 있는 { activeType } — 칩 클릭 시 여기 값을 바꾸고
-  // onSelect 를 부른다. 호출부의 renderGrid/updateCount/showEmptyIfNeeded도
+  // onSelect 를 부른다. 호출부의 renderGrid/showEmptyIfNeeded도
   // 같은 state.activeType 을 읽어야 필터가 맞물린다.
   function renderTypeChips(chipBar, state, countOf, onSelect) {
     chipBar.innerHTML = '';
@@ -865,15 +865,23 @@
 
   function renderLibraryDetail(code) {
     setTitle('북마크 라이브러리');
-    subEl.innerHTML = '';
-    var backLink = document.createElement('a');
-    backLink.className = 'bkm-back-link';
-    backLink.href = 'bookmarksPage.html?tab=library';
-    backLink.textContent = '‹ 라이브러리로';
-    subEl.appendChild(backLink);
-    countEl.textContent = '불러오는 중...';
+    subEl.textContent = '';
+    countEl.textContent = '';
 
     contentEl.innerHTML = '';
+
+    // renderDetail 과 같은 이유로 subEl(#bkm-sub) 대신 contentEl 안에
+    // 헤더를 직접 그린다 — 그 자리는 .site-info--hidden 으로 화면에서
+    // 아예 지워져 있다.
+    var header = document.createElement('div');
+    header.className = 'bkm-detail-header';
+
+    var titleH = document.createElement('h2');
+    titleH.className = 'bkm-detail-title';
+    titleH.textContent = '북마크 라이브러리';
+    header.appendChild(titleH);
+
+    contentEl.appendChild(header);
 
     // 타입 필터 칩 — 내 북마크 상세(renderDetail)와 같은 UI. 다만 여기는
     // 남이 공개한 걸 구경만 하는 자리라 항목을 뺄 수 없으니, 그쪽의
@@ -903,6 +911,7 @@
         var byId = results[1];
 
         setTitle(shared.name);
+        titleH.textContent = shared.name;
 
         // 실제로 데이터에서 찾아진 항목만 대상으로 삼는다(원본이 사라진
         // 항목은 카드로 못 그리므로 개수에서도 빼야 숫자가 맞는다)
@@ -913,12 +922,6 @@
         });
 
         function countOf(type) { return countOfType(resolved, type); }
-
-        function updateCount() {
-          countEl.textContent = state.activeType === 'all'
-            ? resolved.length + '개의 항목이 공개돼 있어요!'
-            : countOf(state.activeType) + '개의 ' + TYPE_LABELS[state.activeType] + ' 항목';
-        }
 
         function showEmptyIfNeeded() {
           if (grid.children.length) return;
@@ -947,17 +950,14 @@
         function updateChips() {
           renderTypeChips(chipBar, state, countOf, function () {
             updateChips();
-            updateCount();
             renderGrid();
           });
         }
 
         updateChips();
-        updateCount();
         renderGrid();
       })
       .catch(function (err) {
-        countEl.textContent = '불러오기 실패';
         showMessage(err.message);
       });
   }
@@ -981,13 +981,29 @@
     }
 
     setTitle(bookmark.name);
-    subEl.innerHTML = '';
-    var backLink = document.createElement('a');
-    backLink.className = 'bkm-back-link';
-    backLink.href = 'bookmarksPage.html';
-    backLink.textContent = '‹ 북마크 목록으로';
-    subEl.appendChild(backLink);
+    subEl.textContent = '';
+    countEl.textContent = '';
 
+    contentEl.innerHTML = '';
+
+    // 상세 화면 헤더(이름 + 관리 메뉴) — 항목 수는 바로 아래 필터 칩의
+    // "전체 N" 이 이미 보여주므로 따로 안 두고, 뒤로가기 링크도 안 좋아
+    // 보인다는 피드백으로 뺐다(사이드바 "북마크" 링크나 브라우저 뒤로가기로
+    // 돌아갈 수 있다). 예전엔 subEl(#bkm-sub)에 붙였는데, bookmarksPage.html의
+    // 그 자리는 .site-info--hidden(display:none !important)으로 화면에서
+    // 아예 지워져 있어서 관리(⋮) 메뉴가 DOM엔 있어도 절대 눈에 보이지
+    // 않았다 — 실제로 보이는 contentEl 안으로 옮긴다.
+    var header = document.createElement('div');
+    header.className = 'bkm-detail-header';
+
+    var titleH = document.createElement('h2');
+    titleH.className = 'bkm-detail-title';
+    titleH.textContent = bookmark.name;
+    header.appendChild(titleH);
+
+    // 케밥 아이콘이 제목 글자에 바싹 붙어있으면 너무 작고 눈에 안 띈다 —
+    // 제목과 한 줄에 묶지 않고 헤더 오른쪽 바깥으로 뺐다
+    // (CSS: .bkm-detail-menu-btn 이 position:absolute 로 배치).
     var menuBtn = document.createElement('button');
     menuBtn.type = 'button';
     menuBtn.className = 'bkm-detail-menu-btn';
@@ -996,15 +1012,13 @@
     menuBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       openBookmarkMenu(menuBtn, bookmark, {
-        onRenamed: function (newName) { setTitle(newName); },
+        onRenamed: function (newName) { titleH.textContent = newName; setTitle(newName); },
         onDeleted: function () { navigate('bookmarksPage.html'); }
       });
     });
-    subEl.appendChild(menuBtn);
+    header.appendChild(menuBtn);
 
-    countEl.textContent = bookmark.items.length + '개의 항목이 있어요!';
-
-    contentEl.innerHTML = '';
+    contentEl.appendChild(header);
 
     // 타입 필터 칩 — 그리드는 하나로 두고 '전체'가 기본이라 담은 순서를
     // 그대로 볼 수 있고, 칩을 누르면 해당 타입만 남는다
@@ -1049,7 +1063,6 @@
               // 그리드를 다시 그려야 남은 다른 타입 카드들이 나타난다
               var prevType = state.activeType;
               updateChips();
-              updateCount();
               if (state.activeType !== prevType) renderGrid();
               else showEmptyIfNeeded();
             }
@@ -1070,22 +1083,14 @@
         grid.appendChild(empty);
       }
 
-      function updateCount() {
-        countEl.textContent = state.activeType === 'all'
-          ? resolved.length + '개의 항목이 있어요!'
-          : countOf(state.activeType) + '개의 ' + TYPE_LABELS[state.activeType] + ' 항목';
-      }
-
       function updateChips() {
         renderTypeChips(chipBar, state, countOf, function () {
           updateChips();
-          updateCount();
           renderGrid();
         });
       }
 
       updateChips();
-      updateCount();
       renderGrid();
     });
   }
@@ -1113,9 +1118,8 @@
 
   // 이 페이지 안의 링크(bookmarksPage.html?... 로 가는 <a>)를 전부 가로채
   // 진짜 페이지 이동 대신 pushState + 다시 그리기로 바꾼다. 탭 전환
-  // (createTabs), 뒤로가기 링크(bkm-back-link), 공유 패널의 "공개된 모습
-  // 보기" 링크가 전부 여기 한 곳에서 처리된다 — 매번 개별 <a> 마다 클릭
-  // 핸들러를 달 필요가 없다.
+  // (createTabs), 공유 패널의 "공개된 모습 보기" 링크가 전부 여기 한 곳에서
+  // 처리된다 — 매번 개별 <a> 마다 클릭 핸들러를 달 필요가 없다.
   // 캡처 단계에서 잡는 이유: popoverKit.js 의 팝오버들이 "바깥 클릭 감지"용
   // document 클릭 리스너를 버블링 단계에 걸어두고, 패널 내부 클릭은
   // stopPropagation 으로 그 리스너에 안 닿게 막아둔다(예: 공유 패널의

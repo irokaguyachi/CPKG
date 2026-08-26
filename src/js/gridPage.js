@@ -449,6 +449,53 @@
         }, 150);
       });
     }
+
+    // 모바일(series-toolbar.css 의 768px 브레이크포인트와 동일)에서는 검색창을
+    // 화면 아래쪽의 작은 원형 버튼으로 접어두고, 탭하면 같은 자리에서 전체
+    // 알약(검색창+필터)으로 펼친다 — is-search-open 클래스를 CSS 쪽 애니메이션이
+    // 그대로 사용한다.
+    var toolbarEl = document.querySelector('.series-toolbar');
+    var searchLabel = document.querySelector('.series-search');
+    var mobileQuery = global.matchMedia ? global.matchMedia('(max-width: 768px)') : null;
+    function isMobileToolbar() { return !!(mobileQuery && mobileQuery.matches); }
+
+    function openMobileSearch() {
+      if (!toolbarEl) return;
+      toolbarEl.classList.add('is-search-open');
+      if (searchInput) searchInput.focus();
+    }
+    function closeMobileSearch() {
+      if (toolbarEl) toolbarEl.classList.remove('is-search-open');
+    }
+
+    if (toolbarEl && searchLabel) {
+      // 접혀 있을 때는 라벨 클릭이 곧 "펼치기" — 펼쳐지기 전엔 input이
+      // display:none이라 기본 라벨→포커스 동작이 일어나지 않으므로, 펼친 뒤
+      // 직접 포커스를 준다.
+      searchLabel.addEventListener('click', function (e) {
+        if (!isMobileToolbar()) return;
+        if (!toolbarEl.classList.contains('is-search-open')) {
+          e.preventDefault();
+          openMobileSearch();
+        }
+      });
+      document.addEventListener('click', function (e) {
+        if (!isMobileToolbar()) return;
+        if (!toolbarEl.classList.contains('is-search-open')) return;
+        if (toolbarEl.contains(e.target)) return;
+        closeMobileSearch();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && isMobileToolbar()) closeMobileSearch();
+      });
+      // 펼친 채로 창 크기를 키워 데스크톱 폭을 넘기면(회전, 리사이즈) 다음에
+      // 다시 모바일로 돌아왔을 때 항상 접힌 채로 시작하도록 정리해둔다.
+      if (mobileQuery && mobileQuery.addEventListener) {
+        mobileQuery.addEventListener('change', function (e) {
+          if (!e.matches) closeMobileSearch();
+        });
+      }
+    }
   }
 
   global.GridPage = { create: create };

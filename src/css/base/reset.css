@@ -14,12 +14,18 @@
   box-sizing: border-box;
 }
 
+/* overflow-x: hidden 이었으면 스펙상 overflow-y 가 auto 로 승격돼(둘 중 하나가
+   visible 이 아니면 나머지도 auto 로 바뀐다) html/body 가 스크롤 컨테이너가
+   되고, 그 안의 position:sticky 요소(예: .series-toolbar 검색창)가 실제
+   뷰포트가 아니라 그 컨테이너 기준으로 계산되면서 스크롤해도 고정되지 않는
+   버그가 있었다. clip 은 그 승격 규칙 대상이 아니라서(스크롤 가능한 오버플로우
+   자체를 만들지 않음) 가로 스크롤은 그대로 막으면서 sticky 는 정상 동작한다. */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {

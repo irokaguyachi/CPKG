@@ -1,13 +1,4 @@
 /* 북마크 페이지 전용 — 목록(폴더 카드) + 카드에서 뜨는 담기 팝오버 */
-.bkm-back-link {
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--accent);
-  text-decoration: none;
-}
-.bkm-back-link:hover { text-decoration: underline; }
 
 .bkm-list-toolbar {
   display: flex;
@@ -188,28 +179,72 @@
   .bkm-row-icon-btn svg { width: 14px; height: 14px; }
 }
 
-/* 상세 화면 헤더의 케밥(⋮) 메뉴 — 이름 바꾸기/공개/삭제를 여기로 모았다 */
+/* 상세 화면 헤더 — 뒤로가기 링크 + 이름 + 관리 메뉴.
+   #bkm-sub(subEl)는 bookmarksPage.html에서 .site-info--hidden으로 화면에서
+   아예 지워져 있어서, 예전에 거기 붙이던 뒤로가기 링크와 관리 메뉴가
+   DOM엔 있어도 절대 안 보였다 — 실제로 보이는 contentEl 안에 그린다.
+   관리(⋮) 버튼은 position:relative인 이 블록 기준으로 오른쪽 바깥에
+   절대 배치한다(아래 .bkm-detail-menu-btn) — 항목 수 문구는 뺐다(바로
+   아래 필터 칩의 "전체 N"이 이미 같은 정보를 보여준다). */
+.bkm-detail-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--content-padding) 24px;
+  text-align: center;
+}
+.bkm-detail-title {
+  margin: 0;
+  max-width: calc(100% - 120px);
+  font-size: 32px;
+  font-weight: 800;
+  color: #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .bkm-detail-title { font-size: 22px; max-width: calc(100% - 90px); }
+}
+
+/* 상세 화면 헤더의 관리(⋮) 버튼 — 이름 바꾸기/공개/삭제를 여기로 모았다.
+   예전엔 제목 글자에 바싹 붙은 28px 무배경 아이콘이라 눈에 잘 안 띄었다
+   — 헤더 오른쪽 바깥으로 빼고, 항상 보이는 원형 배경을 줘서 훨씬 잘
+   보이게 했다(사이드바 메뉴 버튼 .sidebar-toggle-btn과 비슷한 형태). */
 .bkm-detail-menu-btn {
+  position: absolute;
+  top: 0;
+  right: var(--content-padding);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: 8px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  vertical-align: middle;
-  border: none;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
   border-radius: 50%;
-  background: transparent;
-  color: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 .bkm-detail-menu-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
 }
-.bkm-detail-menu-btn svg { width: 18px; height: 18px; }
+.bkm-detail-menu-btn svg { width: 20px; height: 20px; }
+
+@media (max-width: 600px) {
+  .bkm-detail-menu-btn { width: 32px; height: 32px; }
+  .bkm-detail-menu-btn svg { width: 16px; height: 16px; }
+}
 
 /* 담을 북마크 고르기 팝오버 — body 싱글턴 position:fixed (src/js/bookmarkPicker.js) */
 .bkm-picker {
@@ -341,10 +376,13 @@
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .bkm-chip:hover { color: rgba(0, 0, 0, 0.8); }
+/* 로그인 버튼(사이드바의 민트 알약, sidebar.css 의 .auth-header-btn)과
+   같은 색으로 맞췄다 — 사이트 안에서 "선택된/활성" 상태를 나타내는 색이
+   하나로 통일되게. */
 .bkm-chip.is-active {
-  color: #ffffff;
-  background: var(--accent);
-  border-color: var(--accent);
+  color: #000000;
+  background: #00ffcc;
+  border-color: transparent;
 }
 
 .bkm-tab {
