@@ -105,7 +105,8 @@
 /* 로그인 코드 입력창을 type=password 로 감싸서 브라우저 비밀번호 관리자가
    저장 후보로 인식하게 만든 뒤(src/js/authModal.js), 정작 사용자가 지금
    무엇을 입력했는지 못 보면 곤란하니 눈 아이콘으로 평문 전환을 허용한다. */
-.auth-input-wrap {
+.auth-input-wrap,
+.auth-code-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
@@ -179,11 +180,6 @@
   word-break: break-all;
   user-select: all;
   cursor: pointer;
-}
-.auth-code-wrap {
-  position: relative;
-  flex: 1;
-  min-width: 0;
 }
 
 .auth-switch {

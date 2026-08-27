@@ -23127,5 +23127,20 @@
         "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=8422"
       }
     ]
+  },
+  {
+    "name": "부기먹고싶어요?",
+    "image": "../assets/Image/크롤링사진/임시 이미지 폴더/부기야치.png",
+    "tags": [],
+    "charCount": "Null",
+    "author": "Null",
+    "posts": [
+      {
+        "id": "특별링크",
+        "title": "부기를 찾기 위한 이야기",
+        "episode": "나도 부기가 좋아요",
+        "link": "https://open.kakao.com/o/sWyv6pKi"
+      }
+    ]
   }
 ]

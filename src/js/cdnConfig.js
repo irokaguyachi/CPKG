@@ -15,7 +15,7 @@
   // src/data/ 아래 실제로 fetch되는 .json 파일들의 내용을 해시해서 자동으로
   // 채워 넣습니다. 데이터 빌드 스크립트를 돌린 뒤 마지막에 이 스크립트를
   // 실행하세요: python src/scripts/10_update_data_version.py
-  var DATA_VERSION = '81ecb09491d7';
+  var DATA_VERSION = 'c8eb9263bd65';
   function dataUrl(path) {
     if (!path) return path;
     return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;
@@ -51,11 +51,14 @@
     return R2_CDN_BASE + '/' + segments.join('/');
   }
 
-  // Card thumbnails live in a parallel assets/Image/thumb/ tree built by
-  // src/scripts/6_build_thumbnails.py — same folder structure, always .webp,
-  // 600px wide. Originals stay untouched and are still used by the detail
-  // modal, which wants full resolution.
-  function resolveThumbUrl(path) {
+  // 카드 썸네일(assets/Image/thumb/, 600px)과 상세 모달용 중간 이미지
+  // (assets/Image/mid/, 1200px)는 src/scripts/6_build_thumbnails.py 가 원본과
+  // 같은 폴더 구조로, 항상 .webp 로 만들어 둔다 — 변형 트리 이름만 다를 뿐
+  // 경로 변환 규칙은 동일해서 한 헬퍼로 묶는다. 애니메이션 GIF 원본은 mid/
+  // 트리에 일부러 없으므로(모달에서 계속 움직이게 두려고) 그런 경로는 여기서
+  // 404가 나고, revealBackgroundProgressive() 가 원본으로 대체한다. 원본
+  // 자체는 여전히 detail 모달의 최종 폴백으로 쓰인다.
+  function resolveVariantUrl(path, variantDir) {
     if (!path) return '';
     if (/^https?:\/\//i.test(path) || path.startsWith('data:')) {
       return path;
@@ -64,38 +67,25 @@
     if (!cleanPath.startsWith('assets/')) {
       cleanPath = 'assets/' + cleanPath;
     }
-    // anything under assets/Image/ maps into the mirrored thumb/ tree. Only
+    // anything under assets/Image/ maps into the mirrored variant tree. Only
     // paths the builder actually saw have a file there, so callers go through
-    // revealBackground(), which falls back to the original on a 404. Logos and
-    // loading icons never come through here — they use resolveAssetUrl.
+    // revealBackground()/revealBackgroundProgressive(), which fall back to the
+    // original on a 404. Logos and loading icons never come through here —
+    // they use resolveAssetUrl.
     var prefix = 'assets/Image/';
     if (cleanPath.indexOf(prefix) !== 0) {
       return resolveAssetUrl(path);
     }
     var sub = cleanPath.slice(prefix.length).replace(/\.[^./]+$/, '.webp');
-    return resolveAssetUrl(prefix + 'thumb/' + sub);
+    return resolveAssetUrl(prefix + variantDir + '/' + sub);
   }
 
-  // 상세 모달용 1200px WebP 중간 이미지 — src/scripts/6_build_thumbnails.py 가
-  // thumb/ 와 같은 규칙으로 assets/Image/mid/ 아래에 만든다. 애니메이션 GIF
-  // 원본은 일부러 이 트리에 없다(모달에서 계속 움직이게 두려고) — 그런
-  // 경로는 여기서도 404가 나므로, revealBackgroundProgressive() 가 원본으로
-  // 대체한다.
+  function resolveThumbUrl(path) {
+    return resolveVariantUrl(path, 'thumb');
+  }
+
   function resolveMidUrl(path) {
-    if (!path) return '';
-    if (/^https?:\/\//i.test(path) || path.startsWith('data:')) {
-      return path;
-    }
-    var cleanPath = path.replace(/^(\.\.\/|\.\/|\/)+/, '');
-    if (!cleanPath.startsWith('assets/')) {
-      cleanPath = 'assets/' + cleanPath;
-    }
-    var prefix = 'assets/Image/';
-    if (cleanPath.indexOf(prefix) !== 0) {
-      return resolveAssetUrl(path);
-    }
-    var sub = cleanPath.slice(prefix.length).replace(/\.[^./]+$/, '.webp');
-    return resolveAssetUrl(prefix + 'mid/' + sub);
+    return resolveVariantUrl(path, 'mid');
   }
 
   // Defers setting background-image until the element actually scrolls near
@@ -140,23 +130,30 @@
       target.style.backgroundImage = 'url("' + full + '")';
       return;
     }
+
+    // thumb/mid(또는 그 폴백인 원본)이 병렬로 요청되므로 어느 쪽이 먼저
+    // 도착할지 보장이 없다 — 캐시 상태에 따라 mid가 thumb보다 먼저 뜬 뒤에
+    // 늦게 도착한 thumb가 화질을 도로 떨어뜨리는 걸 막기 위해, 이미 칠한
+    // 단계보다 낮은 단계는 무시한다.
+    var RANK = { thumb: 1, mid: 2, full: 2 };
+    var painted = 0;
+    function paint(rank, url) {
+      if (rank < painted) return;
+      painted = rank;
+      target.style.backgroundImage = 'url("' + url + '")';
+    }
+
     var thumbProbe = new Image();
-    thumbProbe.onload = function () {
-      target.style.backgroundImage = 'url("' + thumb + '")';
-    };
+    thumbProbe.onload = function () { paint(RANK.thumb, thumb); };
     thumbProbe.src = thumb;
 
     var midProbe = new Image();
-    midProbe.onload = function () {
-      target.style.backgroundImage = 'url("' + mid + '")';
-    };
+    midProbe.onload = function () { paint(RANK.mid, mid); };
     midProbe.onerror = function () {
       // mid 파일이 없다(애니메이션 원본이라 일부러 안 만들었거나, 아직 빌드
       // 전이거나) — 원본으로 대체한다.
       var fullProbe = new Image();
-      fullProbe.onload = function () {
-        target.style.backgroundImage = 'url("' + full + '")';
-      };
+      fullProbe.onload = function () { paint(RANK.full, full); };
       fullProbe.onerror = function () {
         // 원본도 404 — 썸네일 프로브가 이미 채워놨을 수도, 아닐 수도 있는
         // 상태 그대로 둔다.
