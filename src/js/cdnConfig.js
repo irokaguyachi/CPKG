@@ -10,7 +10,12 @@
   // the browser cache entirely and re-downloaded every data file on every
   // navigation. Cache normally instead and bust it explicitly by bumping this
   // when the data under src/data/ changes.
-  var DATA_VERSION = '20260826-2';
+  //
+  // 이 값은 손으로 고치지 마세요 — src/scripts/10_update_data_version.py가
+  // src/data/ 아래 실제로 fetch되는 .json 파일들의 내용을 해시해서 자동으로
+  // 채워 넣습니다. 데이터 빌드 스크립트를 돌린 뒤 마지막에 이 스크립트를
+  // 실행하세요: python src/scripts/10_update_data_version.py
+  var DATA_VERSION = '61ef12c867a2';
   function dataUrl(path) {
     if (!path) return path;
     return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;

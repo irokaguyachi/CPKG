@@ -16,6 +16,10 @@
 - 다크모드 전용 값이 필요해지면 JSON에 "dark": { "mint": "..." } 처럼
   서브 객체를 추가하세요 — 이 스크립트가 [data-theme="dark"] { ... } 블록으로
   자동 변환합니다(지금은 다크모드에서도 같은 값을 쓰고 있어 비어 있습니다).
+- `--check` 옵션을 주면(파일을 고치지 않고) ColorTheme.json으로 다시 생성했을
+  때와 지금 colorTheme.css가 같은지만 확인합니다. JSON만 고치고 이 스크립트
+  재실행을 깜빡한 경우를 커밋/배포 전에 잡아내는 용도입니다:
+  `python src/scripts/9_build_color_theme.py --check`
 """
 import json
 import os
@@ -61,10 +65,7 @@ def build_block(selector, tokens, skip_keys):
     return selector + " {\n" + "\n".join(lines) + "\n}\n"
 
 
-def main():
-    tokens = json.load(open(json_path, encoding="utf-8"))
-    check_owned_elsewhere(tokens)
-
+def build_css(tokens):
     skip_keys = set(OWNED_ELSEWHERE.keys())
     parts = [
         "/* 이 파일은 src/scripts/9_build_color_theme.py 가",
@@ -82,9 +83,27 @@ def main():
     if dark_block:
         parts.append(dark_block)
 
+    return "\n".join(parts).rstrip() + "\n"
+
+
+def main():
+    check_mode = "--check" in sys.argv
+    tokens = json.load(open(json_path, encoding="utf-8"))
+    check_owned_elsewhere(tokens)
+    expected = build_css(tokens)
+
+    if check_mode:
+        current = open(out_path, encoding="utf-8").read() if os.path.exists(out_path) else None
+        if current != expected:
+            print("! colorTheme.css가 ColorTheme.json과 어긋나 있습니다 — 다시 생성하세요:")
+            print("  python src/scripts/9_build_color_theme.py")
+            sys.exit(1)
+        print("colorTheme.css가 ColorTheme.json과 일치합니다 — 다시 생성할 필요 없어요.")
+        return
+
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(parts).rstrip() + "\n")
+        f.write(expected)
 
     print("wrote", os.path.normpath(out_path))
 

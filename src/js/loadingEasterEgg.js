@@ -17,6 +17,15 @@
   var TRIGGER_CHANCE = 0.01;
   if (Math.random() >= TRIGGER_CHANCE) return;
 
+  // 새로고침/뒤로가기로 들어온 경우(loading.js의 isFreshEntry()가 false)에는
+  // loading.js가 #loader를 display:none으로 즉시 숨기고 window.finishLoading을
+  // 아예 안 부른다 — 그런 페이지에서 이스터에그를 켜면 reassertTimer를 지울
+  // 계기가 영영 안 생겨서 탭이 열려있는 내내 100ms 간격 타이머가 새게 된다.
+  // 로더 자체가 안 뜰 페이지라면 이스터에그도 아무것도 하지 않고 조용히
+  // 빠진다.
+  var loaderEl = document.getElementById('loader');
+  if (!loaderEl || loaderEl.style.display === 'none') return;
+
   var EASTER_LOADING_TEXT = 'Loading?';
   var EASTER_TIP_TEXT = 'https://open.kakao.com/o/sIGm6pKi (선착)';
   var EXTRA_DELAY_MS = 10000;
