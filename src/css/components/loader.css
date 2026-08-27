@@ -83,6 +83,17 @@
 .loader-tip-tag {
   font-weight: 600;
 }
+
+/* Tip.json 문구 중 길이가 들쭉날쭉한 것(농담성 팁 등)이 좁은 화면에서
+   양 끝까지 꽉 차거나 줄바꿈으로 여러 줄을 뒤덮어 답답해 보였다.
+   글자를 살짝 줄이고 양옆에 여백을 둬서 화면 끝에 닿지 않게 한다. */
+@media (max-width: 768px) {
+  .loader-tip {
+    left: 24px;
+    right: 24px;
+    font-size: 11px;
+  }
+}
 .loader-caret {
   display: inline-block;
   width: 2px;
