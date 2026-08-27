@@ -724,6 +724,10 @@
     function resetAndLoad() {
       libOffset = 0;
       loadedItems = [];
+      // gridPage.js와 같은 이유로, 그리드를 비우기 전에 지연 로딩
+      // 옵저버부터 정리한다 — 안 그러면 검색/정렬을 반복할 때마다 사라진
+      // 카드가 detached 상태로 옵저버에 계속 쌓인다.
+      if (global.unobserveAllLazy) global.unobserveAllLazy();
       grid.innerHTML = '';
       clearLoadMore();
       countEl.textContent = '불러오는 중...';
@@ -934,6 +938,10 @@
         }
 
         function renderGrid() {
+          // gridPage.js와 같은 이유로, 그리드를 비우기 전에 지연 로딩
+          // 옵저버부터 정리한다 — 안 그러면 필터 칩을 반복 클릭할 때마다
+          // 사라진 카드가 detached 상태로 옵저버에 계속 쌓인다.
+          if (global.unobserveAllLazy) global.unobserveAllLazy();
           grid.innerHTML = '';
           var shown = resolved.filter(function (r) {
             return state.activeType === 'all' || r.type === state.activeType;
@@ -1044,6 +1052,11 @@
       function countOf(type) { return countOfType(resolved, type); }
 
       function renderGrid() {
+        // gridPage.js와 같은 이유로, 그리드를 비우기 전에 지연 로딩
+        // 옵저버부터 정리한다 — 안 그러면 필터 칩을 반복 클릭하거나
+        // 항목을 해제할 때마다 사라진 카드가 detached 상태로 옵저버에
+        // 계속 쌓인다.
+        if (global.unobserveAllLazy) global.unobserveAllLazy();
         grid.innerHTML = '';
         var shown = resolved.filter(function (r) {
           return state.activeType === 'all' || r.type === state.activeType;
@@ -1098,6 +1111,12 @@
   // pushState 로 URL만 바뀔 수 있으므로 전역 변수로 한 번만 읽어두면 안
   // 되고, 호출할 때마다 지금 URL을 새로 읽어야 한다.
   function renderCurrentView() {
+    // 뷰 전환마다(다른 북마크 상세로 이동, 상세→목록 등) 이전 화면에 지연
+    // 로딩 카드가 떠 있었을 수 있다 — contentEl을 어떤 render* 함수가
+    // 통째로 지우든 여기 한 곳에서 먼저 옵저버를 정리해두면 개별 함수마다
+    // 따로 챙길 필요가 없다.
+    if (global.unobserveAllLazy) global.unobserveAllLazy();
+
     var params = new URLSearchParams(global.location.search);
     var bkmId = params.get('id');
     var libId = params.get('libraryId');
