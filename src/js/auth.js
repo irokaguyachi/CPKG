@@ -106,9 +106,9 @@
     error: '동기화 실패 · 다시 눌러보세요'
   };
 
-  // 로그인/개인 코드 관리 버튼 바로 아래에 붙는 사이트 버전 표시.
+  // 로그인/개인 코드 관리 버튼 아래에 붙는 사이트 버전 표시.
   // syncBadge 와 마찬가지로 매번 버튼 바로 뒤로 강제 재배치해서 순서를
-  // 고정한다(로그인 버튼 → 버전 → (로그인시) 동기화 뱃지).
+  // 고정한다(로그인 버튼 → (로그인시) 동기화 뱃지 → 버전).
   function renderVersionTag(nav) {
     var tag = nav.querySelector('.auth-version-tag');
     if (!tag) {
@@ -144,11 +144,14 @@
     // userData.js 의 초기 상태 이벤트(chokaguya:sync-state)가 스크립트 로드
     // 순서상 renderHeaderButton 보다 먼저 도착할 수 있어(로그인된 채로
     // 페이지를 새로고침한 경우 흔함), 그때는 이 뱃지가 개인 코드 관리
-    // 버튼보다 먼저 nav 에 붙어버린다. 매번 버전 태그 바로 뒤로 강제
-    // 재배치해서 순서를 고정한다.
-    var versionTag = nav.querySelector('.auth-version-tag');
-    if (versionTag) {
-      versionTag.insertAdjacentElement('afterend', badge);
+    // 버튼보다 먼저 nav 에 붙어버린다. 매번 로그인 버튼 바로 뒤로 강제
+    // 재배치해서 순서를 고정한다 — renderVersionTag가 버전 태그를 항상
+    // authBtn 바로 뒤에 꽂아두므로, 이 뱃지를 다시 authBtn 뒤로 넣으면
+    // 버전 태그가 자연스럽게 뱃지 뒤로 밀려나 "버튼 → 뱃지 → 버전" 순서가
+    // 유지된다.
+    var authBtn = nav.querySelector('.auth-header-btn');
+    if (authBtn) {
+      authBtn.insertAdjacentElement('afterend', badge);
     } else if (!badge.parentNode) {
       nav.appendChild(badge);
     }
