@@ -216,8 +216,24 @@
           }, 300);
         }
 
+        // gridPage.js의 검색 placeholder 타이핑 로직과 같은 이유로, 백그라운드
+        // 탭에서는 회전을 멈춘다 — 안 그러면 setInterval이 탭을 벗어나도
+        // 영구히 돌면서 불필요한 DOM 작업을 계속 쌓는다.
+        var rotateTimer = null;
+        function stopRotate() {
+          if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+        }
+        function startRotate() {
+          if (!rotateTimer) rotateTimer = setInterval(showNext, 5000);
+        }
+        function syncRotate() {
+          if (document.hidden) stopRotate();
+          else startRotate();
+        }
+        document.addEventListener('visibilitychange', syncRotate);
+
         showNext();
-        setInterval(showNext, 5000);
+        syncRotate();
       })
       .catch(function () { section.remove(); });
 
