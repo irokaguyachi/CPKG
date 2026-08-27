@@ -16,13 +16,14 @@
  *   사이드바에는 그 연출을 넣지 않았다. 로고만 계속 커진다.
  */
 
-/* 오른쪽 위 메뉴 버튼 — 처음엔 로고(top:48px)와 같은 높이로 뒀는데, 사이드바가
-   열렸을 때 그 자리가 첫 네비 링크("공식")와 겹쳐서 좀 더 아래(top:64px)로
-   내렸다. 로고와 세로 정렬이 완전히 맞진 않지만, 사이드바 쪽 여백을 넉넉히
-   확보하는 쪽을 우선했다. */
+/* 오른쪽 위 메뉴 버튼 — 로고(.header-logo)와 같은 높이(헤더 세로 중앙)로
+   맞춘다. 예전엔 사이드바가 열렸을 때 첫 네비 링크와 겹친다는 이유로 더
+   아래(top:64px)로 내려뒀었지만, 지금은 .sidebar의 위쪽 여백(padding-top
+   140px)이 이미 이 버튼 위치와 무관하게 충분히 넉넉해서 그 우려가 더 이상
+   유효하지 않다 — 로고와의 세로 정렬을 우선한다. */
 .sidebar-toggle-btn {
   position: fixed;
-  top: 64px;
+  top: 48px;
   right: 50px;
   transform: translateY(-50%);
   z-index: 26;
@@ -53,7 +54,7 @@
 @media (max-width: 768px) {
   .sidebar-toggle-btn {
     right: 24px;
-    top: 48px;
+    top: 36px;
   }
 }
 
@@ -86,7 +87,7 @@
   width: 286px;
   max-width: 85vw;
   height: 100vh;
-  /* 위쪽만 넉넉히 비워서 .sidebar-toggle-btn(fixed, top:64px, 지름 42px) 이
+  /* 위쪽만 넉넉히 비워서 .sidebar-toggle-btn(fixed, top:48px, 지름 42px) 이
      사이드바가 열렸을 때도 네비 링크와 안 겹치게 한다 — 버튼이 이 빈 여백
      위에 자연스럽게 얹힌다. */
   padding: 140px 30px 50px;
