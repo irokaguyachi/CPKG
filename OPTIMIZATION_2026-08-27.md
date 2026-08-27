@@ -156,3 +156,36 @@ python src/scripts/9_build_color_theme.py --check
 | **N-T2** | 상세 모달이 원본 이미지 전송 (평균 755 KB, 최대 17 MB) | `6_build_thumbnails.py`에 1200px 중간 프리셋 추가 + `resolveMidUrl` 신설. 손이 가장 많이 감 |
 | **메인 랜덤 섹션 페이로드** | 카드 1개 보여주려고 802 KB(Novel+Series+HOF) 동시 fetch | 백그라운드 회전 문제(1-2)는 해결했으나 **페이로드 자체는 그대로**. `Recent.json` 방식으로 랜덤용 축소 데이터를 미리 만드는 접근 |
 | **N-T3 / N-T4** | 깨진 이미지 11건, 중복 저장 110 MB | 코드 변경 전 R2 라이브 재실측 필요 |
+
+---
+
+## 8. 후속 작업 (2026-08-28)
+
+이 문서의 7번 표를 재검토한 뒤 실제로 진행한 것과, 검토만 하고 보류한 것입니다.
+
+### 8-1. N-T1 재검토 결과 — 이번엔 보류
+
+7번 표는 "N-T5가 해결된 지금이 다시 시도할 시점"이라 적어뒀지만, 실제로는 착오였습니다. `5a66fbb`(2026-08-26)에서 `/js/*`, `/css/*` 7일 캐시를 이미 한 번 켰다가, **배포한 수정이 재방문자에게 최대 7일간 반영되지 않는 실제 장애**로 되돌린 이력이 있습니다. N-T5가 고친 `DATA_VERSION`은 `/data/*` JSON 전용이고, `.js`/`.css` 파일명 자체엔 여전히 캐시버스터(해시나 쿼리스트링)가 없어서 지금 다시 켜면 같은 장애가 그대로 재현됩니다. 파일명 해싱 같은 선행 조치 없이는 재시도하지 않기로 했습니다.
+
+### 8-2. N-T6 — 북마크 조회 인덱스(Lookup.json) 적용 완료
+
+- 신규 `src/scripts/11_build_lookup.py`가 Novel/Series/HOF/Official.json에서 `bookmarksPage.js`가 실제로 쓰는 필드(name/image/posts/charCount)만 뽑아 `src/data/PageData/Lookup.json`을 만듭니다. 대표 게시물 id를 키로 삼아 `{ type: { id: 항목 } }` 모양으로 담아서, 기존 조회 로직(`loadItemLookup`) 코드는 fetch 대상만 바뀌고 나머지는 그대로입니다.
+- 사람이 읽을 파일이 아니라 매 북마크 상세 진입마다 그대로 전송되는 파일이라 들여쓰기 없이 압축했습니다.
+- `bookmarksPage.js`는 이제 4개 파일(Novel+Series+HOF+Official, 약 764KB) 대신 `Lookup.json` 하나(488.6KB)만 받습니다 — 약 36% 절감.
+- `10_update_data_version.py`로 `DATA_VERSION`을 갱신해 캐시를 깨뜨렸습니다.
+
+### 8-3. N-T2 — 상세 모달 중간 이미지(mid) 프리셋 적용 완료
+
+- `6_build_thumbnails.py`가 기존 600px 카드 썸네일(`thumb/`)에 더해 1200px WebP 중간 이미지(`mid/`)를 함께 만듭니다.
+- **애니메이션 GIF(및 애니메이션 WebP/PNG) 원본은 `mid/`를 만들지 않습니다** — 상세 모달이 지금 실제로 그 애니메이션을 재생 중인데, 정지 이미지로 바꾸면 그 연출이 사라지기 때문입니다(검토 중 발견: 용량 상위권 대부분이 이 애니메이션 이미지였습니다 — 최대 17MB짜리 포함). `src/js/cdnConfig.js`의 신규 `resolveMidUrl()`이 가리키는 경로가 404면 `revealBackgroundProgressive()`가 원본으로 자동 대체하므로, 애니메이션 있는 소수(649개 중 28개)는 지금처럼 원본 그대로 재생됩니다.
+- 정지 이미지 610개는 평균 약 57KB의 mid 이미지로 대체되어, 상세 모달 진입 시 원본(평균 약 750KB, 최대 수십 MB)을 안 받습니다.
+- 이미지 자산은 git이 아니라 R2에 별도로 호스팅됩니다(`.gitignore`의 `src/assets` 제외 규칙, `src/scripts/sync_to_r2.py`). **`mid/` 폴더가 로컬에는 생성됐지만, `sync_to_r2.py`를 돌려 R2에 업로드하기 전까지는 실제 배포에 반영되지 않습니다** — 그 전까지는 404 폴백 경로를 타고 원본이 그대로 나가므로 안전하게 동작은 하지만, 절감 효과는 없습니다.
+
+### 8-4. 검증 범위
+
+Chrome 확장이 이 세션에 연결되지 않아 실제 브라우저 클릭 테스트는 못 했습니다. 대신 확인한 것:
+- 수정한 JS 4개 파일(`cdnConfig.js`, `bookmarksPage.js`, `postDetailSeries.js`, `authModal.js`) `node --check` 통과
+- 신규/수정 Python 스크립트 2개 컴파일 통과, 실행 결과(생성 개수·용량)가 기대치와 일치
+- `Lookup.json`을 로컬 정적 서버로 서빙해 구조·인코딩 확인, 실제 카탈로그 이미지 하나로 `thumb`/`mid` 파일 생성 여부 확인
+
+→ 배포 후 북마크 상세 진입과 상세 모달을 실제로 열어보는 확인이 남아 있습니다.

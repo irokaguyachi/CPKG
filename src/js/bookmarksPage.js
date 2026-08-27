@@ -3,7 +3,8 @@
  * - 목록 모드(URL 에 ?id= 없음): 탭 두 개.
  *   · 내 북마크: 내가 만든 북마크(이름 있는 모음)들을 폴더 카드로 보여줌.
  *   · 북마크 라이브러리(?tab=library): 다른 사람이 공개한 북마크 목록.
- * - 상세 모드(?id=<북마크id>): Novel/Series/HOF/Official.json 을 모두
+ * - 상세 모드(?id=<북마크id>): Lookup.json(Novel/Series/HOF/Official.json 을
+ *   미리 합쳐 경량화해 둔 조회 인덱스, src/scripts/11_build_lookup.py)을
  *   불러와 그 북마크에 담긴 항목들을 담은 순서 그대로 하나의 그리드로
  *   보여줌 — 타입별로 안 나눔(유저가 문학/시리즈를 섞어 담을 수 있어서).
  * - 라이브러리 상세(?libraryId=<code>): 공개된 북마크 하나를 같은 방식으로
@@ -13,20 +14,13 @@
  *   (BOOKMARK_SYSTEM_PLAN.md 참고).
  */
 (function (global) {
-  var SECTIONS = [
-    { type: 'novel', dataUrl: '../data/PageData/Novel.json' },
-    { type: 'series', dataUrl: '../data/PageData/Series.json' },
-    { type: 'hof', dataUrl: '../data/PageData/HOF.json' },
-    { type: 'official', dataUrl: '../data/PageData/Official.json' }
-  ];
-
   // ---- 이 페이지 안에서만 쓰는 라우팅 + 캐시 ----
   // "내 북마크"/"라이브러리" 탭, 목록/상세 전환이 전부 <a href="bookmarksPage.html?...">
   // 진짜 페이지 이동이었다 — 왔다갔다할 때마다 로더 애니메이션이 다시 재생되고,
   // 라이브러리 쪽은 서버 요청도 매번 새로 나갔다. pushState + 다시 그리기로
   // 바꾸고, 서버에서 받은 것들은 이 세션(페이지를 안 벗어나는 동안) 안에서
   // 재사용한다.
-  var itemLookupPromise = null;   // PageData 4개(~805KB) — 상세를 몇 번 열어도 1회만
+  var itemLookupPromise = null;   // Lookup.json — 상세를 몇 번 열어도 1회만
   var libraryListCache = null;    // 라이브러리 목록 — 탭을 오갈 때 재요청 방지
   var libraryDetailCache = {};    // code -> 라이브러리 상세 Promise
 
@@ -67,30 +61,19 @@
   }
 
   // 상세 모드(내 북마크 / 라이브러리)가 공통으로 쓰는 조회맵 로더 —
-  // PageData 4개를 병렬로 받아 { type: { 대표게시물id: 항목 } } 로 만든다.
+  // src/scripts/11_build_lookup.py 가 미리 { type: { 대표게시물id: 항목 } }
+  // 모양으로 구워둔 Lookup.json 하나만 받는다. 예전엔 이거 하나 때문에
+  // Novel/Series/HOF/Official.json 4개(~778KB)를 통째로 받았다
+  // (TRAFFIC_SECURITY_AUDIT_2.md N-T6).
   function loadItemLookup() {
     // 상세를 여러 번 열어도(내 북마크든 라이브러리든) 이 세션 안에서는
-    // PageData 4개를 한 번만 받는다 — 개별 fetch가 이미 실패를 빈 배열로
-    //삼키므로(catch) 이 Promise는 사실상 항상 resolve된다.
+    // 한 번만 받는다 — 실패해도 빈 조회맵으로 대체하므로(catch) 이 Promise는
+    // 사실상 항상 resolve된다.
     if (itemLookupPromise) return itemLookupPromise;
 
-    var fetches = SECTIONS.map(function (section) {
-      return fetch(DATA(section.dataUrl)).then(function (r) { return r.json(); }).catch(function () { return []; });
-    });
-
-    itemLookupPromise = Promise.all(fetches).then(function (results) {
-      var byId = {};
-      SECTIONS.forEach(function (section, i) {
-        var items = Array.isArray(results[i]) ? results[i] : [];
-        var map = {};
-        items.forEach(function (s) {
-          var pid = s.posts && s.posts[0] && s.posts[0].id;
-          if (pid != null) map[pid] = s;
-        });
-        byId[section.type] = map;
-      });
-      return byId;
-    });
+    itemLookupPromise = fetch(DATA('../data/PageData/Lookup.json'))
+      .then(function (r) { return r.json(); })
+      .catch(function () { return { novel: {}, series: {}, hof: {}, official: {} }; });
     return itemLookupPromise;
   }
 

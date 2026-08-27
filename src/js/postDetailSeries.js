@@ -85,9 +85,10 @@
     var image = document.createElement('div');
     image.className = 'pds-image';
     if (data.imageUrl) {
-      // 원본 평균 755KB, 최대 17MB — 카드가 --pds-scale로 축소 표시되는데도
-      // 그 원본을 그대로 받아 모달이 뜨는 동안 멈춘 것처럼 보였다. 썸네일을
-      // 먼저 배경으로 깔고 원본이 도착하면 교체한다(최종 화질은 동일).
+      // 예전엔 원본(평균 755KB, 최대 17MB)을 그대로 받아 모달이 뜨는 동안
+      // 멈춘 것처럼 보였다. 썸네일을 먼저 배경으로 깔고, 이 모달 크기에는
+      // 충분한 1200px 중간 이미지가 도착하면 그걸로 교체한다(애니메이션
+      // GIF만 예외로 원본 그대로 유지 — resolveMidUrl 참고).
       if (window.revealBackgroundProgressive) {
         window.revealBackgroundProgressive(image, data.imageUrl);
       } else {

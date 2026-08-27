@@ -15,7 +15,7 @@
   // src/data/ 아래 실제로 fetch되는 .json 파일들의 내용을 해시해서 자동으로
   // 채워 넣습니다. 데이터 빌드 스크립트를 돌린 뒤 마지막에 이 스크립트를
   // 실행하세요: python src/scripts/10_update_data_version.py
-  var DATA_VERSION = '61ef12c867a2';
+  var DATA_VERSION = '4164f13acf64';
   function dataUrl(path) {
     if (!path) return path;
     return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;
@@ -76,6 +76,28 @@
     return resolveAssetUrl(prefix + 'thumb/' + sub);
   }
 
+  // 상세 모달용 1200px WebP 중간 이미지 — src/scripts/6_build_thumbnails.py 가
+  // thumb/ 와 같은 규칙으로 assets/Image/mid/ 아래에 만든다. 애니메이션 GIF
+  // 원본은 일부러 이 트리에 없다(모달에서 계속 움직이게 두려고) — 그런
+  // 경로는 여기서도 404가 나므로, revealBackgroundProgressive() 가 원본으로
+  // 대체한다.
+  function resolveMidUrl(path) {
+    if (!path) return '';
+    if (/^https?:\/\//i.test(path) || path.startsWith('data:')) {
+      return path;
+    }
+    var cleanPath = path.replace(/^(\.\.\/|\.\/|\/)+/, '');
+    if (!cleanPath.startsWith('assets/')) {
+      cleanPath = 'assets/' + cleanPath;
+    }
+    var prefix = 'assets/Image/';
+    if (cleanPath.indexOf(prefix) !== 0) {
+      return resolveAssetUrl(path);
+    }
+    var sub = cleanPath.slice(prefix.length).replace(/\.[^./]+$/, '.webp');
+    return resolveAssetUrl(prefix + 'mid/' + sub);
+  }
+
   // Defers setting background-image until the element actually scrolls near
   // the viewport, so off-screen cards never fire an R2 GET request at all.
   // rootMargin preloads a bit early so images are ready by the time they're
@@ -100,16 +122,19 @@
     probe.src = thumb;
   }
 
-  // Like revealBackground(), but for callers that need the full-resolution
-  // original as the final image (e.g. the detail modal, which shows it at a
-  // large scale) rather than settling for the thumbnail. Originals average
-  // 755KB and run up to 17MB, so waiting for one before showing anything
-  // makes the modal feel frozen. Both requests start immediately in
-  // parallel; the (much smaller) thumbnail almost always paints first, then
-  // gets replaced the moment the original finishes loading. Final image is
-  // always the original — this only changes how long the wait feels.
+  // Like revealBackground(), but for callers that show the image at a large
+  // scale (e.g. the detail modal) rather than settling for the card
+  // thumbnail. Originals average 755KB and run up to 17MB, so waiting for
+  // one before showing anything makes the modal feel frozen — and showing
+  // the full original at all was mostly wasted resolution for how large the
+  // modal actually renders it. Both requests start immediately in parallel;
+  // the (much smaller) thumbnail almost always paints first, then gets
+  // replaced once the 1200px "mid" image finishes loading. Animated GIF
+  // sources have no mid file on purpose (see resolveMidUrl) — that 404 falls
+  // back to the true original so those keep animating like before.
   function revealBackgroundProgressive(target, rawPath) {
     var thumb = resolveThumbUrl(rawPath);
+    var mid = resolveMidUrl(rawPath);
     var full = resolveAssetUrl(rawPath);
     if (thumb === full) {
       target.style.backgroundImage = 'url("' + full + '")';
@@ -121,15 +146,24 @@
     };
     thumbProbe.src = thumb;
 
-    var fullProbe = new Image();
-    fullProbe.onload = function () {
-      target.style.backgroundImage = 'url("' + full + '")';
+    var midProbe = new Image();
+    midProbe.onload = function () {
+      target.style.backgroundImage = 'url("' + mid + '")';
     };
-    fullProbe.onerror = function () {
-      // original 404s — keep whatever the thumbnail probe already set
-      // (or nothing, if that hasn't resolved yet either)
+    midProbe.onerror = function () {
+      // mid 파일이 없다(애니메이션 원본이라 일부러 안 만들었거나, 아직 빌드
+      // 전이거나) — 원본으로 대체한다.
+      var fullProbe = new Image();
+      fullProbe.onload = function () {
+        target.style.backgroundImage = 'url("' + full + '")';
+      };
+      fullProbe.onerror = function () {
+        // 원본도 404 — 썸네일 프로브가 이미 채워놨을 수도, 아닐 수도 있는
+        // 상태 그대로 둔다.
+      };
+      fullProbe.src = full;
     };
-    fullProbe.src = full;
+    midProbe.src = mid;
   }
 
   function lazyLoadBackground(el, rawPath) {
@@ -166,6 +200,7 @@
 
   global.resolveAssetUrl = resolveAssetUrl;
   global.resolveThumbUrl = resolveThumbUrl;
+  global.resolveMidUrl = resolveMidUrl;
   global.dataUrl = dataUrl;
   global.fetchJsonCached = fetchJsonCached;
   global.DATA_VERSION = DATA_VERSION;

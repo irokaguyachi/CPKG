@@ -26,13 +26,17 @@ posts_by_id = {p["i"]: p for p in data["posts"]}
 # 7_build_novel_page_data.py 의 existing_image 패턴과 동일).
 # 시리즈명이 바뀌어도 매칭되도록 이름이 아니라 대표(첫 화) 게시물 id로 키를 잡는다.
 existing_image_by_first_post = {}
+page_dir = os.path.join(HERE, "..", "page")
 if os.path.exists(out_path):
     try:
         for entry in json.load(open(out_path, encoding="utf-8")):
             posts = entry.get("posts") or []
             pid = posts[0]["id"] if posts else None
-            if pid is not None and entry.get("image"):
-                existing_image_by_first_post[pid] = entry["image"]
+            img = entry.get("image")
+            if pid is not None and img:
+                img_abs = os.path.normpath(os.path.join(page_dir, img))
+                if os.path.exists(img_abs):
+                    existing_image_by_first_post[pid] = img
     except (ValueError, AttributeError, KeyError, IndexError):
         pass  # 비어 있거나 깨진 파일이면 새로 만듦
 

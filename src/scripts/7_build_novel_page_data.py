@@ -68,14 +68,18 @@ def main():
     in_series = {ch["i"] for s in series for ch in s.get("ch", [])}
     ignore_ids = load_ignore_ids()
 
-    # 기존 파일의 수동 image 매핑 보존
+    page_dir = os.path.join(HERE, "..", "page")
+    # 기존 파일의 수동 image 매핑 보존 (단, 실제 디스크에 존재하는 경우만)
     existing_image = {}
     if os.path.exists(out_path):
         try:
             for entry in json.load(open(out_path, encoding="utf-8")):
                 pid = (entry.get("posts") or [{}])[0].get("id")
-                if pid is not None and entry.get("image"):
-                    existing_image[pid] = entry["image"]
+                img = entry.get("image")
+                if pid is not None and img:
+                    img_abs = os.path.normpath(os.path.join(page_dir, img))
+                    if os.path.exists(img_abs):
+                        existing_image[pid] = img
         except (ValueError, AttributeError):
             pass  # 비어 있거나 깨진 파일이면 새로 만듦
 
