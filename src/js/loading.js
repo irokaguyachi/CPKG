@@ -16,24 +16,10 @@
         var isFirstVisit = !localStorage.getItem('chokaguya_tipVisited');
         if (isFirstVisit) localStorage.setItem('chokaguya_tipVisited', '1');
 
-        var order = shuffle(tips.slice());
-        var idx = 0;
-        var showFirstVisitTip = isFirstVisit;
-        function cycle() {
-          var text;
-          if (showFirstVisitTip) {
-            text = FIRST_VISIT_TIP;
-            showFirstVisitTip = false;
-          } else {
-            if (idx >= order.length) { order = shuffle(tips.slice()); idx = 0; }
-            text = order[idx];
-            idx++;
-          }
-          typeText(tipEl, text, 500, function () {
-            setTimeout(cycle, 2200);
-          });
-        }
-        cycle();
+        // 로딩 화면 하나당 팁 하나 — __loaderShowIcon과 같은 원칙으로, 같은
+        // 로딩이 떠 있는 동안 계속 바뀌는 대신 로딩이 새로 발생할 때만 바뀐다.
+        var text = isFirstVisit ? FIRST_VISIT_TIP : tips[Math.floor(Math.random() * tips.length)];
+        typeText(tipEl, text, 500);
       })
       .catch(function () {});
   }
@@ -79,14 +65,6 @@
       }
     }
     requestAnimationFrame(step);
-  }
-
-  function shuffle(arr) {
-    for (var i = arr.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-    }
-    return arr;
   }
 })();
 
