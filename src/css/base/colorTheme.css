@@ -1,0 +1,9 @@
+/* 이 파일은 src/scripts/9_build_color_theme.py 가
+   src/data/ColorTheme.json 에서 자동 생성합니다.
+   색을 바꾸려면 이 파일이 아니라 그 JSON을 고친 뒤 스크립트를 다시 실행하세요. */
+
+:root {
+  --accent-hover: #2058c9;
+  --mint: #00ffcc;
+  --mint-hover: #00e6b8;
+}

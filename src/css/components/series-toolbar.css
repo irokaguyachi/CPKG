@@ -63,33 +63,9 @@
   flex-shrink: 0;
 }
 
-.series-filter-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  background: #f5f5f5;
-  border: 0.5px solid rgba(0, 0, 0, 0.2);
-  border-radius: 50%;
-  color: #000000;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-.series-filter-btn svg {
-  width: 18px;
-  height: 18px;
-}
-.series-filter-btn.is-active {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: #eaf1ff;
-}
-
-/* 그리드/리스트 보기 전환 — series-filter-btn과 같은 원형 톤을 공유하는
-   단일 토글 버튼. 아이콘은 "누르면 바뀔 모드"를 보여준다(테마 토글 버튼과
-   같은 관례). */
+/* 그리드/리스트 보기 전환(.series-view-toggle-btn)이 이 원형 톤(크기/배경/
+   테두리/트랜지션)을 그대로 공유해서 두 선택자를 한 규칙으로 묶는다. */
+.series-filter-btn,
 .series-view-toggle-btn {
   display: flex;
   align-items: center;
@@ -105,9 +81,15 @@
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
+.series-filter-btn svg,
 .series-view-toggle-btn svg {
   width: 18px;
   height: 18px;
+}
+.series-filter-btn.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: #eaf1ff;
 }
 .series-view-toggle-btn:hover {
   background: #eeeeee;
@@ -266,10 +248,7 @@
   .series-search input {
     font-size: 14px;
   }
-  .series-filter-btn {
-    width: 36px;
-    height: 36px;
-  }
+  .series-filter-btn,
   .series-view-toggle-btn {
     width: 36px;
     height: 36px;

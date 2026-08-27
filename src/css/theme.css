@@ -651,7 +651,7 @@ html.theme-transitioning *:after {
    민트색을 라이트/다크 어디서나 그대로 쓰려면 여기서도 명시해야 한다. */
 [data-theme="dark"] .bkm-chip.is-active {
   color: #000000;
-  background: #00ffcc;
+  background: var(--mint);
   border-color: transparent;
 }
 
@@ -702,7 +702,7 @@ html.theme-transitioning *:after {
   border-color: transparent;
 }
 [data-theme="dark"] .bkm-share-btn.is-primary:hover {
-  background: #2058c9;
+  background: var(--accent-hover);
 }
 [data-theme="dark"] .bkm-share-btn.is-danger {
   color: #ff8b8b;
@@ -741,7 +741,7 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .auth-code-display {
   background: var(--dark-input-bg);
   border-color: rgba(255, 255, 255, 0.2);
-  color: #00ffcc;
+  color: var(--mint);
 }
 [data-theme="dark"] .auth-reason {
   background: var(--dark-input-bg);
@@ -753,7 +753,7 @@ html.theme-transitioning *:after {
   color: var(--dark-text);
 }
 [data-theme="dark"] .auth-input:focus {
-  border-color: #00ffcc;
+  border-color: var(--mint);
   background: var(--dark-surface);
 }
 [data-theme="dark"] .auth-input::placeholder {
@@ -778,7 +778,7 @@ html.theme-transitioning *:after {
   border-color: transparent;
 }
 [data-theme="dark"] .auth-header-btn.is-logged-in:hover {
-  background: #2058c9;
+  background: var(--accent-hover);
 }
 
 [data-theme="dark"] .auth-version-tag {

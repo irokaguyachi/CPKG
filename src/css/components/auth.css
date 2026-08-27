@@ -95,7 +95,7 @@
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 .auth-input:focus {
-  border-color: #00e6b8;
+  border-color: var(--mint-hover);
   background: #ffffff;
 }
 .auth-input::placeholder {
@@ -111,14 +111,14 @@
   font-size: 15px;
   font-weight: 700;
   color: #000000;
-  background: #00ffcc;
+  background: var(--mint);
   border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 .auth-btn:hover {
-  background: #00e6b8;
+  background: var(--mint-hover);
   transform: translateY(-1px);
 }
 .auth-btn:disabled {
@@ -209,7 +209,7 @@
   border-color: transparent;
 }
 .auth-header-btn.is-logged-in:hover {
-  background: #2058c9;
+  background: var(--accent-hover);
 }
 
 /* 사이트 버전 표시 (src/js/auth.js) — 로그인/개인 코드 관리 버튼 바로

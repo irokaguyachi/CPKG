@@ -133,10 +133,10 @@
    무관하게 항상 올바른 색이 나오게 했다(다크모드 특이도 함정과 같은
    부류의 문제를 애초에 피하는 방법 — BOOKMARK_SYSTEM_PLAN.md 참고). */
 .sidebar .header-nav .auth-header-btn:not(.is-logged-in) {
-  background: #00ffcc;
+  background: var(--mint);
   border-color: transparent;
   color: #000000;
 }
 .sidebar .header-nav .auth-header-btn:not(.is-logged-in):hover {
-  background: #00e6b8;
+  background: var(--mint-hover);
 }

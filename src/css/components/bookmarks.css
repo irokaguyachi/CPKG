@@ -62,7 +62,7 @@
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
-.bkm-inline-create-btn:hover { background: #2058c9; }
+.bkm-inline-create-btn:hover { background: var(--accent-hover); }
 
 /* 내 북마크 목록 — Figma "Button_BookMark"(node 2232:2) 참고한 가로형
    리스트 버튼. 폴더 카드(series-card 그리드)를 대체한다. */
@@ -303,7 +303,7 @@
   border-radius: var(--radius-pill);
   cursor: pointer;
 }
-.bkm-picker-new-btn:hover { background: #2058c9; }
+.bkm-picker-new-btn:hover { background: var(--accent-hover); }
 
 /* 내 북마크 / 북마크 라이브러리 알약 토글 */
 .bkm-tabs {
@@ -345,10 +345,10 @@
 .bkm-login-gate-btn {
   margin-top: 8px;
   color: #000000;
-  background: #00ffcc;
+  background: var(--mint);
 }
 .bkm-login-gate-btn:hover {
-  background: #00e6b8;
+  background: var(--mint-hover);
 }
 
 /* 북마크 상세 — 타입 필터 칩 */
@@ -381,7 +381,7 @@
    하나로 통일되게. */
 .bkm-chip.is-active {
   color: #000000;
-  background: #00ffcc;
+  background: var(--mint);
   border-color: transparent;
 }
 
@@ -452,7 +452,7 @@
   background: var(--accent);
   border-color: transparent;
 }
-.bkm-share-btn.is-primary:hover { background: #2058c9; }
+.bkm-share-btn.is-primary:hover { background: var(--accent-hover); }
 .bkm-share-btn.is-danger {
   color: #d64545;
   border-color: rgba(214, 69, 69, 0.35);
