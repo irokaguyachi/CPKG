@@ -7,6 +7,14 @@
   margin: 0 auto;
   padding: 30px var(--content-padding) 60px;
   min-height: 384px;
+  transition: opacity 0.18s ease;
+}
+
+/* 그리드/리스트 뷰 전환 중 — gridPage.js가 카드를 바꿔 끼우기 직전/직후에
+   붙였다 뗀다. 카드 마크업 자체가 달라 레이아웃을 애니메이션할 수 없으니
+   대신 살짝 페이드아웃 후 교체해 전환이 급작스럽지 않게 한다. */
+.series-grid.is-view-switching {
+  opacity: 0;
 }
 
 @media (max-width: 1300px) {

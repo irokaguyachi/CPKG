@@ -291,9 +291,11 @@
       return stored === 'list' ? 'list' : 'grid';
     }
 
+    var VIEW_SWITCH_MS = 180;
+    var viewSwitchTimer = null;
+
     function applyViewMode(mode, skipRerender) {
       viewMode = mode === 'list' ? 'list' : 'grid';
-      gridEl.classList.toggle('is-list-view', viewMode === 'list');
       if (viewToggleBtn) {
         var toList = viewMode === 'grid';
         viewToggleBtn.innerHTML = toList ? LIST_ICON : GRID_ICON;
@@ -302,10 +304,27 @@
         viewToggleBtn.title = toList ? '리스트로 보기' : '그리드로 보기';
       }
       global.localStorage.setItem(VIEW_MODE_KEY, viewMode);
-      // 뷰 전환은 이미 받아둔 currentFiltered를 다른 카드로 다시 그리는
-      // 것뿐이라 네트워크 재요청이 없다 — renderGrid()를 그대로 다시
-      // 불러도 검색/태그 필터 때와 같은 저비용 동작이다.
-      if (!skipRerender) renderGrid();
+
+      if (skipRerender) {
+        // 페이지 로드 시 저장된 모드를 처음 반영하는 자리 — 아직 카드가
+        // 하나도 없으니 페이드할 것도 없이 바로 클래스만 맞춰둔다.
+        gridEl.classList.toggle('is-list-view', viewMode === 'list');
+        return;
+      }
+
+      // 그리드 카드(.series-card)와 리스트 카드(.post-row)는 마크업 자체가
+      // 달라 레이아웃을 직접 애니메이션할 수 없다 — 대신 살짝 페이드아웃한
+      // 다음 카드를 바꿔 끼우고 다시 페이드인해서 순간적으로 확 바뀌는
+      // 느낌을 없앤다. renderGrid() 자체는 캐시된 currentFiltered를 다시
+      // 그리는 것뿐이라 네트워크 재요청 없이 저비용으로 끝난다.
+      gridEl.classList.add('is-view-switching');
+      if (viewSwitchTimer) clearTimeout(viewSwitchTimer);
+      viewSwitchTimer = setTimeout(function () {
+        viewSwitchTimer = null;
+        gridEl.classList.toggle('is-list-view', viewMode === 'list');
+        renderGrid(true);
+        gridEl.classList.remove('is-view-switching');
+      }, VIEW_SWITCH_MS);
     }
 
     if (viewToggleBtn) {
@@ -315,7 +334,7 @@
     }
     applyViewMode(getStoredViewMode(), true);
 
-    function renderGrid() {
+    function renderGrid(preserveCount) {
       var term = searchTerm.trim().toLowerCase();
       var activeList = Object.keys(activeTags);
       var filtered = allItems.filter(function (s) {
@@ -323,6 +342,15 @@
         if (activeList.length && !activeList.some(function (t) { return s.tags.indexOf(t) !== -1; })) return false;
         return true;
       });
+
+      // 그리드/리스트 뷰 전환은 검색어나 태그를 바꾸는 게 아니라 이미 보고
+      // 있던 결과를 다른 카드로 다시 그리는 것뿐이다 — 스크롤로 100개,
+      // 150개까지 불러온 상태에서 전환했는데 매번 처음 PAGE_SIZE개로
+      // 되돌아가면 그때마다 "Loading" 스피너가 다시 뜨는 것처럼 보인다.
+      // preserveCount가 true면 전환 전까지 그려져 있던 개수만큼 그대로
+      // 이어서 그린다(다시 fetch하는 게 아니라 캐시된 currentFiltered를
+      // 더 많이 append하는 것뿐이라 비용은 그대로 저렴하다).
+      var priorCount = preserveCount ? renderedCount : 0;
 
       currentFiltered = filtered;
       renderedCount = 0;
@@ -345,6 +373,9 @@
       }
 
       appendNextPage();
+      while (renderedCount < priorCount && renderedCount < currentFiltered.length) {
+        appendNextPage();
+      }
     }
 
     // renders the next PAGE_SIZE cards and (re)places the loading sentinel
