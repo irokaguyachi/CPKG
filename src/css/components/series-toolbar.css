@@ -87,6 +87,32 @@
   background: #eaf1ff;
 }
 
+/* 그리드/리스트 보기 전환 — series-filter-btn과 같은 원형 톤을 공유하는
+   단일 토글 버튼. 아이콘은 "누르면 바뀔 모드"를 보여준다(테마 토글 버튼과
+   같은 관례). */
+.series-view-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  background: #f5f5f5;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  color: #000000;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.series-view-toggle-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.series-view-toggle-btn:hover {
+  background: #eeeeee;
+}
+
 .series-filter-panel {
   position: absolute;
   top: calc(100% + 10px);
@@ -243,5 +269,13 @@
   .series-filter-btn {
     width: 36px;
     height: 36px;
+  }
+  .series-view-toggle-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .series-view-toggle-btn svg {
+    width: 16px;
+    height: 16px;
   }
 }

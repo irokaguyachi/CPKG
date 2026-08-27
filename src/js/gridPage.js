@@ -70,6 +70,7 @@
     var optionsEl = document.getElementById('series-filter-options');
     var gridEl = document.getElementById('series-grid');
     var countEl = document.getElementById('series-count');
+    var viewToggleBtn = document.getElementById('series-view-toggle-btn');
     if (!gridEl) return;
 
     var countLine = config.countLine || global.SeriesUtil.countLine;
@@ -77,6 +78,7 @@
     var allItems = [];
     var activeTags = {};
     var searchTerm = '';
+    var viewMode = 'grid';
 
     var PAGE_SIZE = 50;
     var currentFiltered = [];
@@ -277,6 +279,42 @@
       if (e.key === 'Escape') closeFilterPanel();
     });
 
+    // 그리드/리스트 보기 — localStorage에 저장해서 다른 페이지(탭)로 이동해도
+    // 유지된다. 아이콘은 theme.js의 테마 토글 버튼과 같은 관례로 "누르면
+    // 바뀔 모드"를 보여준다(현재 상태 아이콘이 아님).
+    var VIEW_MODE_KEY = 'chokaguya_grid_view';
+    var GRID_ICON = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="1.5" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="10" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="10" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
+    var LIST_ICON = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="2" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="7.25" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="12.5" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
+
+    function getStoredViewMode() {
+      var stored = global.localStorage.getItem(VIEW_MODE_KEY);
+      return stored === 'list' ? 'list' : 'grid';
+    }
+
+    function applyViewMode(mode, skipRerender) {
+      viewMode = mode === 'list' ? 'list' : 'grid';
+      gridEl.classList.toggle('is-list-view', viewMode === 'list');
+      if (viewToggleBtn) {
+        var toList = viewMode === 'grid';
+        viewToggleBtn.innerHTML = toList ? LIST_ICON : GRID_ICON;
+        viewToggleBtn.setAttribute('aria-pressed', viewMode === 'list' ? 'true' : 'false');
+        viewToggleBtn.setAttribute('aria-label', toList ? '리스트로 보기' : '그리드로 보기');
+        viewToggleBtn.title = toList ? '리스트로 보기' : '그리드로 보기';
+      }
+      global.localStorage.setItem(VIEW_MODE_KEY, viewMode);
+      // 뷰 전환은 이미 받아둔 currentFiltered를 다른 카드로 다시 그리는
+      // 것뿐이라 네트워크 재요청이 없다 — renderGrid()를 그대로 다시
+      // 불러도 검색/태그 필터 때와 같은 저비용 동작이다.
+      if (!skipRerender) renderGrid();
+    }
+
+    if (viewToggleBtn) {
+      viewToggleBtn.addEventListener('click', function () {
+        applyViewMode(viewMode === 'list' ? 'grid' : 'list');
+      });
+    }
+    applyViewMode(getStoredViewMode(), true);
+
     function renderGrid() {
       var term = searchTerm.trim().toLowerCase();
       var activeList = Object.keys(activeTags);
@@ -314,8 +352,9 @@
     function appendNextPage() {
       var next = currentFiltered.slice(renderedCount, renderedCount + PAGE_SIZE);
       var frag = document.createDocumentFragment();
+      var buildCard = viewMode === 'list' ? createListCard : createGridCard;
       next.forEach(function (s) {
-        frag.appendChild(createCard(s));
+        frag.appendChild(buildCard(s));
       });
       gridEl.appendChild(frag);
       renderedCount += next.length;
@@ -370,7 +409,7 @@
       }, 180);
     }
 
-    function createCard(s) {
+    function createGridCard(s) {
       var card = document.createElement('article');
       card.className = 'series-card';
 
@@ -416,6 +455,77 @@
       info.appendChild(tagsWrap);
 
       card.appendChild(info);
+
+      card.addEventListener('click', function () {
+        if (!global.PostDetailSeries) return;
+        PostDetailSeries.open({
+          seriesName: s.name,
+          imageUrl: s.image,
+          episodes: (s.posts || []).map(function (post) {
+            return {
+              title: post.title,
+              dcId: post.id,
+              link: post.link,
+              episodeLabel: post.episode + ' 화'
+            };
+          })
+        });
+      });
+
+      return card;
+    }
+
+    // 리스트 뷰 카드 — mainPage.js의 .post-row 마크업을 재사용해 메인
+    // 페이지의 "최신 등록" 리스트와 같은 모습을 낸다. 화수/글자수 뱃지는
+    // createGridCard와 같은 countLine(s)을 써서 그리드/리스트가 항상 같은
+    // 문구를 보여주도록 한다.
+    function createListCard(s) {
+      var card = document.createElement('article');
+      card.className = 'post-row';
+
+      var image = document.createElement('div');
+      image.className = 'post-row-image';
+      if (s.image) {
+        if (global.lazyLoadBackground) {
+          global.lazyLoadBackground(image, s.image);
+        } else {
+          var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(s.image) : s.image;
+          image.style.backgroundImage = 'url("' + finalImg + '")';
+        }
+      }
+      var favId = s.posts && s.posts[0] && s.posts[0].id;
+      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      card.appendChild(image);
+
+      var info = document.createElement('div');
+      info.className = 'post-row-info';
+
+      var title = document.createElement('p');
+      title.className = 'post-row-title';
+      var name = document.createElement('span');
+      name.className = 'post-row-name';
+      name.textContent = s.name;
+      title.appendChild(name);
+      info.appendChild(title);
+
+      var tagsWrap = document.createElement('div');
+      tagsWrap.className = 'post-row-tags';
+      sortTags(s.tags).slice(0, 3).forEach(function (tag) {
+        var pill = document.createElement('span');
+        pill.className = 'series-card-tag';
+        pill.dataset.tag = tag;
+        pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
+        pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
+        tagsWrap.appendChild(pill);
+      });
+      info.appendChild(tagsWrap);
+
+      card.appendChild(info);
+
+      var episode = document.createElement('div');
+      episode.className = 'post-row-episode';
+      episode.textContent = countLine(s);
+      card.appendChild(episode);
 
       card.addEventListener('click', function () {
         if (!global.PostDetailSeries) return;

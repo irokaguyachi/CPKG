@@ -196,6 +196,15 @@ html.theme-transitioning *:after {
   background: rgba(92, 154, 255, 0.15);
 }
 
+[data-theme="dark"] .series-view-toggle-btn {
+  background: var(--dark-input-bg);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--dark-text);
+}
+[data-theme="dark"] .series-view-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 /* Filter Dropdown Panel */
 [data-theme="dark"] .series-filter-panel {
   background: var(--dark-surface);
