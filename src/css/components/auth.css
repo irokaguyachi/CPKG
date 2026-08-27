@@ -79,10 +79,9 @@
 }
 
 .auth-input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   height: 50px;
-  padding: 0 20px;
+  padding: 0 44px 0 20px;
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -101,6 +100,41 @@
 .auth-input::placeholder {
   color: rgba(0, 0, 0, 0.35);
   font-weight: 500;
+}
+
+/* 로그인 코드 입력창을 type=password 로 감싸서 브라우저 비밀번호 관리자가
+   저장 후보로 인식하게 만든 뒤(src/js/authModal.js), 정작 사용자가 지금
+   무엇을 입력했는지 못 보면 곤란하니 눈 아이콘으로 평문 전환을 허용한다. */
+.auth-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.auth-input-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.auth-input-toggle:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.75);
+}
+.auth-input-toggle svg {
+  width: 18px;
+  height: 18px;
 }
 
 .auth-btn {
@@ -129,7 +163,8 @@
 
 .auth-code-display {
   margin: 12px 0 20px;
-  padding: 14px 20px;
+  padding: 14px 44px 14px 20px;
+  font-family: inherit;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -138,9 +173,17 @@
   border: 1px dashed rgba(0, 0, 0, 0.2);
   border-radius: 12px;
   width: 100%;
+  height: auto;
   box-sizing: border-box;
+  text-align: center;
   word-break: break-all;
   user-select: all;
+  cursor: pointer;
+}
+.auth-code-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .auth-switch {

@@ -759,6 +759,13 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .auth-input::placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
+[data-theme="dark"] .auth-input-toggle {
+  color: rgba(255, 255, 255, 0.45);
+}
+[data-theme="dark"] .auth-input-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
 [data-theme="dark"] .auth-switch-link {
   color: #5c9aff;
 }

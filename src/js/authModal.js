@@ -53,6 +53,28 @@
     return btn;
   }
 
+  var EYE_OPEN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_CLOSED_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.77 21.77 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.77 21.77 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+  // 입력창을 type=password 로 감춰서 브라우저 비밀번호 관리자가 저장 후보로
+  // 인식하게 만든 자리에 붙이는 눈 아이콘 — 지금 뭘 쳤는지 확인하고 싶을 때
+  // 평문으로 잠깐 바꿔볼 수 있게 한다.
+  function createRevealToggle(inputEl) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'auth-input-toggle';
+    btn.setAttribute('aria-label', '입력한 코드 표시');
+    btn.innerHTML = EYE_OPEN_ICON;
+    btn.addEventListener('click', function () {
+      var isRevealed = inputEl.type === 'text';
+      inputEl.type = isRevealed ? 'password' : 'text';
+      btn.innerHTML = isRevealed ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
+      btn.setAttribute('aria-label', isRevealed ? '입력한 코드 표시' : '입력한 코드 숨기기');
+      inputEl.focus();
+    });
+    return btn;
+  }
+
   // ---- SignIn ----
   // presetError: renderSignUp 이 가입 요청 자체가 막혀서(IP 하루 한도 등)
   // 되돌아올 때 바로 보여줄 에러 메시지.
@@ -64,22 +86,28 @@
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
-    // 개인 코드를 아이디 필드로 취급 — 브라우저의 자동완성이 아이디로
-    // 인식하도록 text 타입 + <form> 으로 감쌌다(폼 없이 input 단독이면
-    // 인식률이 떨어진다).
+    // 개인 코드를 비밀번호 필드로 취급 — type=password + autocomplete=
+    // current-password 로 감싸야 크롬 등 브라우저 비밀번호 관리자가 로그인
+    // 성공 시 "저장할까요?" 배너를 띄우고, 다음 방문부터 자동완성으로
+    // 채워준다(폼 없이 input 단독이면 인식률이 떨어진다). 기본은 가려져
+    // 있지만 지금 친 코드가 맞는지 확인할 수 있게 눈 아이콘을 붙였다.
     var row = document.createElement('form');
     row.className = 'auth-form-row';
+    var inputWrap = document.createElement('div');
+    inputWrap.className = 'auth-input-wrap';
     var input = document.createElement('input');
-    input.type = 'text';
-    input.name = 'username';
+    input.type = 'password';
+    input.name = 'password';
     input.className = 'auth-input';
     input.placeholder = '로그인 코드 입력창';
-    input.autocomplete = 'username';
+    input.autocomplete = 'current-password';
+    inputWrap.appendChild(input);
+    inputWrap.appendChild(createRevealToggle(input));
     var submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
     submitBtn.className = 'auth-btn';
     submitBtn.textContent = '로그인';
-    row.appendChild(input);
+    row.appendChild(inputWrap);
     row.appendChild(submitBtn);
     card.appendChild(row);
 
@@ -174,15 +202,36 @@
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
-    card.appendChild(el('p', 'auth-code-display', global.BookmarkLibrary.formatPersonalCodeForDisplay(code)));
+    // 코드 표시칸을 진짜 type=password 입력창으로 만들어서 "확인"을 누르는
+    // 순간(=폼 제출)에 브라우저 비밀번호 관리자가 이 코드를 저장 후보로
+    // 인식하게 한다 — 그래야 로그인 화면(renderSignIn)의 자동완성과 같은
+    // 코드가 곧바로 연결된다. 기본은 가려져 있고, 적어두려면 눈 아이콘으로
+    // 평문 전환해서 복사하면 된다(클릭하면 select()로 전체 선택도 된다).
+    var form = document.createElement('form');
+    form.className = 'auth-form-row';
+    var codeWrap = document.createElement('div');
+    codeWrap.className = 'auth-code-wrap';
+    var codeField = document.createElement('input');
+    codeField.type = 'password';
+    codeField.name = 'password';
+    codeField.autocomplete = 'new-password';
+    codeField.readOnly = true;
+    codeField.className = 'auth-input auth-code-display';
+    codeField.value = global.BookmarkLibrary.formatPersonalCodeForDisplay(code);
+    codeField.addEventListener('click', function () { codeField.select(); });
+    codeWrap.appendChild(codeField);
+    codeWrap.appendChild(createRevealToggle(codeField));
+    form.appendChild(codeWrap);
+    card.appendChild(form);
 
     var confirmBtn = document.createElement('button');
-    confirmBtn.type = 'button';
+    confirmBtn.type = 'submit';
     confirmBtn.className = 'auth-btn';
     confirmBtn.textContent = '확인';
-    card.appendChild(confirmBtn);
+    form.appendChild(confirmBtn);
 
-    confirmBtn.addEventListener('click', function () {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
       // 서버 가입과 로컬 코드 채택은 이미 UserData.signup() 이 끝냈다 —
       // 여기서는 닫기만 하면 된다.
       close();
