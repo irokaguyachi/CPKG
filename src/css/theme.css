@@ -723,6 +723,39 @@ html.theme-transitioning *:after {
   border-top-color: rgba(255, 255, 255, 0.12);
 }
 
+/* 업데이트 로그 페이지 */
+[data-theme="dark"] .changelog-empty {
+  color: rgba(255, 255, 255, 0.4);
+}
+[data-theme="dark"] .changelog-version {
+  color: var(--dark-emphasis);
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .changelog-date {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .changelog-detail-card {
+  background: var(--dark-surface);
+  box-shadow: 0 19px 58px rgba(0, 0, 0, 0.8);
+}
+[data-theme="dark"] .changelog-detail-title {
+  color: var(--dark-emphasis);
+}
+[data-theme="dark"] .changelog-body {
+  color: rgba(255, 255, 255, 0.75);
+}
+[data-theme="dark"] .changelog-body h3,
+[data-theme="dark"] .changelog-body h4,
+[data-theme="dark"] .changelog-body strong {
+  color: var(--dark-emphasis);
+}
+[data-theme="dark"] .changelog-body code {
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .changelog-body a {
+  color: #5c9aff;
+}
+
 /* 로그인/회원가입 모달 다크 모드 */
 [data-theme="dark"] .auth-overlay {
   background: rgba(0, 0, 0, 0.82);

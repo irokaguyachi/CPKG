@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>업데이트 로그</title>
+<link rel="icon" type="image/png" href="../offline_src/favicon.png" />
+<link rel="stylesheet" href="../fonts/Pretendard-dynamic/pretendardvariable-dynamic-subset.css" />
+<link rel="stylesheet" href="../css/base/fonts.css" />
+<link rel="stylesheet" href="../css/base/reset.css" />
+<link rel="stylesheet" href="../css/base/colorTheme.css" />
+<link rel="stylesheet" href="../css/layout/header.css" />
+<link rel="stylesheet" href="../css/layout/sidebar.css" />
+<link rel="stylesheet" href="../css/layout/site-info.css" />
+<link rel="stylesheet" href="../css/layout/footer.css" />
+<link rel="stylesheet" href="../css/components/loader.css" />
+<link rel="stylesheet" href="../css/components/auth.css" />
+<link rel="stylesheet" href="../css/components/modal-series.css" />
+<link rel="stylesheet" href="../css/components/bookmarks.css" />
+<link rel="stylesheet" href="../css/components/changelog.css" />
+<link rel="stylesheet" href="../css/theme.css" />
+<script>
+  (function () {
+    var s = localStorage.getItem('chokaguya_theme');
+    var d = s || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', d);
+  })();
+</script>
+</head>
+<body>
+
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="loader-wipe is-covering" id="loader-wipe"></div>
+  <div class="loader-content" id="loader-content">
+    <div class="loader-center">
+      <div class="loader-icon" id="loader-icon"></div>
+      <span class="loader-loading-text">Loading</span>
+    </div>
+    <p class="loader-tip"><span class="loader-tip-tag">TIP</span> | <span id="loader-tip-text"></span><span class="loader-caret" aria-hidden="true"></span></p>
+  </div>
+</div>
+
+<header class="header">
+  <a class="header-logo-link" href="mainPage.html" aria-label="메인 페이지로 이동">
+    <img class="header-logo" src="../offline_src/logo/MainLogo_Dark.png" data-light-src="../offline_src/logo/MainLogo_Dark.png" data-dark-src="../offline_src/logo/MainLogo_Light.png" alt="업데이트 로그" />
+  </a>
+</header>
+
+<button type="button" class="sidebar-toggle-btn" aria-label="메뉴 열기">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+
+<aside class="sidebar">
+  <nav class="header-nav">
+    <div class="header-nav-primary">
+      <a href="mainPage.html" class="header-nav-main">메인</a>
+      <a href="changelogPage.html" class="header-nav-changelog header-nav-strong">업데이트 로그</a>
+    </div>
+    <a href="OfficialPage.html">공식</a>
+    <a href="#" data-locked>번역</a>
+    <a href="novelPage.html">문학</a>
+    <a href="seriesPage.html">시리즈</a>
+    <a href="HOFPage.html">명예관</a>
+    <a href="bookmarksPage.html">북마크</a>
+  </nav>
+</aside>
+
+<div class="hero-space" data-hero-space></div>
+
+<section class="site-info">
+  <h1 class="site-info-title">업데이트 로그</h1>
+  <p class="site-info-sub">사이트의 변경 내역을 버전별로 확인해보세요!</p>
+</section>
+
+<section class="changelog-list" id="changelog-list"></section>
+
+<footer class="site-footer">
+  <p class="site-footer-line">해당 페이지는 <strong>절대로</strong> 초! 카구야 공주의 공식이 아니며, 팬메이드 페이지임을 알립니다.</p>
+  <p class="site-footer-line">Copyright ⓒ 2026 - 2026 Cho Kaguya hime. All rights reserved.</p>
+  <p class="site-footer-line site-footer-contact">문의 : cpkg@ckpg.cloud</p>
+</footer>
+
+<script defer src="../js/cdnConfig.js"></script>
+<script defer src="../js/libraryConfig.js"></script>
+<script defer src="../js/popoverKit.js"></script>
+<script defer src="../js/bookmarks.js"></script>
+<script defer src="../js/bookmarkLibrary.js"></script>
+<script defer src="../js/userData.js"></script>
+<script defer src="../js/bookmarkPicker.js"></script>
+<script defer src="../js/loading.js"></script>
+<script defer src="../js/theme.js"></script>
+<script defer src="../js/authModal.js"></script>
+<script defer src="../js/auth.js"></script>
+<script defer src="../js/sidebar.js"></script>
+<script defer src="../js/heroLogo.js"></script>
+<script defer src="../js/changelogPage.js"></script>
+</body>
+</html>

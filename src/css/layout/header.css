@@ -77,7 +77,10 @@ body.is-top .header-logo {
 .header-nav a:hover {
   transform: translateY(-3px);
 }
-.header-nav a:nth-child(1):hover { color: #ff6a63; }
+/* "메인"+"업데이트 로그"는 .header-nav-primary 로 한 묶음에 들어 있어 더 이상
+   .header-nav 의 직계 <a> 가 아니다 — nth-child 대신 클래스로 지정한다.
+   업데이트 로그는 페이지 네비 특유의 무지개 hover색 없이 기본 스타일만. */
+.header-nav-main:hover { color: #ff6a63; }
 .header-nav a:nth-child(2):hover { color: #ffc1a3; }
 .header-nav a:nth-child(3):hover { color: #ffe58d; }
 .header-nav a:nth-child(4):hover { color: #a6e674; }

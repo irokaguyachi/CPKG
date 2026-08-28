@@ -1,0 +1,177 @@
+/* 업데이트 로그 페이지 (changelogPage.html)
+ * - src/data/changelog/index.json 을 changelogPage.js 가 받아 그린다
+ *   (빌드는 src/scripts/12_build_changelog_index.py).
+ * - 목록 행은 북마크 목록(.bkm-row-card, src/css/components/bookmarks.css)과
+ *   같은 모양을 그대로 쓴다 — 왼쪽 위 굵은 제목 자리엔 버전을, 그 아래
+ *   서브 텍스트 자리엔 로그 제목을, 오른쪽 굵은 숫자 자리엔 날짜를 넣는다.
+ * - 행을 누르면 뜨는 상세 모달은 이미지가 있던 시리즈 상세
+ *   (.post-detail-series, src/js/postDetailSeries.js)와 달리 사진이 없어서
+ *   그 구조를 그대로 재사용할 수 없다 — auth-card(로그인 모달)와 같은
+ *   싱글턴 오버레이 패턴으로 새로 만들되, 닫기 버튼은 사이트 전역에서
+ *   재사용되는 .pds-close 를 그대로 쓴다.
+ * - 다크 모드 규칙은 프로젝트 관례대로 여기가 아니라 src/css/theme.css 에 있다.
+ */
+
+.changelog-empty {
+  text-align: center;
+  padding: 100px 20px;
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* ---- 목록 행: 왼쪽 = 버전(제목) + 로그 제목(서브), 오른쪽 = 날짜 ---- */
+.changelog-row-date {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 상세 모달 ---- */
+.changelog-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 550;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.changelog-detail-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.changelog-detail-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  max-height: 82vh;
+  padding: 40px 36px 36px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  transform: translateY(12px) scale(0.98);
+  opacity: 0;
+  transition: transform 0.25s var(--ease-out-site), opacity 0.25s ease;
+}
+.changelog-detail-overlay.is-open .changelog-detail-card {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.changelog-detail-card .pds-close {
+  top: 16px;
+  right: 16px;
+}
+
+.changelog-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-right: 36px;
+  margin-bottom: 12px;
+}
+
+.changelog-detail-title {
+  margin: 0 0 20px;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 800;
+  color: #000000;
+}
+
+.changelog-detail-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- 버전/날짜 뱃지 — 목록 상세 모두 공용 ---- */
+.changelog-version {
+  font-size: 14px;
+  font-weight: 800;
+  color: #000000;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.changelog-date {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* ---- 마크다운 렌더 결과(상세 모달 본문) ---- */
+.changelog-body {
+  font-size: 16px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.changelog-body > *:first-child { margin-top: 0; }
+.changelog-body > *:last-child { margin-bottom: 0; }
+
+.changelog-body h3,
+.changelog-body h4 {
+  margin: 20px 0 8px;
+  font-weight: 700;
+  color: #000000;
+}
+.changelog-body h3 { font-size: 18px; }
+.changelog-body h4 { font-size: 16px; }
+
+.changelog-body p {
+  margin: 0 0 12px;
+}
+
+.changelog-body ul,
+.changelog-body ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.changelog-body li {
+  margin-bottom: 6px;
+}
+
+.changelog-body strong {
+  font-weight: 700;
+  color: #000000;
+}
+
+.changelog-body code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.changelog-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.changelog-body a:hover {
+  color: var(--accent-hover);
+}
+
+@media (max-width: 600px) {
+  .changelog-detail-card {
+    padding: 28px 20px 24px;
+    max-height: 86vh;
+  }
+  .changelog-detail-title {
+    font-size: 20px;
+  }
+  .changelog-body {
+    font-size: 15px;
+  }
+}
