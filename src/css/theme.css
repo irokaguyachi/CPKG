@@ -723,7 +723,7 @@ html.theme-transitioning *:after {
   border-top-color: rgba(255, 255, 255, 0.12);
 }
 
-/* 업데이트 로그 페이지 */
+/* 공지사항 페이지(업데이트 로그 / 공지사항 두 탭) */
 [data-theme="dark"] .changelog-empty {
   color: rgba(255, 255, 255, 0.4);
 }
@@ -733,6 +733,18 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .changelog-date {
   color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .changelog-status.is-live {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+}
+[data-theme="dark"] .changelog-status.is-upcoming {
+  color: #7db8f0;
+  background: rgba(125, 184, 240, 0.15);
+}
+[data-theme="dark"] .changelog-status.is-ended {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
 }
 [data-theme="dark"] .changelog-detail-card {
   background: var(--dark-surface);

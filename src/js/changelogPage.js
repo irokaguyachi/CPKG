@@ -13,10 +13,11 @@
  *   페이지는 탭 두 개 말고는 내부에 다른 라우팅(상세를 URL에 담는 등)이
  *   없어서, bookmarksPage.js처럼 모든 링크 클릭을 가로채는 대신 탭
  *   링크 두 개만 다룬다.
- * - 목록 행은 북마크 목록(.bkm-row-card)과 같은 모양 — 업데이트 로그는
- *   왼쪽 굵은 제목 자리에 버전, 그 아래 서브 텍스트에 로그 제목을 쓰고,
- *   공지사항은 버전 개념이 없어 굵은 제목 자리에 바로 공지 제목을 쓴다.
- *   오른쪽 굵은 숫자 자리엔 둘 다 날짜.
+ * - 목록 행은 북마크 목록(.bkm-row-card)과 같은 모양 — 왼쪽 굵은 제목
+ *   자리엔 태그(업데이트 로그는 버전, 공지사항은 카테고리), 그 아래 서브
+ *   텍스트엔 실제 제목을 쓴다. 오른쪽엔 날짜, 그리고 공지사항 중
+ *   진행 상태(진행중/예정/종료)가 있는 항목은 그 아래에 상태 뱃지를 더 단다
+ *   — 이벤트류만 해당하고 일반 공지는 그 데이터 자체가 없어도 된다.
  * - 행을 누르면 뜨는 상세 모달은 시리즈 상세(postDetailSeries.js)와 달리
  *   사진이 없어 그 구조를 재사용할 수 없다 — src/js/authModal.js 의 싱글턴
  *   오버레이 패턴을 그대로 본떠 새로 만들되, 닫기 버튼은 사이트 전역에서
@@ -30,23 +31,32 @@
   var titleEl = document.getElementById('notice-title');
   var subEl = document.getElementById('notice-sub');
 
-  // 업데이트 로그는 버전이 있고, 공지사항은 없다 — 그 차이만 여기서
-  // 갈라두면 나머지 렌더링/모달 코드는 완전히 공용으로 쓸 수 있다.
+  // 업데이트 로그의 "버전"과 공지사항의 "카테고리"는 헤더 첫 필드라는
+  // 위치만 같고 JSON 필드 이름이 다르다(version vs category) — tagField로
+  // 그 차이만 갈라두면 나머지 렌더링/모달 코드는 완전히 공용으로 쓸 수 있다.
   var KINDS = {
     changelog: {
       dir: 'changelog',
       label: '업데이트 로그',
       sub: '사이트의 변경 내역을 버전별로 확인해보세요!',
       emptyMessage: '아직 등록된 업데이트 로그가 없어요.',
-      hasVersion: true
+      tagField: 'version'
     },
     notice: {
       dir: 'notice',
       label: '공지사항',
       sub: '사이트의 공지사항을 확인해보세요!',
       emptyMessage: '아직 등록된 공지사항이 없어요.',
-      hasVersion: false
+      tagField: 'category'
     }
+  };
+
+  // 진행중/예정/종료 — 이벤트류 공지에만 있는 선택 필드(13_build_notice_index.py
+  // 참고). 일반 공지·업데이트 로그 항목엔 entry.status 자체가 없다.
+  var STATUS_CLASS = {
+    '진행중': 'is-live',
+    '예정': 'is-upcoming',
+    '종료': 'is-ended'
   };
 
   // ---- 아주 작은 마크다운 → HTML 렌더러 ----
@@ -137,6 +147,15 @@
     return String(dateStr || '').replace(/-/g, '.');
   }
 
+  // entry.status가 있을 때만(이벤트류 공지) 뱃지를 만든다 — 없으면 null.
+  function createStatusBadge(entry) {
+    if (!entry.status) return null;
+    var badge = document.createElement('span');
+    badge.className = 'changelog-status ' + (STATUS_CLASS[entry.status] || '');
+    badge.textContent = entry.status;
+    return badge;
+  }
+
   // ---- 상세 모달 (authModal.js 의 싱글턴 오버레이 패턴을 그대로 본떴다) ----
   var overlayEl = null;
 
@@ -164,11 +183,17 @@
   var openToken = 0;
 
   // .md 파일의 첫 줄은 헤더이고(업데이트 로그: "# 버전 - 날짜 - 제목",
-  // 공지사항: "# 날짜 - 제목" — 12/13_build_*_index.py 참고), 그 아래부터가
-  // 실제 마크다운 본문이다.
+  // 공지사항: "# 카테고리 - 날짜 - 제목" — 12/13_build_*_index.py 참고),
+  // 그 다음 줄이 "status: 진행중" 형태면(이벤트류 공지 전용, 선택) 그것도
+  // 본문이 아니라 메타데이터이므로 함께 걷어낸다. 나머지가 실제 마크다운
+  // 본문이다.
   function stripHeaderLine(raw) {
-    var idx = raw.indexOf('\n');
-    return idx === -1 ? '' : raw.slice(idx + 1).replace(/^\n+/, '');
+    var lines = (raw || '').split('\n');
+    lines.shift(); // 헤더 줄
+    if (/^status:\s*(진행중|예정|종료)\s*$/.test((lines[0] || '').trim())) {
+      lines.shift();
+    }
+    return lines.join('\n').replace(/^\n+/, '');
   }
 
   function openDetail(kind, entry) {
@@ -189,12 +214,15 @@
 
     var header = document.createElement('div');
     header.className = 'changelog-detail-header';
-    if (kind.hasVersion && entry.version) {
-      var versionEl = document.createElement('span');
-      versionEl.className = 'changelog-version';
-      versionEl.textContent = entry.version;
-      header.appendChild(versionEl);
+    var tagValue = entry[kind.tagField];
+    if (tagValue) {
+      var tagEl = document.createElement('span');
+      tagEl.className = 'changelog-version';
+      tagEl.textContent = tagValue;
+      header.appendChild(tagEl);
     }
+    var statusBadge = createStatusBadge(entry);
+    if (statusBadge) header.appendChild(statusBadge);
     var dateEl = document.createElement('span');
     dateEl.className = 'changelog-date';
     dateEl.textContent = formatDate(entry.date);
@@ -244,12 +272,12 @@
 
     var title = document.createElement('p');
     title.className = 'bkm-row-title';
-    // 업데이트 로그는 굵은 제목 자리에 버전, 그 아래 서브 텍스트에 로그
-    // 제목 — 공지사항은 버전이 없으니 굵은 제목 자리에 바로 공지 제목.
-    title.textContent = kind.hasVersion ? entry.version : entry.title;
+    // 굵은 제목 자리엔 태그(업데이트 로그는 버전, 공지사항은 카테고리),
+    // 그 아래 서브 텍스트엔 실제 제목.
+    title.textContent = entry[kind.tagField];
     info.appendChild(title);
 
-    if (kind.hasVersion && entry.title) {
+    if (entry.title) {
       var sub = document.createElement('p');
       sub.className = 'bkm-row-sub';
       sub.textContent = entry.title;
@@ -257,10 +285,15 @@
     }
     row.appendChild(info);
 
+    var right = document.createElement('div');
+    right.className = 'changelog-row-right';
     var date = document.createElement('p');
     date.className = 'bkm-row-count changelog-row-date';
     date.textContent = formatDate(entry.date);
-    row.appendChild(date);
+    right.appendChild(date);
+    var statusBadge = createStatusBadge(entry);
+    if (statusBadge) right.appendChild(statusBadge);
+    row.appendChild(right);
 
     return row;
   }
