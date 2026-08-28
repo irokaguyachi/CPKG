@@ -674,6 +674,8 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .bkm-tab.is-active {
   color: var(--dark-text);
+}
+[data-theme="dark"] .bkm-tab-indicator {
   background: #2c2e35;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }

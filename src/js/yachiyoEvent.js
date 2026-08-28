@@ -13,12 +13,17 @@
   // in next to her linking to the KakaoTalk open chat, and clicking past
   // that point does nothing (just a bounce) until she's actually clicked
   // through to Kakao. The counter resets to 0 after the 168 milestone so
-  // the whole 30/60/90/120/168 sequence can play out again.
+  // the whole 30/60/90/120/168 sequence can play out again. A small
+  // source-credit badge/link sits over the art the whole time she's on
+  // screen (always visible, not click-gated).
   var STORAGE_KEY = 'yachiyoEventClicks';
   var DIALOGUE_URL = '../data/ForEvent/YachiyoDialogue.json';
   var FALLBACK_LINES = ['...?'];
   var TYPE_MS = 40;
   var KAKAO_URL = 'https://open.kakao.com/o/s8KC6pKi';
+  // 야치요 그림 출처 — showYachiyo()가 그림 위에 항상 이 링크를 띄운다.
+  var IMAGE_SOURCE_URL = 'https://x.com/TERURU_sakura/status/2057038861575008490?s=20';
+  var IMAGE_SOURCE_LABEL = '출처: X(@TERURU_sakura)';
 
   var MILESTONES = [
     { count: 30, key: 'dialogue1' },
@@ -62,7 +67,10 @@
     wrap.className = 'yachiyo-event';
     wrap.innerHTML =
       '<div class="yachiyo-event-bubble"></div>' +
-      '<img class="yachiyo-event-img" src="../offline_src/ForEvent/yachiyo.png" alt="야치요" />';
+      '<div class="yachiyo-event-img-wrap">' +
+        '<img class="yachiyo-event-img" src="../offline_src/ForEvent/yachiyo.png" alt="야치요" />' +
+        '<a class="yachiyo-event-credit" href="' + IMAGE_SOURCE_URL + '" target="_blank" rel="noopener noreferrer">' + IMAGE_SOURCE_LABEL + '</a>' +
+      '</div>';
     var bubble = wrap.querySelector('.yachiyo-event-bubble');
     var img = wrap.querySelector('.yachiyo-event-img');
 

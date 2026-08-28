@@ -38,6 +38,12 @@
   transition: transform 0.8s cubic-bezier(0.4, 0, 1, 1);
 }
 
+/* position:relative가 있어야 아래 .yachiyo-event-credit이 이미지 기준으로
+   자리잡는다. */
+.yachiyo-event-img-wrap {
+  position: relative;
+}
+
 .yachiyo-event-img {
   display: block;
   width: clamp(150px, 20vw, 280px);
@@ -47,6 +53,27 @@
 
 .yachiyo-event-img.is-talking {
   animation: yachiyo-talk-bounce 0.45s ease-in-out;
+}
+
+/* 그림 출처 뱃지 — 그림이 떠 있는 동안 항상 보인다(src/js/yachiyoEvent.js).
+   .yachiyo-event 전체는 pointer-events:none이라 클릭이 그냥 blocker로
+   새는데, 이 링크만은 직접 클릭을 받아야 하므로 그 예외를 준다. */
+.yachiyo-event-credit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.yachiyo-event-credit:hover {
+  background: rgba(0, 0, 0, 0.8);
 }
 
 @keyframes yachiyo-talk-bounce {

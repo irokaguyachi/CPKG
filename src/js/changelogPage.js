@@ -9,10 +9,13 @@
  *   내용이 어긋날 일이 없다.
  * - 탭 전환은 bookmarksPage.js 의 "내 북마크"/"북마크 라이브러리" 탭과 같은
  *   패턴 — ?tab=notice 쿼리로 상태를 담고, pushState + 다시 그리기로
- *   전환한다(진짜 페이지 이동이 아니라 로더가 다시 재생되지 않는다). 이
- *   페이지는 탭 두 개 말고는 내부에 다른 라우팅(상세를 URL에 담는 등)이
- *   없어서, bookmarksPage.js처럼 모든 링크 클릭을 가로채는 대신 탭
- *   링크 두 개만 다룬다.
+ *   전환한다(진짜 페이지 이동이 아니라 로더가 다시 재생되지 않는다). 탭
+ *   바 자체(움직이는 인디케이터 포함)는 src/js/tabsKit.js 가 만들고,
+ *   이 페이지는 탭 두 개 말고는 내부에 다른 라우팅(상세를 URL에 담는 등)이
+ *   없어서 tabsKit의 onActivate로 직접 라우팅한다(bookmarksPage.js는 전역
+ *   링크 가로채기가 이미 있어서 onActivate 없이 setActive()만 부른다).
+ *   탭 아래 콘텐츠 영역은 changelogPage.js 자체의 swapContent()가 옆으로
+ *   밀며 슬라이드 전환한다.
  * - 목록 행은 북마크 목록(.bkm-row-card)과 같은 모양 — 왼쪽 굵은 제목
  *   자리엔 태그(업데이트 로그는 버전, 공지사항은 카테고리), 그 아래 서브
  *   텍스트엔 실제 제목을 쓴다. 오른쪽엔 날짜, 그리고 공지사항 중
@@ -272,15 +275,16 @@
 
     var title = document.createElement('p');
     title.className = 'bkm-row-title';
-    // 굵은 제목 자리엔 태그(업데이트 로그는 버전, 공지사항은 카테고리),
-    // 그 아래 서브 텍스트엔 실제 제목.
-    title.textContent = entry[kind.tagField];
+    // 굵은 제목 자리엔 실제 제목, 그 아래 서브 텍스트엔 태그(업데이트
+    // 로그는 버전, 공지사항은 카테고리).
+    title.textContent = entry.title;
     info.appendChild(title);
 
-    if (entry.title) {
+    var tagValue = entry[kind.tagField];
+    if (tagValue) {
       var sub = document.createElement('p');
       sub.className = 'bkm-row-sub';
-      sub.textContent = entry.title;
+      sub.textContent = tagValue;
       info.appendChild(sub);
     }
     row.appendChild(info);
@@ -299,22 +303,114 @@
   }
 
   // ---- 탭 ----
-  function createTabs(active) {
-    var tabs = document.createElement('div');
-    tabs.className = 'bkm-tabs';
-
-    [
+  // src/js/tabsKit.js 가 탭 바 DOM(+움직이는 인디케이터)을 한 번만 만들고
+  // setActive()로 상태만 갱신한다 — 매번 새로 그리면 인디케이터가 실제로
+  // "움직이는" 걸 보여줄 수가 없다(항상 첫 렌더인 셈이라 순간이동한다).
+  var tabsKitInstance = null;
+  function ensureTabs() {
+    if (tabsKitInstance) return tabsKitInstance;
+    tabsKitInstance = TabsKit.createTabs([
       { key: 'changelog', label: KINDS.changelog.label, href: 'changelogPage.html' },
       { key: 'notice', label: KINDS.notice.label, href: 'changelogPage.html?tab=notice' }
-    ].forEach(function (t) {
-      var link = document.createElement('a');
-      link.className = 'bkm-tab' + (active === t.key ? ' is-active' : '');
-      link.href = t.href;
-      link.textContent = t.label;
-      tabs.appendChild(link);
+    ], {
+      onActivate: function (item) {
+        global.history.pushState(null, '', item.href);
+        renderCurrentView();
+      }
+    });
+    listEl.appendChild(tabsKitInstance.el);
+    return tabsKitInstance;
+  }
+
+  // 탭 순서 — 어느 방향으로 슬라이드할지(왼쪽에서 오는지 오른쪽에서
+  // 오는지)를 이 배열에서의 위치로 정한다.
+  var TAB_ORDER = ['changelog', 'notice'];
+  var SLIDE_MS = 320;
+
+  var contentWrapEl = null; // 탭 바 아래, 콘텐츠만 슬라이드하는 자리 — 한 번만 만들어 재사용
+  var currentContentEl = null;
+  var currentKindKey = null;
+
+  function ensureContentWrap() {
+    if (contentWrapEl) return contentWrapEl;
+    contentWrapEl = document.createElement('div');
+    contentWrapEl.className = 'changelog-content-wrap';
+    listEl.appendChild(contentWrapEl);
+    return contentWrapEl;
+  }
+
+  function buildContentEl(kind, entries) {
+    var content = document.createElement('div');
+    content.className = 'changelog-content';
+    if (!entries.length) {
+      var empty = document.createElement('p');
+      empty.className = 'changelog-empty';
+      empty.textContent = kind.emptyMessage;
+      content.appendChild(empty);
+    } else {
+      var list = document.createElement('div');
+      list.className = 'bkm-row-list';
+      entries.forEach(function (entry) {
+        list.appendChild(createRow(kind, entry));
+      });
+      content.appendChild(list);
+    }
+    return content;
+  }
+
+  // 같은 탭을 다시 그리거나(뒤로가기로 같은 탭에 돌아오는 등) 첫 렌더일
+  // 때는 애니메이션 없이 그냥 바꿔치고, 실제로 탭이 바뀔 때만 슬라이드한다.
+  // 나가는 콘텐츠는 position:absolute로 문서 흐름에서 빼서 들어오는
+  // 콘텐츠 위에 겹쳐 놓고(부모는 overflow:hidden), 둘 다 옆으로 밀리면서
+  // 페이드되게 한다 — 그래야 행 개수가 달라 높이가 바뀌어도 안 들어오는
+  // 콘텐츠 자리가 먼저 올바른 높이로 자리잡는다.
+  function swapContent(kindKey, newContent) {
+    var wrap = ensureContentWrap();
+
+    if (!currentContentEl) {
+      wrap.appendChild(newContent);
+      currentContentEl = newContent;
+      currentKindKey = kindKey;
+      return;
+    }
+
+    if (kindKey === currentKindKey) {
+      wrap.replaceChild(newContent, currentContentEl);
+      currentContentEl = newContent;
+      return;
+    }
+
+    var dir = TAB_ORDER.indexOf(kindKey) > TAB_ORDER.indexOf(currentKindKey) ? 1 : -1;
+    var oldContent = currentContentEl;
+
+    // is-exiting은 position:absolute로 자리만 잡아둔다(문서 흐름에서
+    // 빠져야 들어오는 콘텐츠가 곧바로 제 높이를 차지한다) — 실제로 옆으로
+    // 밀며 사라지는 트랜지션은 여기서 인라인으로 건다.
+    oldContent.classList.add('is-exiting');
+    oldContent.style.transition = 'transform ' + SLIDE_MS + 'ms var(--ease-out-site), opacity ' + SLIDE_MS + 'ms ease';
+    // 다음 프레임에 목표값을 줘야 시작 상태(transform 0)가 먼저 반영된
+    // 뒤 애니메이션된다(안 그러면 순간이동해버림).
+    requestAnimationFrame(function () {
+      oldContent.style.transform = 'translateX(' + (-dir * 100) + '%)';
+      oldContent.style.opacity = '0';
+    });
+    setTimeout(function () {
+      if (oldContent.parentNode === wrap) wrap.removeChild(oldContent);
+    }, SLIDE_MS);
+
+    newContent.style.transform = 'translateX(' + (dir * 100) + '%)';
+    newContent.style.opacity = '0';
+    wrap.appendChild(newContent);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        newContent.style.transition = 'transform ' + SLIDE_MS + 'ms var(--ease-out-site), opacity ' + SLIDE_MS + 'ms ease';
+        newContent.style.transform = 'translateX(0)';
+        newContent.style.opacity = '1';
+      });
     });
 
-    return tabs;
+    currentContentEl = newContent;
+    currentKindKey = kindKey;
   }
 
   function renderList(kindKey, entries) {
@@ -322,22 +418,9 @@
     if (titleEl) titleEl.textContent = kind.label;
     if (subEl) subEl.textContent = kind.sub;
 
-    listEl.innerHTML = '';
-    listEl.appendChild(createTabs(kindKey));
+    ensureTabs().setActive(kindKey);
 
-    if (!entries.length) {
-      var empty = document.createElement('p');
-      empty.className = 'changelog-empty';
-      empty.textContent = kind.emptyMessage;
-      listEl.appendChild(empty);
-      return;
-    }
-    var list = document.createElement('div');
-    list.className = 'bkm-row-list';
-    entries.forEach(function (entry) {
-      list.appendChild(createRow(kind, entry));
-    });
-    listEl.appendChild(list);
+    swapContent(kindKey, buildContentEl(kind, entries));
   }
 
   // 탭을 오갈 때마다 다시 fetch하지 않도록 이 세션 안에서 캐시한다.
@@ -359,19 +442,9 @@
     });
   }
 
-  // bookmarksPage.js의 pushState 패턴과 같음 — 진짜 페이지 이동 대신 URL만
-  // 바꾸고 다시 그려서 로더가 재생되지 않게 한다. 이 페이지엔 탭 링크
-  // 두 개 말고 내부 라우팅이 없어서, 링크 전체를 가로채는 대신 탭 클릭만
-  // 처리한다.
-  listEl.addEventListener('click', function (e) {
-    var a = e.target.closest('a.bkm-tab');
-    if (!a) return;
-    e.preventDefault();
-    if (a.classList.contains('is-active')) return; // 이미 그 탭이면 아무것도 안 함
-    global.history.pushState(null, '', a.getAttribute('href'));
-    renderCurrentView();
-  });
-
+  // 탭 클릭 라우팅(pushState + 다시 그리기)은 ensureTabs()의 onActivate가
+  // 처리한다 — bookmarksPage.js의 pushState 패턴과 같음(진짜 페이지 이동
+  // 대신 URL만 바꿔서 로더가 재생되지 않게 한다).
   global.addEventListener('popstate', renderCurrentView);
 
   renderCurrentView();

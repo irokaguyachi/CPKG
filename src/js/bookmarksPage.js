@@ -77,23 +77,19 @@
     return itemLookupPromise;
   }
 
-  // 목록 모드 상단의 "내 북마크 | 북마크 라이브러리" 알약 토글
-  function createTabs(active) {
-    var tabs = document.createElement('div');
-    tabs.className = 'bkm-tabs';
-
-    [
+  // 목록 모드 상단의 "내 북마크 | 북마크 라이브러리" 알약 토글 —
+  // src/js/tabsKit.js 가 탭 바 DOM(+움직이는 인디케이터)을 한 번만 만들고
+  // setActive()로 상태만 갱신한다. 이 페이지는 이미 문서 전체에 링크
+  // 가로채기(맨 아래 document.addEventListener('click', ...))가 있으므로
+  // onActivate는 안 넘긴다 — 탭 클릭도 그 공통 경로(navigate)를 그대로 탄다.
+  var tabsKitInstance = null;
+  function ensureTabs() {
+    if (tabsKitInstance) return tabsKitInstance;
+    tabsKitInstance = TabsKit.createTabs([
       { key: 'mine', label: '내 북마크', href: 'bookmarksPage.html' },
       { key: 'library', label: '북마크 라이브러리', href: 'bookmarksPage.html?tab=library' }
-    ].forEach(function (t) {
-      var link = document.createElement('a');
-      link.className = 'bkm-tab' + (active === t.key ? ' is-active' : '');
-      link.href = t.href;
-      link.textContent = t.label;
-      tabs.appendChild(link);
-    });
-
-    return tabs;
+    ]);
+    return tabsKitInstance;
   }
 
   // ---- 항목 카드 (상세 모드에서 씀 — gridPage.js/favoritesPage.js 의
@@ -436,7 +432,7 @@
   // 실제로는 로그인하는 순간 userData.js 가 계정 데이터와 합쳐준다.
   function renderLoginGate(withTabs) {
     contentEl.innerHTML = '';
-    if (withTabs) contentEl.appendChild(createTabs('mine'));
+    if (withTabs) { contentEl.appendChild(ensureTabs().el); ensureTabs().setActive('mine'); }
 
     var box = document.createElement('div');
     box.className = 'bkm-login-gate';
@@ -486,7 +482,8 @@
     countEl.textContent = bookmarks.length + '개의 북마크가 있습니다!';
 
     contentEl.innerHTML = '';
-    contentEl.appendChild(createTabs('mine'));
+    contentEl.appendChild(ensureTabs().el);
+    ensureTabs().setActive('mine');
 
     var toolbar = document.createElement('div');
     toolbar.className = 'bkm-list-toolbar';
@@ -619,7 +616,8 @@
     subEl.textContent = '다른 사람들이 공개한 북마크를 둘러보세요';
 
     contentEl.innerHTML = '';
-    contentEl.appendChild(createTabs('library'));
+    contentEl.appendChild(ensureTabs().el);
+    ensureTabs().setActive('library');
 
     var grid = document.createElement('div');
     grid.className = 'bkm-row-list';

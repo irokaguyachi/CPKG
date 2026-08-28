@@ -15,6 +15,10 @@
  *   싱글턴 오버레이 패턴으로 새로 만들되, 닫기 버튼은 사이트 전역에서
  *   재사용되는 .pds-close 를 그대로 쓴다.
  * - 다크 모드 규칙은 프로젝트 관례대로 여기가 아니라 src/css/theme.css 에 있다.
+ * - 탭 전환은 changelogPage.js의 swapContent()가 옆으로 밀며 사라지는
+ *   콘텐츠(.is-exiting, 문서 흐름에서 빠져 겹쳐진다)와 반대편에서 밀고
+ *   들어오는 새 콘텐츠를 동시에 트랜지션한다 — .changelog-content-wrap이
+ *   그 둘이 겹치는 자리(overflow:hidden)다.
  */
 
 .changelog-empty {
@@ -22,6 +26,26 @@
   padding: 100px 20px;
   font-size: 16px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+/* ---- 탭 전환 슬라이드(changelogPage.js의 swapContent) ---- */
+.changelog-content-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.changelog-content {
+  width: 100%;
+}
+.changelog-content.is-exiting {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .changelog-content {
+    transition: none !important;
+  }
 }
 
 /* ---- 목록 행: 왼쪽 = 태그(제목) + 실제 제목(서브), 오른쪽 = 날짜(+상태) ---- */
@@ -32,18 +56,19 @@
 .changelog-row-right {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 12px;
 }
 
 /* ---- 진행 상태 뱃지(진행중/예정/종료) — 목록 행 + 상세 헤더 공용 ----
-   이벤트류 공지에만 붙는 선택 요소라, 값이 없으면 그냥 안 만든다. */
+   이벤트류 공지에만 붙는 선택 요소라, 값이 없으면 그냥 안 만든다. 목록
+   행에서 옆의 날짜(.bkm-row-count, 18px)에 묻히지 않도록 눈에 띄게 키웠다. */
 .changelog-status {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
-  font-size: 12px;
+  padding: 5px 16px;
+  font-size: 15px;
   font-weight: 700;
   border-radius: var(--radius-pill);
   white-space: nowrap;
@@ -210,5 +235,12 @@
   }
   .changelog-body {
     font-size: 15px;
+  }
+  .changelog-row-right {
+    gap: 8px;
+  }
+  .changelog-status {
+    padding: 4px 12px;
+    font-size: 13px;
   }
 }
