@@ -1,9 +1,13 @@
-/* 업데이트 로그 페이지 (changelogPage.html)
- * - src/data/changelog/index.json 을 changelogPage.js 가 받아 그린다
- *   (빌드는 src/scripts/12_build_changelog_index.py).
+/* 공지사항 페이지 (changelogPage.html) — 업데이트 로그 / 공지사항 두 탭
+ * - src/data/{changelog,notice}/index.json 을 changelogPage.js 가 받아 그린다
+ *   (빌드는 src/scripts/12_build_changelog_index.py, 13_build_notice_index.py).
+ *   클래스 이름은 예전 "업데이트 로그 전용" 시절 그대로지만, 지금은 두 탭
+ *   콘텐츠가 함께 쓴다.
  * - 목록 행은 북마크 목록(.bkm-row-card, src/css/components/bookmarks.css)과
- *   같은 모양을 그대로 쓴다 — 왼쪽 위 굵은 제목 자리엔 버전을, 그 아래
- *   서브 텍스트 자리엔 로그 제목을, 오른쪽 굵은 숫자 자리엔 날짜를 넣는다.
+ *   같은 모양을 그대로 쓴다 — 업데이트 로그는 왼쪽 위 굵은 제목 자리에 버전,
+ *   그 아래 서브 텍스트 자리에 로그 제목을 넣고, 공지사항은 버전이 없어
+ *   굵은 제목 자리에 바로 공지 제목을 넣는다. 오른쪽 굵은 숫자 자리엔 둘 다
+ *   날짜. 탭 자체는 bookmarks.css 의 .bkm-tabs/.bkm-tab 을 그대로 재사용한다.
  * - 행을 누르면 뜨는 상세 모달은 이미지가 있던 시리즈 상세
  *   (.post-detail-series, src/js/postDetailSeries.js)와 달리 사진이 없어서
  *   그 구조를 그대로 재사용할 수 없다 — auth-card(로그인 모달)와 같은

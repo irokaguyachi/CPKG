@@ -1,12 +1,22 @@
 /**
- * ChoKaguya 업데이트 로그 페이지
- * - src/data/changelog/index.json (src/scripts/12_build_changelog_index.py 가
- *   src/data/changelog/*.md 를 스캔해 생성) 을 받아 목록을 그린다. 이 인덱스는
- *   버전/날짜/제목/파일명만 담은 가벼운 목록이고, 본문은 들어있지 않다 —
- *   상세를 열 때 그 항목의 .md 파일을 그때그때 fetch해서 읽는다. 본문이
- *   .md 파일 하나에만 있어야 index.json과 내용이 어긋날 일이 없다.
- * - 목록 행은 북마크 목록(.bkm-row-card)과 같은 모양 — 왼쪽 굵은 제목 자리엔
- *   버전, 그 아래 서브 텍스트엔 로그 제목, 오른쪽 굵은 숫자 자리엔 날짜.
+ * ChoKaguya 공지사항 페이지 (업데이트 로그 / 공지사항 두 탭)
+ * - src/data/changelog/index.json, src/data/notice/index.json (각각
+ *   src/scripts/12_build_changelog_index.py, 13_build_notice_index.py 가
+ *   src/data/{changelog,notice}/*.md 를 스캔해 생성) 을 받아 목록을 그린다.
+ *   이 인덱스는 날짜/제목/파일명(+업데이트 로그는 버전)만 담은 가벼운
+ *   목록이고, 본문은 들어있지 않다 — 상세를 열 때 그 항목의 .md 파일을
+ *   그때그때 fetch해서 읽는다. 본문이 .md 파일 하나에만 있어야 index.json과
+ *   내용이 어긋날 일이 없다.
+ * - 탭 전환은 bookmarksPage.js 의 "내 북마크"/"북마크 라이브러리" 탭과 같은
+ *   패턴 — ?tab=notice 쿼리로 상태를 담고, pushState + 다시 그리기로
+ *   전환한다(진짜 페이지 이동이 아니라 로더가 다시 재생되지 않는다). 이
+ *   페이지는 탭 두 개 말고는 내부에 다른 라우팅(상세를 URL에 담는 등)이
+ *   없어서, bookmarksPage.js처럼 모든 링크 클릭을 가로채는 대신 탭
+ *   링크 두 개만 다룬다.
+ * - 목록 행은 북마크 목록(.bkm-row-card)과 같은 모양 — 업데이트 로그는
+ *   왼쪽 굵은 제목 자리에 버전, 그 아래 서브 텍스트에 로그 제목을 쓰고,
+ *   공지사항은 버전 개념이 없어 굵은 제목 자리에 바로 공지 제목을 쓴다.
+ *   오른쪽 굵은 숫자 자리엔 둘 다 날짜.
  * - 행을 누르면 뜨는 상세 모달은 시리즈 상세(postDetailSeries.js)와 달리
  *   사진이 없어 그 구조를 재사용할 수 없다 — src/js/authModal.js 의 싱글턴
  *   오버레이 패턴을 그대로 본떠 새로 만들되, 닫기 버튼은 사이트 전역에서
@@ -17,10 +27,33 @@
   var listEl = document.getElementById('changelog-list');
   if (!listEl) return;
 
+  var titleEl = document.getElementById('notice-title');
+  var subEl = document.getElementById('notice-sub');
+
+  // 업데이트 로그는 버전이 있고, 공지사항은 없다 — 그 차이만 여기서
+  // 갈라두면 나머지 렌더링/모달 코드는 완전히 공용으로 쓸 수 있다.
+  var KINDS = {
+    changelog: {
+      dir: 'changelog',
+      label: '업데이트 로그',
+      sub: '사이트의 변경 내역을 버전별로 확인해보세요!',
+      emptyMessage: '아직 등록된 업데이트 로그가 없어요.',
+      hasVersion: true
+    },
+    notice: {
+      dir: 'notice',
+      label: '공지사항',
+      sub: '사이트의 공지사항을 확인해보세요!',
+      emptyMessage: '아직 등록된 공지사항이 없어요.',
+      hasVersion: false
+    }
+  };
+
   // ---- 아주 작은 마크다운 → HTML 렌더러 ----
   // 이 프로젝트는 외부 CDN 라이브러리를 전혀 쓰지 않는다(cdnConfig.js 참고,
-  // 이미지도 R2로 직접 서빙) — 업데이트 로그 정도의 단순한 문법(제목/목록/
-  // 굵게·기울임/링크/인라인 코드)만 지원하면 충분해 별도 라이브러리 없이 직접 짠다.
+  // 이미지도 R2로 직접 서빙) — 업데이트 로그/공지사항 정도의 단순한 문법
+  // (제목/목록/굵게·기울임/링크/인라인 코드)만 지원하면 충분해 별도
+  // 라이브러리 없이 직접 짠다.
   function escapeHtml(s) {
     return String(s)
       .replace(/&/g, '&amp;')
@@ -125,19 +158,20 @@
     if (overlayEl) overlayEl.classList.remove('is-open');
   }
 
-  // index.json에는 목록(버전/날짜/제목/파일명)만 있고 본문은 없다 — 상세를
-  // 열 때 그 항목의 .md 파일을 그때그때 fetch해서 읽는다. 본문이 .md 파일
-  // 하나에만 있어야 index.json과 내용이 어긋날 일이 없다.
+  // index.json에는 목록만 있고 본문은 없다 — 상세를 열 때 그 항목의 .md
+  // 파일을 그때그때 fetch해서 읽는다. 본문이 .md 파일 하나에만 있어야
+  // index.json과 내용이 어긋날 일이 없다.
   var openToken = 0;
 
-  // .md 파일의 첫 줄은 "# 버전 - 날짜 - 제목" 헤더이고(12_build_changelog_index.py
-  // 참고), 그 아래부터가 실제 마크다운 본문이다.
+  // .md 파일의 첫 줄은 헤더이고(업데이트 로그: "# 버전 - 날짜 - 제목",
+  // 공지사항: "# 날짜 - 제목" — 12/13_build_*_index.py 참고), 그 아래부터가
+  // 실제 마크다운 본문이다.
   function stripHeaderLine(raw) {
     var idx = raw.indexOf('\n');
     return idx === -1 ? '' : raw.slice(idx + 1).replace(/^\n+/, '');
   }
 
-  function openDetail(entry) {
+  function openDetail(kind, entry) {
     var token = ++openToken;
     var overlay = ensureOverlay();
     overlay.innerHTML = '';
@@ -155,13 +189,15 @@
 
     var header = document.createElement('div');
     header.className = 'changelog-detail-header';
-    var versionEl = document.createElement('span');
-    versionEl.className = 'changelog-version';
-    versionEl.textContent = entry.version;
+    if (kind.hasVersion && entry.version) {
+      var versionEl = document.createElement('span');
+      versionEl.className = 'changelog-version';
+      versionEl.textContent = entry.version;
+      header.appendChild(versionEl);
+    }
     var dateEl = document.createElement('span');
     dateEl.className = 'changelog-date';
     dateEl.textContent = formatDate(entry.date);
-    header.appendChild(versionEl);
     header.appendChild(dateEl);
     card.appendChild(header);
 
@@ -182,7 +218,7 @@
     void card.offsetWidth;
     overlay.classList.add('is-open');
 
-    fetch(DATA('../data/changelog/' + entry.file))
+    fetch(DATA('../data/' + kind.dir + '/' + entry.file))
       .then(function (r) {
         if (!r.ok) throw new Error('fetch failed');
         return r.text();
@@ -198,20 +234,22 @@
   }
 
   // ---- 목록 ----
-  function createRow(entry) {
+  function createRow(kind, entry) {
     var row = document.createElement('article');
     row.className = 'bkm-row-card';
-    row.addEventListener('click', function () { openDetail(entry); });
+    row.addEventListener('click', function () { openDetail(kind, entry); });
 
     var info = document.createElement('div');
     info.className = 'bkm-row-info';
 
     var title = document.createElement('p');
     title.className = 'bkm-row-title';
-    title.textContent = entry.version;
+    // 업데이트 로그는 굵은 제목 자리에 버전, 그 아래 서브 텍스트에 로그
+    // 제목 — 공지사항은 버전이 없으니 굵은 제목 자리에 바로 공지 제목.
+    title.textContent = kind.hasVersion ? entry.version : entry.title;
     info.appendChild(title);
 
-    if (entry.title) {
+    if (kind.hasVersion && entry.title) {
       var sub = document.createElement('p');
       sub.className = 'bkm-row-sub';
       sub.textContent = entry.title;
@@ -227,29 +265,81 @@
     return row;
   }
 
-  function renderList(entries) {
+  // ---- 탭 ----
+  function createTabs(active) {
+    var tabs = document.createElement('div');
+    tabs.className = 'bkm-tabs';
+
+    [
+      { key: 'changelog', label: KINDS.changelog.label, href: 'changelogPage.html' },
+      { key: 'notice', label: KINDS.notice.label, href: 'changelogPage.html?tab=notice' }
+    ].forEach(function (t) {
+      var link = document.createElement('a');
+      link.className = 'bkm-tab' + (active === t.key ? ' is-active' : '');
+      link.href = t.href;
+      link.textContent = t.label;
+      tabs.appendChild(link);
+    });
+
+    return tabs;
+  }
+
+  function renderList(kindKey, entries) {
+    var kind = KINDS[kindKey];
+    if (titleEl) titleEl.textContent = kind.label;
+    if (subEl) subEl.textContent = kind.sub;
+
     listEl.innerHTML = '';
+    listEl.appendChild(createTabs(kindKey));
+
     if (!entries.length) {
       var empty = document.createElement('p');
       empty.className = 'changelog-empty';
-      empty.textContent = '아직 등록된 업데이트 로그가 없어요.';
+      empty.textContent = kind.emptyMessage;
       listEl.appendChild(empty);
       return;
     }
     var list = document.createElement('div');
     list.className = 'bkm-row-list';
     entries.forEach(function (entry) {
-      list.appendChild(createRow(entry));
+      list.appendChild(createRow(kind, entry));
     });
     listEl.appendChild(list);
   }
 
-  fetch(DATA('../data/changelog/index.json'))
-    .then(function (r) { return r.json(); })
-    .then(function (entries) {
-      renderList(Array.isArray(entries) ? entries : []);
-    })
-    .catch(function () {
-      renderList([]);
+  // 탭을 오갈 때마다 다시 fetch하지 않도록 이 세션 안에서 캐시한다.
+  var indexCache = {};
+  function loadIndex(kindKey) {
+    if (indexCache[kindKey]) return indexCache[kindKey];
+    indexCache[kindKey] = fetch(DATA('../data/' + KINDS[kindKey].dir + '/index.json'))
+      .then(function (r) { return r.json(); })
+      .then(function (entries) { return Array.isArray(entries) ? entries : []; })
+      .catch(function () { return []; });
+    return indexCache[kindKey];
+  }
+
+  function renderCurrentView() {
+    var params = new URLSearchParams(global.location.search);
+    var kindKey = params.get('tab') === 'notice' ? 'notice' : 'changelog';
+    loadIndex(kindKey).then(function (entries) {
+      renderList(kindKey, entries);
     });
+  }
+
+  // bookmarksPage.js의 pushState 패턴과 같음 — 진짜 페이지 이동 대신 URL만
+  // 바꾸고 다시 그려서 로더가 재생되지 않게 한다. 이 페이지엔 탭 링크
+  // 두 개 말고 내부 라우팅이 없어서, 링크 전체를 가로채는 대신 탭 클릭만
+  // 처리한다.
+  listEl.addEventListener('click', function (e) {
+    var a = e.target.closest('a.bkm-tab');
+    if (!a) return;
+    e.preventDefault();
+    if (a.classList.contains('is-active')) return; // 이미 그 탭이면 아무것도 안 함
+    global.history.pushState(null, '', a.getAttribute('href'));
+    renderCurrentView();
+  });
+
+  global.addEventListener('popstate', renderCurrentView);
+
+  renderCurrentView();
 })(window);
