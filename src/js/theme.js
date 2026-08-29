@@ -18,6 +18,11 @@
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
+  function updateThemeColorMeta(theme) {
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#121316' : '#ffffff');
+  }
+
   function applyTheme(theme, animate) {
     if (animate) {
       document.documentElement.classList.add('theme-transitioning');
@@ -29,6 +34,7 @@
     localStorage.setItem(STORAGE_KEY, theme);
     updateButtons(theme);
     updateLogos(theme);
+    updateThemeColorMeta(theme);
   }
 
   function toggleTheme() {
@@ -102,6 +108,7 @@
   // Initial apply
   var initialTheme = getPreferredTheme();
   document.documentElement.setAttribute('data-theme', initialTheme);
+  updateThemeColorMeta(initialTheme);
 
   // Inject when DOM is ready
   if (document.readyState === 'loading') {
