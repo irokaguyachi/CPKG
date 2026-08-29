@@ -12,8 +12,8 @@
       # 공지 - 2026-08-28 - 서버 점검 안내
 
 - 진행 상태(진행중/예정/종료)는 이벤트류 공지에만 해당하는 선택 필드라
-  헤더에 안 넣고, 헤더 바로 다음 줄에 있으면만 읽습니다(없으면 그냥 본문
-  시작):
+  헤더에 안 넣고, 헤더 다음 첫 "내용이 있는" 줄이 이 형식이면 읽습니다
+  (헤더와 그 줄 사이에 빈 줄이 있어도 됩니다 — 건너뛰고 찾습니다):
     status: 진행중
 
   일반 공지는 이 줄 자체를 안 넣으면 됩니다 — status 없이도 정상 동작합니다.
@@ -42,10 +42,13 @@ STATUS_VALUES = {"진행중", "예정", "종료"}
 
 def parse_file(name, path):
     with open(path, encoding="utf-8") as f:
-        first_line = f.readline()
-        second_line = f.readline()
+        lines = f.readlines()
 
-    m = HEADER_RE.match(first_line.rstrip("\n"))
+    if not lines:
+        print("  ! 빈 파일, 건너뜀:", name)
+        return None
+
+    m = HEADER_RE.match(lines[0].rstrip("\n"))
     if not m:
         print("  ! 첫 줄 헤더 형식이 아님(# 카테고리 - YYYY-MM-DD - 제목), 건너뜀:", name)
         return None
@@ -53,9 +56,16 @@ def parse_file(name, path):
     category, date, title = m.group(1), m.group(2), m.group(3)
     entry = {"category": category, "date": date, "title": title, "file": name}
 
-    sm = STATUS_RE.match(second_line.strip())
-    if sm:
-        entry["status"] = sm.group(1)
+    # 헤더 다음 첫 "내용이 있는" 줄만 본다 — 빈 줄은 건너뛰지만, 그 줄이
+    # status: 형식이 아니면(본문이 바로 시작된 것) 더 뒤져보지 않는다.
+    for line in lines[1:]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        sm = STATUS_RE.match(stripped)
+        if sm:
+            entry["status"] = sm.group(1)
+        break
 
     return entry
 

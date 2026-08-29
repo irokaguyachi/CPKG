@@ -193,8 +193,13 @@
   function stripHeaderLine(raw) {
     var lines = (raw || '').split('\n');
     lines.shift(); // 헤더 줄
-    if (/^status:\s*(진행중|예정|종료)\s*$/.test((lines[0] || '').trim())) {
-      lines.shift();
+    // 헤더 다음 첫 "내용이 있는" 줄만 본다(13_build_notice_index.py와 동일한
+    // 규칙) — 빈 줄은 건너뛰지만, status: 형식이 아니면 본문이 바로 시작된
+    // 것이므로 더 뒤지지 않는다.
+    var i = 0;
+    while (i < lines.length && lines[i].trim() === '') i++;
+    if (i < lines.length && /^status:\s*(진행중|예정|종료)\s*$/.test(lines[i].trim())) {
+      lines.splice(0, i + 1);
     }
     return lines.join('\n').replace(/^\n+/, '');
   }
