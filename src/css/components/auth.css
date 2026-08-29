@@ -326,3 +326,10 @@
 .auth-manage-panel {
   width: 374px;
 }
+
+/* 동기화 뱃지를 누르면 뜨는 저장/불러오기 선택 패널 (src/js/auth.js) —
+   .bkm-picker(bookmarks.css)의 flex-column 레이아웃을 그대로 쓰고
+   버튼 두 개가 세로로 쌓인다. */
+.auth-sync-panel {
+  width: 260px;
+}

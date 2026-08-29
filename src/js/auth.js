@@ -99,12 +99,51 @@
   // 없으므로(userData.js) 이 뱃지는 곧 버튼이다 — 눌러야 실제로 맞춰진다.
   var SYNC_STATE_LABELS = {
     synced: '동기화됨',
-    pending: '동기화 필요 · 눌러서 동기화',
+    pending: '동기화 필요 · 눌러서 저장/불러오기',
     syncing: '동기화 중...',
     cooldown: '동기화 쿨타임중..',
     offline: '오프라인 (이 기기에만 저장 중)',
     error: '동기화 실패 · 다시 눌러보세요'
   };
+
+  // 동기화 버튼을 누르면 뜨는 "저장"/"불러오기" 선택 패널 — 개인 코드 관리
+  // 패널과 같은 앵커 팝오버 메커니즘(popoverKit.js)을 그대로 재사용한다.
+  // 예전엔 버튼 하나가 "서버가 더 최신이면 받고 아니면 올린다"를 알아서
+  // 판단했는데, "이미 버전이 맞더라도 서버 걸 그대로 가져오고 싶다"는
+  // 요청을 처리할 방법이 없어서 방향을 직접 고르게 나눴다
+  // (src/js/userData.js 의 saveToServer/loadFromServer).
+  var syncPopover = global.PopoverKit.createPopover('bkm-picker auth-sync-panel', 240);
+
+  function closeSyncPanel() {
+    syncPopover.close();
+  }
+
+  function openSyncPanel(anchorEl) {
+    var panel = syncPopover.ensure();
+    panel.innerHTML = '';
+    panel.appendChild(panelHeader('클라우드 동기화'));
+
+    var saveBtn = panelButton('이 기기 → 서버에 저장', 'is-primary');
+    saveBtn.addEventListener('click', function () {
+      closeSyncPanel();
+      if (global.UserData) global.UserData.saveToServer();
+    });
+    panel.appendChild(saveBtn);
+
+    var loadBtn = panelButton('서버 → 이 기기로 불러오기');
+    loadBtn.addEventListener('click', function () {
+      closeSyncPanel();
+      if (global.UserData) global.UserData.loadFromServer();
+    });
+    panel.appendChild(loadBtn);
+
+    positionSyncPanel(anchorEl);
+    panel.classList.add('is-open');
+  }
+
+  function positionSyncPanel(anchorEl) {
+    syncPopover.position(anchorEl);
+  }
 
   // 로그인/개인 코드 관리 버튼 아래에 붙는 사이트 버전 표시.
   // syncBadge 와 마찬가지로 매번 버튼 바로 뒤로 강제 재배치해서 순서를
@@ -138,7 +177,7 @@
       badge.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (global.UserData) global.UserData.requestSync();
+        openSyncPanel(badge);
       });
     }
     // userData.js 의 초기 상태 이벤트(chokaguya:sync-state)가 스크립트 로드
@@ -159,7 +198,7 @@
     var label = SYNC_STATE_LABELS[state] || SYNC_STATE_LABELS.offline;
     badge.className = 'auth-sync-badge is-' + state;
     badge.title = label;
-    badge.setAttribute('aria-label', '클라우드 동기화 상태: ' + label + '. 눌러서 지금 동기화');
+    badge.setAttribute('aria-label', '클라우드 동기화 상태: ' + label + '. 눌러서 저장 또는 불러오기 선택');
     badge.innerHTML = '<span class="auth-sync-dot" aria-hidden="true"></span>' +
       '<span class="auth-sync-badge-label">' + label + '</span>';
   }

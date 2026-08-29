@@ -6,15 +6,22 @@
  *   보여주려고 발행한 스냅샷", 이쪽은 "비공개 포함 내 데이터 전부".
  * - 자동 동기화(폴링, 포커스/탭전환 감지, 다른 탭 알림)는 전부 없앴습니다 —
  *   서버 요청이 너무 잦아지는 게 문제였습니다. 대신 헤더의 동기화 버튼을
- *   눌러야만(requestSync) 로컬↔서버를 맞춥니다. 로그인/가입 직후 서버
- *   데이터를 한 번 받아오는 것만 예외입니다 — 그건 로그인 절차 자체지
- *   "동기화를 자동 반복"하는 게 아닙니다.
- * - 업스트림: 동기화 버튼을 누르면 스토어 전체를 스냅샷으로 올립니다.
- *   부분 diff 를 보내지 않으므로 오프라인 중 쌓인 변경을 따로 큐에 담을
- *   필요가 없습니다 — 로컬 스토어 자체가 항상 "보낼 것"입니다.
- * - 충돌은 서버가 아니라 여기서 풉니다(mergeStores). 서버는 syncVersion 과
- *   etag 로 "덮어써도 되는지"만 판정하고, 뒤처졌으면 409와 함께 서버 사본을
- *   돌려줍니다. 병합 구현이 한쪽에만 있어야 두 구현이 어긋날 일이 없습니다.
+ *   눌러야만 로컬↔서버를 맞춥니다. 로그인/가입 직후 서버 데이터를 한 번
+ *   받아오는 것만 예외입니다 — 그건 로그인 절차 자체지 "동기화를 자동
+ *   반복"하는 게 아닙니다.
+ * - 동기화 버튼은 방향을 사용자가 직접 고릅니다(auth.js 의 팝오버) —
+ *   saveToServer(이 기기 → 서버) / loadFromServer(서버 → 이 기기, 병합
+ *   없이 그대로 덮어씀). 예전엔 "서버가 더 최신이면 받고 아니면 올린다"를
+ *   자동 판단하는 버튼 하나였는데, 그러면 "이미 버전이 맞더라도 서버 걸
+ *   그대로 가져오고 싶다"는 요청을 처리할 방법이 없었습니다.
+ * - saveToServer: 스토어 전체를 스냅샷으로 올립니다. 부분 diff 를 보내지
+ *   않으므로 오프라인 중 쌓인 변경을 따로 큐에 담을 필요가 없습니다 —
+ *   로컬 스토어 자체가 항상 "보낼 것"입니다. 충돌은 서버가 아니라
+ *   여기서 풉니다(mergeStores). 서버는 syncVersion 과 etag 로 "덮어써도
+ *   되는지"만 판정하고, 뒤처졌으면 409와 함께 서버 사본을 돌려줍니다.
+ *   병합 구현이 한쪽에만 있어야 두 구현이 어긋날 일이 없습니다.
+ * - loadFromServer: 병합하지 않고 서버 사본을 그대로 앉힙니다 — 아직
+ *   서버에 못 올린 변경이 있으면 사라진다는 뜻이라 먼저 확인을 받습니다.
  */
 (function (global) {
   // bookmarkLibrary.js 와 같은 이유로 상대 경로를 쓴다 — API가 같은
@@ -22,7 +29,6 @@
   var WORKER_BASE = '';
   var SIGNUP_URL = WORKER_BASE + '/user/signup';
   var GET_URL = WORKER_BASE + '/user/get';
-  var HEAD_URL = WORKER_BASE + '/user/head';
   var SYNC_URL = WORKER_BASE + '/user/sync';
 
   var SYNC_VERSION_KEY = 'chokaguya_sync_version';
@@ -340,8 +346,8 @@
   }
 
   // 로컬 변경이 생겨도 곧장 서버로 올리지 않는다 — "아직 안 올렸다"는
-  // 표시만 남기고, 실제 업로드는 사용자가 동기화 버튼(requestSync)을
-  // 눌렀을 때만 한다.
+  // 표시만 남기고, 실제 업로드는 사용자가 동기화 버튼에서 "저장"을
+  // 골랐을 때만(saveToServer) 한다.
   function markDirty() {
     if (!canSync()) return;
     dirty = true;
@@ -349,38 +355,9 @@
   }
 
   // ---- 다운스트림 ----
-
-  function pullFull() {
-    var code = personalCode();
-    if (!code || !store()) return Promise.resolve();
-    return postJson(GET_URL, { personalCode: code }).then(function (res) {
-      if (!res.ok) return failWith(res);
-      return res.json();
-    }).then(function (data) {
-      var localOnlyChanges = applyRemote(data.userStore);
-      if (localOnlyChanges) { dirty = true; setStatus('pending'); }
-      else setStatus('synced');
-    });
-  }
-
-  function pullIfStale() {
-    var code = personalCode();
-    if (!code || !store()) return Promise.resolve();
-    return postJson(HEAD_URL, { personalCode: code }).then(function (res) {
-      if (res.status === 404) {
-        // 구버전 코드로 로그인한 상태 — 계정을 만들고 지금 로컬을 올려야 한다
-        return postJson(SIGNUP_URL, { personalCode: code }).then(function (signupRes) {
-          if (!signupRes.ok) return;
-          setSyncVersion(1);
-          dirty = true;
-        });
-      }
-      if (!res.ok) return failWith(res);
-      return res.json().then(function (meta) {
-        if (meta.syncVersion > getSyncVersion()) return pullFull();
-      });
-    });
-  }
+  // (버전이 서버가 더 최신인지 미리 찔러보는 pullIfStale/HEAD_URL 은
+  // "저장"/"불러오기"로 나누면서 안 쓰게 됐다 — loadFromServer는 버전 비교
+  // 없이 항상 서버 사본을 그대로 가져온다.)
 
   // ---- 공개 진입점 ----
 
@@ -433,29 +410,83 @@
     });
   }
 
-  // 헤더의 동기화 버튼이 부르는 단 하나의 진입점 — 자동으로 서버에 나가는
-  // 경로는 이제 없고 여기뿐이다. 쿨다운 중이면 서버로 아무것도 안 보내고
-  // 그 사실만 잠깐 알려준다.
-  function requestSync() {
-    if (!canSync()) return Promise.resolve({ ok: false, reason: 'offline' });
-
+  // 헤더의 동기화 버튼을 누르면 이제 "저장"/"불러오기" 중 하나를 고른다
+  // (auth.js 의 팝오버) — 예전엔 버튼 하나가 "서버가 더 최신이면 받고,
+  // 이 기기가 더 최신이면 올린다"를 알아서 판단했는데, 그러다 보니 정작
+  // "서버에 있는 걸 그대로 가져오고 싶다"는 요청은 처리할 방법이 없었다
+  // (버전이 이미 맞으면 pullIfStale 이 아무것도 안 받아온다). 두 방향을
+  // 사용자가 직접 고르게 나눴다: saveToServer 는 이 기기 것을 서버에 그대로
+  // 올리고(충돌 시에만 자동 병합), loadFromServer 는 서버 것을 병합 없이
+  // 그대로 이 기기에 앉힌다. 둘 다 같은 쿨다운(SYNC_COOLDOWN_MS)을 공유한다
+  // — 방향과 무관하게 서버 요청 자체를 남용하지 못하게 막는 게 목적이라서다.
+  function checkCooldown() {
     var remaining = SYNC_COOLDOWN_MS - (Date.now() - lastSyncAt);
-    if (remaining > 0) {
-      var prevStatus = status;
-      setStatus('cooldown');
-      setTimeout(function () {
-        if (status === 'cooldown') setStatus(prevStatus);
-      }, COOLDOWN_LABEL_MS);
-      return Promise.resolve({ ok: false, reason: 'cooldown', remainingMs: remaining });
+    if (remaining <= 0) return null;
+    var prevStatus = status;
+    setStatus('cooldown');
+    setTimeout(function () {
+      if (status === 'cooldown') setStatus(prevStatus);
+    }, COOLDOWN_LABEL_MS);
+    return { ok: false, reason: 'cooldown', remainingMs: remaining };
+  }
+
+  function markSynced() {
+    lastSyncAt = Date.now();
+    try { localStorage.setItem(LAST_SYNC_AT_KEY, String(lastSyncAt)); } catch (e) {}
+  }
+
+  // "저장" — 이 기기의 스토어를 서버에 올린다. pushNow() 가 409(다른 기기가
+  // 먼저 썼음)는 자동으로 병합해 재시도하므로, 완전히 다른 기기의 최신
+  // 변경을 실수로 지우지는 않는다.
+  function saveToServer() {
+    if (!canSync()) return Promise.resolve({ ok: false, reason: 'offline' });
+    var blocked = checkCooldown();
+    if (blocked) return Promise.resolve(blocked);
+
+    return pushNow().then(function () {
+      markSynced();
+      return { ok: true };
+    });
+  }
+
+  // "불러오기" — 서버 스토어를 병합 없이 그대로 이 기기에 앉힌다. 아직
+  // 서버에 못 올린 변경(dirty)이 있으면 그게 사라진다는 뜻이라 먼저
+  // 확인받는다(logout()의 confirm과 같은 자리).
+  function loadFromServer() {
+    if (!canSync()) return Promise.resolve({ ok: false, reason: 'offline' });
+    var blocked = checkCooldown();
+    if (blocked) return Promise.resolve(blocked);
+
+    if (dirty) {
+      var proceed = false;
+      try {
+        proceed = global.confirm('아직 서버에 저장하지 않은 변경사항이 있어요. 지금 불러오면 그 변경사항은 사라져요. 그래도 서버에 저장된 내용을 불러올까요?');
+      } catch (e) {}
+      if (!proceed) return Promise.resolve({ ok: false, reason: 'cancelled' });
     }
 
+    var code = personalCode();
     setStatus('syncing');
-    return pullIfStale().then(function () {
-      return dirty ? pushNow() : null;
-    }).then(function () {
-      lastSyncAt = Date.now();
-      try { localStorage.setItem(LAST_SYNC_AT_KEY, String(lastSyncAt)); } catch (e) {}
-      if (!dirty) setStatus('synced');
+    return postJson(GET_URL, { personalCode: code }).then(function (res) {
+      if (!res.ok) return failWith(res);
+      return res.json();
+    }).then(function (data) {
+      var remoteData = realignMigratedIds(data.userStore.data);
+      applyingRemote = true;
+      try {
+        store().replaceStore(remoteData, { silent: true });
+      } finally {
+        applyingRemote = false;
+      }
+      setSyncVersion(data.userStore.syncVersion);
+      dirty = false;
+      // 조용히 앉혔으므로 화면이 스스로 갱신되도록 따로 알린다.
+      // source 가 remote 라 아래 리스너는 이걸 다시 업로드하지 않는다.
+      try {
+        global.dispatchEvent(new CustomEvent('chokaguya:bookmarks-change', { detail: { source: 'remote' } }));
+      } catch (e) {}
+      markSynced();
+      setStatus('synced');
       return { ok: true };
     }).catch(function () {
       setStatus(global.navigator && global.navigator.onLine === false ? 'offline' : 'error');
@@ -465,8 +496,8 @@
 
   // ---- 이벤트 배선 ----
   // 폴링도, 포커스/탭전환 감지도, 다른 탭에서 온 알림도 없다 — 로컬 변경은
-  // "동기화 필요" 표시만 남기고, 실제로 서버와 주고받는 건 오직
-  // requestSync(동기화 버튼)뿐이다.
+  // "동기화 필요" 표시만 남기고, 실제로 서버와 주고받는 건 오직 동기화
+  // 버튼에서 고른 saveToServer/loadFromServer 뿐이다.
 
   global.addEventListener('chokaguya:bookmarks-change', function (e) {
     if (applyingRemote) return;
@@ -502,7 +533,8 @@
   global.UserData = {
     signup: signup,
     login: login,
-    requestSync: requestSync,
+    saveToServer: saveToServer,
+    loadFromServer: loadFromServer,
     getStatus: function () { return status; },
     mergeStores: mergeStores
   };
