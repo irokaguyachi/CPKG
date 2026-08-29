@@ -14,6 +14,13 @@
  *   바꾼 이유이기도 하다.
  * - favoritesShareWorker.js 자체는 그대로 두고 여기서 import만 한다: 로직을
  *   복사하면 두 파일이 따로 놀다 조용히 어긋나기 쉽다.
+ * - 짧은 주소(/main, /novel, ...)는 실제 파일(/page/mainPage.html 등)의
+ *   내용을 리다이렉트 없이 그대로 돌려준다 — 주소창엔 짧은 주소가 그대로
+ *   남는다. wrangler.toml의 html_handling="none"이 꺼져 있는 이유(.html
+ *   URL을 확장자 없는 주소로 307 리다이렉트해버리는 기본 동작)와 같은
+ *   문제라, 여기서도 리다이렉트가 아니라 내용을 직접 매칭해서 돌려준다.
+ *   예전 /page/*.html 링크는 이 짧은 주소로 308 영구 이전한다(공유된
+ *   링크가 안 죽게).
  */
 import backend from '../worker/favoritesShareWorker.js';
 
@@ -24,6 +31,25 @@ function isApiPath(pathname) {
   return pathname.indexOf('/library/') === 0;
 }
 
+// 짧은 주소 <-> 실제 파일(src/page/ 아래) 매핑. 사이드바 등 사이트 내부
+// 링크는 전부 이 짧은 주소를 쓰도록 이미 바꿔뒀다(src/page/*.html,
+// src/js/bookmarksPage.js, changelogPage.js, mainPage.js, loading.js 참고) —
+// 여기 슬러그를 바꾸면 그 파일들도 같이 바꿔야 한다.
+var PAGE_SLUGS = {
+  main: 'mainPage.html',
+  novel: 'novelPage.html',
+  series: 'seriesPage.html',
+  hof: 'HOFPage.html',
+  official: 'OfficialPage.html',
+  bookmarks: 'bookmarksPage.html',
+  notice: 'changelogPage.html'
+};
+
+var LEGACY_HTML_TO_SLUG = {};
+for (var slug in PAGE_SLUGS) {
+  LEGACY_HTML_TO_SLUG['/page/' + PAGE_SLUGS[slug]] = '/' + slug;
+}
+
 export default {
   async fetch(request, env, ctx) {
     var url = new URL(request.url);
@@ -32,13 +58,25 @@ export default {
     if (request.method === 'OPTIONS' || isApiPath(url.pathname)) {
       return backend.fetch(request, env, ctx);
     }
-    // html_handling="none"(아래 설명) 상태에서는 "/"가 index.html로 자동
-    // 연결되지 않으므로 여기서 직접 이어준다. 그 외 경로는 손대지 않는다.
-    if (url.pathname === '/') {
-      var indexUrl = new URL(url);
-      indexUrl.pathname = '/index.html';
-      return env.ASSETS.fetch(new Request(indexUrl, request));
+
+    var legacyTarget = LEGACY_HTML_TO_SLUG[url.pathname];
+    if (legacyTarget) {
+      var redirectUrl = new URL(url);
+      redirectUrl.pathname = legacyTarget;
+      return Response.redirect(redirectUrl.toString(), 308);
     }
+
+    // "/"는 메인 페이지 슬러그(main)와 같은 것으로 취급한다.
+    var pathSlug = url.pathname === '/'
+      ? 'main'
+      : url.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+    var file = PAGE_SLUGS[pathSlug];
+    if (file) {
+      var assetUrl = new URL(url);
+      assetUrl.pathname = '/page/' + file;
+      return env.ASSETS.fetch(new Request(assetUrl, request));
+    }
+
     return env.ASSETS.fetch(request);
   }
 };

@@ -270,6 +270,12 @@
   transform: scale(1);
 }
 
+/* 모바일에서 화면 가운데로 뜰 때(popoverKit.js의 position()) — 버튼 쪽
+   모서리에서 확대되는 게 아니라 그 자리에서 확대돼야 자연스럽다. */
+.bkm-picker.is-centered {
+  transform-origin: center;
+}
+
 .bkm-picker-new {
   display: flex;
   align-items: center;

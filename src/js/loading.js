@@ -185,8 +185,8 @@
       var currentPath = currentUrl.pathname.replace(/\/+$/, '');
       var targetPath = targetUrl.pathname.replace(/\/+$/, '');
 
-      var currentFile = (currentPath.split('/').pop() || 'mainPage.html').toLowerCase();
-      var targetFile = (targetPath.split('/').pop() || 'mainPage.html').toLowerCase();
+      var currentFile = (currentPath.split('/').pop() || 'main').toLowerCase();
+      var targetFile = (targetPath.split('/').pop() || 'main').toLowerCase();
 
       if (currentFile === targetFile) {
         if (targetUrl.search === currentUrl.search || (!targetUrl.search && !currentUrl.search)) {

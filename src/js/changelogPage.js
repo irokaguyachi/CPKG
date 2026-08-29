@@ -310,8 +310,8 @@
   function ensureTabs() {
     if (tabsKitInstance) return tabsKitInstance;
     tabsKitInstance = TabsKit.createTabs([
-      { key: 'changelog', label: KINDS.changelog.label, href: 'changelogPage.html' },
-      { key: 'notice', label: KINDS.notice.label, href: 'changelogPage.html?tab=notice' }
+      { key: 'changelog', label: KINDS.changelog.label, href: '/notice' },
+      { key: 'notice', label: KINDS.notice.label, href: '/notice?tab=notice' }
     ], {
       onActivate: function (item) {
         global.history.pushState(null, '', item.href);

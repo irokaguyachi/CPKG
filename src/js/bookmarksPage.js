@@ -15,7 +15,7 @@
  */
 (function (global) {
   // ---- 이 페이지 안에서만 쓰는 라우팅 + 캐시 ----
-  // "내 북마크"/"라이브러리" 탭, 목록/상세 전환이 전부 <a href="bookmarksPage.html?...">
+  // "내 북마크"/"라이브러리" 탭, 목록/상세 전환이 전부 <a href="/bookmarks?...">
   // 진짜 페이지 이동이었다 — 왔다갔다할 때마다 로더 애니메이션이 다시 재생되고,
   // 라이브러리 쪽은 서버 요청도 매번 새로 나갔다. pushState + 다시 그리기로
   // 바꾸고, 서버에서 받은 것들은 이 세션(페이지를 안 벗어나는 동안) 안에서
@@ -86,8 +86,8 @@
   function ensureTabs() {
     if (tabsKitInstance) return tabsKitInstance;
     tabsKitInstance = TabsKit.createTabs([
-      { key: 'mine', label: '내 북마크', href: 'bookmarksPage.html' },
-      { key: 'library', label: '북마크 라이브러리', href: 'bookmarksPage.html?tab=library' }
+      { key: 'mine', label: '내 북마크', href: '/bookmarks' },
+      { key: 'library', label: '북마크 라이브러리', href: '/bookmarks?tab=library' }
     ]);
     return tabsKitInstance;
   }
@@ -295,7 +295,7 @@
 
       var viewLink = document.createElement('a');
       viewLink.className = 'bkm-share-link';
-      viewLink.href = 'bookmarksPage.html?libraryId=' + encodeURIComponent(publishedCode);
+      viewLink.href = '/bookmarks?libraryId=' + encodeURIComponent(publishedCode);
       viewLink.textContent = '공개된 모습 보기 →';
       panel.appendChild(viewLink);
 
@@ -586,7 +586,7 @@
       card.appendChild(right);
 
       card.addEventListener('click', function () {
-        navigate('bookmarksPage.html?id=' + encodeURIComponent(bookmark.id));
+        navigate('/bookmarks?id=' + encodeURIComponent(bookmark.id));
       });
 
       return card;
@@ -653,7 +653,7 @@
       card.appendChild(count);
 
       card.addEventListener('click', function () {
-        navigate('bookmarksPage.html?libraryId=' + encodeURIComponent(entry.code));
+        navigate('/bookmarks?libraryId=' + encodeURIComponent(entry.code));
       });
 
       return card;
@@ -978,7 +978,7 @@
     // 상세 화면 헤더(이름 + 관리 메뉴) — 항목 수는 바로 아래 필터 칩의
     // "전체 N" 이 이미 보여주므로 따로 안 두고, 뒤로가기 링크도 안 좋아
     // 보인다는 피드백으로 뺐다(사이드바 "북마크" 링크나 브라우저 뒤로가기로
-    // 돌아갈 수 있다). 예전엔 subEl(#bkm-sub)에 붙였는데, bookmarksPage.html의
+    // 돌아갈 수 있다). 예전엔 subEl(#bkm-sub)에 붙였는데, /bookmarks의
     // 그 자리는 .site-info--hidden(display:none !important)으로 화면에서
     // 아예 지워져 있어서 관리(⋮) 메뉴가 DOM엔 있어도 절대 눈에 보이지
     // 않았다 — 실제로 보이는 contentEl 안으로 옮긴다.
@@ -1002,7 +1002,7 @@
       e.stopPropagation();
       openBookmarkMenu(menuBtn, bookmark, {
         onRenamed: function (newName) { titleH.textContent = newName; setTitle(newName); },
-        onDeleted: function () { navigate('bookmarksPage.html'); }
+        onDeleted: function () { navigate('/bookmarks'); }
       });
     });
     header.appendChild(menuBtn);
@@ -1116,7 +1116,7 @@
   // 하면 된다.
   global.addEventListener('popstate', renderCurrentView);
 
-  // 이 페이지 안의 링크(bookmarksPage.html?... 로 가는 <a>)를 전부 가로채
+  // 이 페이지 안의 링크(/bookmarks?... 로 가는 <a>)를 전부 가로채
   // 진짜 페이지 이동 대신 pushState + 다시 그리기로 바꾼다. 탭 전환
   // (createTabs), 공유 패널의 "공개된 모습 보기" 링크가 전부 여기 한 곳에서
   // 처리된다 — 매번 개별 <a> 마다 클릭 핸들러를 달 필요가 없다.
@@ -1131,7 +1131,7 @@
     if (!a) return;
     if (a.target && a.target !== '_self') return;
     var href = a.getAttribute('href');
-    if (!href || href.indexOf('bookmarksPage.html') !== 0) return;
+    if (!href || href.indexOf('/bookmarks') !== 0) return;
     e.preventDefault();
     navigate(href);
   }, true);

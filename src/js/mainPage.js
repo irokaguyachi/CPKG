@@ -264,17 +264,17 @@
 
       // 1. 최신 등록 문학
       if (novels.length) {
-        contentEl.appendChild(createRecentSection('최신 등록 문학', novels, 'novelPage.html', 'novel'));
+        contentEl.appendChild(createRecentSection('최신 등록 문학', novels, '/novel', 'novel'));
       }
 
       // 2. 랜덤 문학 — 5초마다 다른 문학으로 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 문학', '../data/PageData/Novel.json', 'novelPage.html', 'novel'));
+      contentEl.appendChild(createRandomSection('랜덤 문학', '../data/PageData/Novel.json', '/novel', 'novel'));
 
       // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/PageData/Series.json', 'seriesPage.html', 'series'));
+      contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/PageData/Series.json', '/series', 'series'));
 
       // 4. 랜덤 명예관 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/PageData/HOF.json', 'HOFPage.html', 'hof'));
+      contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/PageData/HOF.json', '/hof', 'hof'));
     })
     .catch(function () {});
 })(window);

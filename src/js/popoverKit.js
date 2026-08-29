@@ -9,6 +9,10 @@
  *   상태(dismissible)가 있고, sidebar.js는 바깥 클릭 시 클릭 대상 검사 없이
  *   바로 닫히는 등 실제로 동작이 달라서, 억지로 하나로 묶으면 그 차이를
  *   깨뜨릴 위험이 있었다.
+ * - 모바일(MOBILE_BREAKPOINT 이하)에서는 버튼 옆에 붙이지 않고 화면
+ *   가운데에 띄운다 — 버튼 우측 하단에 붙이는 계산이 패널 높이를 전혀
+ *   고려하지 않아서, 사이드바 아래쪽 버튼처럼 화면 하단에 가까운 자리에서
+ *   열면 패널이 화면 밖으로 잘려나갔다.
  */
 (function (global) {
   // className: 팝오버 엘리먼트에 줄 클래스(예: 'bkm-picker bkm-share-panel').
@@ -40,8 +44,23 @@
       if (onClose) onClose();
     }
 
+    // 모바일 너비에선 버튼 옆에 붙이지 않고 화면 가운데에 띄운다 — 버튼
+    // 우측 하단에 붙이는 계산은 popW(너비)만 고려하고 popH(높이)는 전혀
+    // 고려하지 않아서, 사이드바 아래쪽처럼 버튼이 화면 하단에 가까우면
+    // 패널이 화면 밖으로 그냥 잘려나갔다.
+    var MOBILE_BREAKPOINT = 768;
+
     // 버튼 우측 하단에 붙이되 화면 밖으로 안 나가게 클램프
     function position(anchorEl) {
+      if (global.innerWidth <= MOBILE_BREAKPOINT) {
+        el.classList.add('is-centered');
+        var cw = el.offsetWidth || defaultWidth;
+        var ch = el.offsetHeight || 0;
+        el.style.left = Math.round(Math.max(8, (global.innerWidth - cw) / 2)) + 'px';
+        el.style.top = Math.round(Math.max(8, (global.innerHeight - ch) / 2)) + 'px';
+        return;
+      }
+      el.classList.remove('is-centered');
       var rect = anchorEl.getBoundingClientRect();
       var popW = el.offsetWidth || defaultWidth;
       var left = Math.max(8, Math.min(rect.right - popW, global.innerWidth - popW - 8));
