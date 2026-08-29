@@ -18,7 +18,7 @@
  *   로그아웃 시 발생시킴)를 들어서, 새로고침 없이 버튼을 다시 그린다.
  */
 (function (global) {
-  var SITE_VERSION = 'v0.0';
+  var SITE_VERSION = 'v0.1';
   var manageEl = null;
 
   // popoverKit.js — bookmarkPicker.js/bookmarksPage.js와 동일한 앵커
