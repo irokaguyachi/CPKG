@@ -839,6 +839,10 @@ html.theme-transitioning *:after {
   color: rgba(241, 243, 245, 0.4);
 }
 
+[data-theme="dark"] .auth-version-tag:hover {
+  color: rgba(241, 243, 245, 0.65);
+}
+
 /* 동기화 버튼 — 어두운 배경에서는 점 색을 한 단계 밝게 올려야
    같은 채도로 읽힌다(라이트 모드 값 그대로 쓰면 눌려 보임). */
 [data-theme="dark"] .auth-sync-badge {

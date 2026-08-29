@@ -254,11 +254,20 @@
 /* 사이트 버전 표시 (src/js/auth.js) — 로그인/개인 코드 관리 버튼 바로
    아래에 붙는다. */
 .auth-version-tag {
+  display: inline-block;
   padding: 0 4px;
+  border: none;
+  background: none;
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   color: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  text-align: left;
+}
+
+.auth-version-tag:hover {
+  color: rgba(0, 0, 0, 0.65);
 }
 
 /* 클라우드 동기화 버튼 (src/js/auth.js) — 로그인 버튼 바로 아래에 붙는다.

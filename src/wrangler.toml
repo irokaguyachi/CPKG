@@ -20,6 +20,13 @@ directory = "."
 binding = "ASSETS"
 html_handling = "none"
 
+# 사이드바의 버전 표시(auth.js .auth-version-tag)를 누르면 실제 배포 시각을
+# 보여준다 — 커밋을 손으로 추적하는 대신, Cloudflare가 지금 실행 중인 Worker
+# Version에 직접 붙여 주는 값(id/tag/timestamp)을 그대로 쓴다. _worker.js의
+# /__build-info 라우트가 이 값을 클라이언트에 JSON으로 내려준다.
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
 # 아래 두 바인딩은 원래 별도 Worker였던 chokaguya-favorites-share
 # (worker/wrangler.toml, 이제 삭제됨)에 있던 것과 완전히 동일한 리소스를
 # 그대로 재사용한다 — 데이터가 있는 R2/KV는 그대로 두고 Worker만 이쪽으로
