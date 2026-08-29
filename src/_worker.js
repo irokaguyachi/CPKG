@@ -21,8 +21,18 @@
  *   문제라, 여기서도 리다이렉트가 아니라 내용을 직접 매칭해서 돌려준다.
  *   예전 /page/*.html 링크는 이 짧은 주소로 308 영구 이전한다(공유된
  *   링크가 안 죽게).
+ * - ckpg.cloud -> cpkg.cloud 도메인 이전 중. 예전 도메인으로 들어오는
+ *   요청은(API 포함) 전부 새 도메인의 같은 경로로 301 리다이렉트한다 —
+ *   ckpg.cloud도 Custom Domain으로 이 Worker에 계속 붙어 있어야
+ *   리다이렉트 자체가 나간다(wrangler.toml에는 새 도메인 cpkg.cloud
+ *   라우트만 추가했다 — ckpg.cloud는 이미 대시보드에 연결돼 있어서
+ *   그대로 둔다). 이전이 끝나 옛 링크가 더는 안 도는 시점이 오면 이
+ *   블록과 OLD_DOMAIN을 지우면 된다.
  */
 import backend from '../worker/favoritesShareWorker.js';
+
+var OLD_DOMAIN = 'ckpg.cloud';
+var NEW_DOMAIN = 'cpkg.cloud';
 
 var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync'];
 
@@ -53,6 +63,15 @@ for (var slug in PAGE_SLUGS) {
 export default {
   async fetch(request, env, ctx) {
     var url = new URL(request.url);
+
+    // 옛 도메인은 뭘 요청했든(API 포함) 새 도메인의 같은 경로로 보낸다 —
+    // 다른 분기보다 먼저 확인해야 한다.
+    if (url.hostname === OLD_DOMAIN || url.hostname === 'www.' + OLD_DOMAIN) {
+      var newUrl = new URL(url);
+      newUrl.hostname = NEW_DOMAIN;
+      return Response.redirect(newUrl.toString(), 301);
+    }
+
     // CORS 프리플라이트(OPTIONS)는 API 경로에서만 의미가 있지만, 정적 자산은
     // 애초에 OPTIONS를 받을 일이 없으므로 전부 backend로 넘겨도 무해하다.
     if (request.method === 'OPTIONS' || isApiPath(url.pathname)) {
