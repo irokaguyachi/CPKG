@@ -78,6 +78,28 @@ export default {
       return backend.fetch(request, env, ctx);
     }
 
+    // 사이드바 버전 표시(auth.js)가 누르면 실제 배포 시각을 확인할 수 있게
+    // 부르는 엔드포인트. env.CF_VERSION_METADATA는 지금 이 요청을 처리 중인
+    // Worker Version에 Cloudflare가 직접 붙여 주는 값이라, 커밋을 손으로
+    // 추적하지 않아도 실배포와 항상 정확히 일치한다. timestamp의 실제
+    // 런타임 타입이 문서에 명시돼 있지 않아(Date/문자열/epoch ms 전부 가능)
+    // 방어적으로 ISO 문자열로 통일해서 내려준다. no-store로 캐시를 막는
+    // 이유는 이 엔드포인트의 존재 목적 자체가 "방금 배포가 실제로 반영됐는지
+    // 확인"이라 캐시된 옛 값을 보여주면 목적이 무의미해지기 때문이다.
+    if (url.pathname === '/__build-info') {
+      var meta = env.CF_VERSION_METADATA || {};
+      var ts = meta.timestamp;
+      var iso = null;
+      if (ts != null) {
+        if (ts instanceof Date) iso = ts.toISOString();
+        else if (typeof ts === 'number') iso = new Date(ts).toISOString();
+        else iso = String(ts);
+      }
+      return new Response(JSON.stringify({ id: meta.id || null, tag: meta.tag || null, timestamp: iso }), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+      });
+    }
+
     var legacyTarget = LEGACY_HTML_TO_SLUG[url.pathname];
     if (legacyTarget) {
       var redirectUrl = new URL(url);

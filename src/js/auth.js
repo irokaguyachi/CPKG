@@ -145,15 +145,57 @@
     syncPopover.position(anchorEl);
   }
 
+  // 실제로 지금 떠 있는 게 어느 배포인지 확인용 — 버전 태그를 누르면
+  // _worker.js의 /__build-info(Cloudflare가 실행 중인 Worker Version에
+  // 직접 붙여 주는 값)를 물어서 배포 시각을 보여준다. 한 번 받아오면
+  // 다시 물어보지 않고 재사용한다(어차피 새로고침 전까진 안 바뀜).
+  var buildInfoPromise = null;
+  function fetchBuildTimeText() {
+    if (!buildInfoPromise) {
+      buildInfoPromise = fetch('/__build-info')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.timestamp) return '확인 불가';
+          var d = new Date(data.timestamp);
+          if (isNaN(d.getTime())) return '확인 불가';
+          function pad(n) { return (n < 10 ? '0' : '') + n; }
+          return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+            pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        })
+        .catch(function () { return '확인 불가'; });
+    }
+    return buildInfoPromise;
+  }
+
   // 로그인/개인 코드 관리 버튼 아래에 붙는 사이트 버전 표시.
   // syncBadge 와 마찬가지로 매번 버튼 바로 뒤로 강제 재배치해서 순서를
   // 고정한다(로그인 버튼 → (로그인시) 동기화 뱃지 → 버전).
+  // 눌러서 버전 <-> 실제 배포 시각을 토글한다.
   function renderVersionTag(nav) {
     var tag = nav.querySelector('.auth-version-tag');
     if (!tag) {
-      tag = document.createElement('span');
+      tag = document.createElement('button');
+      tag.type = 'button';
       tag.className = 'auth-version-tag';
       tag.textContent = SITE_VERSION;
+      tag.title = '눌러서 실제 배포 시각 확인';
+      tag.setAttribute('data-showing-time', '0');
+      tag.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (tag.getAttribute('data-showing-time') === '1') {
+          tag.setAttribute('data-showing-time', '0');
+          tag.textContent = SITE_VERSION;
+          return;
+        }
+        tag.setAttribute('data-showing-time', '1');
+        tag.textContent = '확인 중...';
+        fetchBuildTimeText().then(function (text) {
+          // 응답이 오기 전에 다시 눌러서 버전으로 돌아갔다면 덮어쓰지 않는다.
+          if (tag.getAttribute('data-showing-time') !== '1') return;
+          tag.textContent = text;
+        });
+      });
     }
     var authBtn = nav.querySelector('.auth-header-btn');
     if (authBtn) {
