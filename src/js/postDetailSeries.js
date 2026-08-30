@@ -298,8 +298,12 @@
 
     // 오디오 노벨 리더가 준비된 화는 원문 새 탭 대신 이 사이트 안 리더
     // 페이지로 이동한다 (AudioNovel.md 참고). 준비 안 된 화는 기존과 동일.
+    // 절대경로를 쓰는 이유: /official 같은 짧은 주소는 실제로는
+    // /page/OfficialPage.html 내용을 그대로 돌려줄 뿐이라 주소창은 계속
+    // /official 에 머문다 — 상대경로였으면 그 기준으로 계산돼 엉뚱한 곳
+    // (/audioNovelReaderPage.html)으로 튀었다 (_worker.js 참고).
     if (ep.reader) {
-      item.href = 'audioNovelReaderPage.html?chapter=' + encodeURIComponent(ep.reader);
+      item.href = '/page/audioNovelReaderPage.html?chapter=' + encodeURIComponent(ep.reader);
     } else {
       item.href = ep.link || '#';
       item.target = '_blank';
