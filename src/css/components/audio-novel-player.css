@@ -1,0 +1,109 @@
+/* 오디오 노벨 하단 플로팅 미니 플레이어 — Figma "AudioPlayer" 프레임(node 2252:2) 기준.
+   슬라이더 트랙 #b2b2b2, 진행 바 var(--mint) 로 그 스펙을 그대로 따른다. */
+
+.an-player {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 60;
+  width: min(510px, calc(100vw - 32px));
+  padding: 10px 18px 12px;
+  border-radius: 18px;
+  background: rgba(20, 20, 22, 0.32);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* 재생 중일 때만 나타남 — 사운드가 없거나 완전히 멎으면 다시 사라진다 */
+.an-player.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.an-player-label {
+  margin: 0 0 8px;
+  padding: 0 2px;
+  font-size: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.an-player-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 22px;
+  padding: 0 2px;
+  background: transparent;
+  border-radius: var(--radius-pill);
+}
+
+.an-player-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.an-player-slider-out {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.an-player-slider-in {
+  width: 0%;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--mint);
+  transition: width 0.15s linear;
+}
+
+.an-player-time {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.an-player-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.an-player-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+.an-player-btn.is-muted .an-icon-mute-on {
+  display: none;
+}
+.an-player-btn:not(.is-muted) .an-icon-mute-off {
+  display: none;
+}
+
+.an-player-btn.is-paused .an-icon-pause {
+  display: none;
+}
+.an-player-btn:not(.is-paused) .an-icon-play {
+  display: none;
+}

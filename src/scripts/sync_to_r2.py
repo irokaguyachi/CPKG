@@ -1,6 +1,6 @@
 """
 Cloudflare R2 자동 동기화 스크립트 (sync_to_r2.py)
-- 로컬의 src/assets/Image 폴더 내 모든 이미지를 Cloudflare R2 버킷에 초고속 병렬 업로드합니다.
+- 로컬의 src/assets 와 src/AudioNovel 폴더 내 모든 파일을 Cloudflare R2 버킷에 초고속 병렬 업로드합니다.
 - 이미 업로드되어 크기가 일치하는 파일은 자동으로 건너뛰어(Delta Sync), 새 파일만 1~2초 만에 빠르게 동기화합니다.
 """
 
@@ -52,24 +52,34 @@ def fetch_existing_r2_objects(s3, bucket_name):
     print(f"       -> 기존 R2 버킷에 저장된 파일 수: {len(existing):,}개")
     return existing
 
+# (로컬 폴더 이름, R2 키 접두사) 쌍 — 둘 다 src/ 바로 밑에 있고, 키 접두사가
+# 그대로 CDN 경로가 된다 (R2_CDN_BASE + '/' + 접두사 + '/...').
+SYNC_ROOTS = [
+    ('assets', 'assets'),
+    ('AudioNovel', 'AudioNovel'),
+]
+
 def scan_local_files():
-    print("[2/4] 로컬 src/assets/Image 파일 스캔 중...")
-    local_assets_dir = os.path.join(PROJECT_ROOT, 'src', 'assets')
+    print("[2/4] 로컬 src/assets, src/AudioNovel 파일 스캔 중...")
     local_files = []
-    
-    for root, _, files in os.walk(local_assets_dir):
-        for f in files:
-            full_path = os.path.join(root, f)
-            rel_path = os.path.relpath(full_path, local_assets_dir).replace('\\', '/')
-            key = f"assets/{rel_path}"
-            size = os.path.getsize(full_path)
-            local_files.append({
-                'full_path': full_path,
-                'key': key,
-                'size': size
-            })
-            
-    print(f"       -> 로컬 에셋 파일 총합: {len(local_files):,}개 ({sum(f['size'] for f in local_files)/(1024*1024):.1f} MB)")
+
+    for folder_name, key_prefix in SYNC_ROOTS:
+        local_dir = os.path.join(PROJECT_ROOT, 'src', folder_name)
+        if not os.path.isdir(local_dir):
+            continue
+        for root, _, files in os.walk(local_dir):
+            for f in files:
+                full_path = os.path.join(root, f)
+                rel_path = os.path.relpath(full_path, local_dir).replace('\\', '/')
+                key = f"{key_prefix}/{rel_path}"
+                size = os.path.getsize(full_path)
+                local_files.append({
+                    'full_path': full_path,
+                    'key': key,
+                    'size': size
+                })
+
+    print(f"       -> 로컬 파일 총합: {len(local_files):,}개 ({sum(f['size'] for f in local_files)/(1024*1024):.1f} MB)")
     return local_files
 
 def upload_single_file(s3, bucket_name, file_info):
@@ -111,7 +121,7 @@ def sync():
     
     if total_upload_count == 0:
         print("\n✨ [완료] R2와 로컬 파일이 완벽하게 일치합니다! 업로드할 새 파일이 없습니다.")
-        print(f"🌐 Public CDN URL: {cfg['public_url']}/assets/")
+        print(f"🌐 Public CDN URL: {cfg['public_url']}/assets/ , {cfg['public_url']}/AudioNovel/")
         return
         
     print(f"\n[3/4] 새 파일 동기화 시작 (총 {total_upload_count:,}개 / {total_upload_size/(1024*1024):.1f} MB)...")
@@ -148,7 +158,7 @@ def sync():
         print(f"       - 실패: {len(errors)}개")
         for k, e in errors[:5]:
             print(f"         * {k}: {e}")
-    print(f"\n🌐 R2 Public Base URL: {cfg['public_url']}/assets/")
+    print(f"\n🌐 R2 Public Base URL: {cfg['public_url']}/assets/ , {cfg['public_url']}/AudioNovel/")
 
 if __name__ == '__main__':
     sync()

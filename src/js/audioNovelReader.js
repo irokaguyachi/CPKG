@@ -1,0 +1,408 @@
+/**
+ * 오디오 노벨 리더 — 프로토타입
+ * `<sound="...">...</sound>` / `<img="...">` 태그가 섞인 본문(.md)을 읽어서
+ * 문단 단위로 렌더링하고, 스크롤로 사운드 구간이 화면에 들어오면 자동 재생한다.
+ * 자세한 배경은 .agent/rules/AudioNovel.md 참고.
+ */
+(function (global) {
+
+  // ---------------------------------------------------------------------
+  // 파서 — 문단(빈 줄 또는 &nbsp; 로 구분)을 읽으며 <sound>/<img> 태그로
+  // 상태를 전환한다. 인접한 문단이 같은 sound 값을 쓰면 하나의 구간으로 합친다.
+  // 원본은 문단 사이에 &nbsp; 줄을 더 넣어서 장면 전환처럼 큰 여백을 의도적으로
+  // 표현하므로, 그 개수를 세어 각 문단의 gapBefore 로 들고 다닌다.
+  // ---------------------------------------------------------------------
+  function parse(text) {
+    var lines = text.replace(/\r\n/g, '\n').split('\n');
+    var segments = [];
+    var buffer = '';
+    var currentSound = null;
+    var pendingGap = 0; // 직전 문단 이후 만난 &nbsp; 줄 개수
+
+    function flushParagraph() {
+      if (buffer.length) {
+        segments.push({ type: 'p', text: buffer, sound: currentSound, gap: pendingGap });
+        buffer = '';
+        pendingGap = 0;
+      }
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+
+      if (line === '&nbsp;') {
+        flushParagraph();
+        pendingGap += 1;
+        continue;
+      }
+
+      if (line === '') {
+        flushParagraph();
+        continue;
+      }
+
+      if (segments.length === 0 && buffer === '') {
+        var headingMatch = line.match(/^#\s+(.+)$/);
+        if (headingMatch) {
+          segments.push({ type: 'heading', text: headingMatch[1] });
+          continue;
+        }
+      }
+
+      var imgMatch = line.match(/^<img="([^"]*)">$/);
+      if (imgMatch) {
+        flushParagraph();
+        segments.push({ type: 'img', src: imgMatch[1], gap: pendingGap });
+        pendingGap = 0;
+        continue;
+      }
+
+      var soundStartMatch = line.match(/^<sound="([^"]*)">$/);
+      if (soundStartMatch) {
+        flushParagraph();
+        currentSound = soundStartMatch[1];
+        continue;
+      }
+
+      if (line === '</sound>') {
+        flushParagraph();
+        currentSound = null;
+        continue;
+      }
+
+      // 원본이 고정 폭으로 줄바꿈된 줄글이라, 빈 줄로 안 끊긴 다음 줄은
+      // 같은 문단의 이어지는 부분으로 보고 그대로 붙인다 (띄어쓰기 없이).
+      buffer += line;
+    }
+    flushParagraph();
+
+    // 인접한 문단의 sound 값이 같으면 하나의 구간(sound-block)으로 병합
+    var blocks = [];
+    for (var j = 0; j < segments.length; j++) {
+      var seg = segments[j];
+      if (seg.type === 'p' && seg.sound) {
+        var last = blocks[blocks.length - 1];
+        if (last && last.type === 'sound-block' && last.sound === seg.sound) {
+          last.paragraphs.push({ text: seg.text, gap: seg.gap });
+        } else {
+          blocks.push({ type: 'sound-block', sound: seg.sound, paragraphs: [{ text: seg.text, gap: seg.gap }] });
+        }
+      } else {
+        blocks.push(seg);
+      }
+    }
+    return blocks;
+  }
+
+  // ---------------------------------------------------------------------
+  // 렌더러 — 원본의 &nbsp; 줄 개수(gap)만큼 문단 위쪽에 여백을 더해서,
+  // 작가가 의도한 "장면 사이 큰 여백"을 그대로 살린다.
+  // ---------------------------------------------------------------------
+  var GAP_UNIT_PX = 16; // &nbsp; 한 줄당 추가되는 여백
+
+  function applyGap(el, gap) {
+    if (gap) el.style.marginTop = (gap * GAP_UNIT_PX) + 'px';
+  }
+
+  function render(container, blocks, resolveImgUrl) {
+    container.innerHTML = '';
+    var frag = document.createDocumentFragment();
+
+    blocks.forEach(function (block) {
+      if (block.type === 'heading') {
+        var h1 = document.createElement('h1');
+        h1.className = 'an-heading';
+        h1.textContent = block.text;
+        frag.appendChild(h1);
+      } else if (block.type === 'img') {
+        var figure = document.createElement('figure');
+        figure.className = 'an-figure';
+        applyGap(figure, block.gap);
+        var img = document.createElement('img');
+        img.src = resolveImgUrl(block.src);
+        img.alt = '';
+        img.loading = 'lazy';
+        figure.appendChild(img);
+        frag.appendChild(figure);
+      } else if (block.type === 'sound-block') {
+        var section = document.createElement('section');
+        section.className = 'an-sound-block';
+        section.dataset.sound = block.sound;
+        block.paragraphs.forEach(function (para) {
+          var p = document.createElement('p');
+          p.className = 'an-p';
+          p.textContent = para.text;
+          applyGap(p, para.gap);
+          section.appendChild(p);
+        });
+        frag.appendChild(section);
+      } else if (block.type === 'p') {
+        var p2 = document.createElement('p');
+        p2.className = 'an-p';
+        p2.textContent = block.text;
+        applyGap(p2, block.gap);
+        frag.appendChild(p2);
+      }
+    });
+
+    container.appendChild(frag);
+  }
+
+  // ---------------------------------------------------------------------
+  // 경로 해석 — sound 값의 마지막 조각만 파일명으로 쓰고, 폴더는 이 작품
+  // 전용 base 경로로 고정한다 (지금은 소설판 1개 작품만 대상인 프로토타입).
+  // ---------------------------------------------------------------------
+  function makeResolvers(config) {
+    function resolveSoundKey(value) {
+      var parts = String(value).split('/');
+      return parts[parts.length - 1];
+    }
+    function resolveSoundUrl(value) {
+      return config.soundBase + encodeURIComponent(resolveSoundKey(value)) + '.mp3';
+    }
+    function resolveImgUrl(value) {
+      return config.imgBase + String(value).split('/').map(encodeURIComponent).join('/');
+    }
+    return { resolveSoundKey: resolveSoundKey, resolveSoundUrl: resolveSoundUrl, resolveImgUrl: resolveImgUrl };
+  }
+
+  // ---------------------------------------------------------------------
+  // 미니 플레이어 — Figma "AudioPlayer"(node 2252:2) 스펙: 슬라이더 + 시간 +
+  // 재생/음소거 버튼, 그 위에 "작곡가 - 곡명" 라벨.
+  // ---------------------------------------------------------------------
+  function createPlayer(resolvers, audioData) {
+    var els = {
+      root: document.getElementById('an-player'),
+      label: document.getElementById('an-player-label'),
+      play: document.getElementById('an-player-play'),
+      mute: document.getElementById('an-player-mute'),
+      sliderIn: document.getElementById('an-player-slider-in'),
+      time: document.getElementById('an-player-time')
+    };
+
+    var FADE_MS = 600;
+    var audioEl = null;
+    var activeBlockEl = null;
+
+    // 페이지 맨 위에 있는 사운드 구간은 스크롤 같은 사용자 동작이 하나도
+    // 없었던 시점(로드 직후)에 바로 재생을 시도하게 되는데, 이때는 브라우저의
+    // 자동재생 정책에 막혀 소리 없이 조용히 실패한다(뒤쪽 구간은 이미 스크롤
+    // 이라는 사용자 동작이 있었던 뒤라 정상 재생됨). 첫 사용자 동작이 들어오면
+    // 그 시점의 audioEl 이 아직 멈춰 있을 경우 재생을 다시 시도한다.
+    var resumeEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+    function retryBlockedPlay() {
+      if (audioEl && audioEl.paused) {
+        audioEl.play().catch(function () {});
+      }
+      resumeEvents.forEach(function (ev) {
+        document.removeEventListener(ev, retryBlockedPlay);
+      });
+    }
+    resumeEvents.forEach(function (ev) {
+      document.addEventListener(ev, retryBlockedPlay, { once: false, passive: true });
+    });
+
+    function fmtTime(sec) {
+      if (!isFinite(sec) || sec < 0) return '0:00';
+      sec = Math.floor(sec);
+      var m = Math.floor(sec / 60);
+      var s = sec % 60;
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function fadeTo(el, target, ms, done) {
+      var start = el.volume;
+      var startTime = performance.now();
+      function step(now) {
+        var t = Math.min(1, (now - startTime) / ms);
+        el.volume = start + (target - start) * t;
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else if (done) {
+          done();
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    function updateProgress() {
+      if (!audioEl) return;
+      var pct = audioEl.duration ? (audioEl.currentTime / audioEl.duration) * 100 : 0;
+      els.sliderIn.style.width = pct + '%';
+      els.time.textContent = fmtTime(audioEl.currentTime) + ' / ' + fmtTime(audioEl.duration || 0);
+    }
+
+    function updateLabel(key) {
+      var meta = audioData[key] || {};
+      var title = meta.title || key;
+      els.label.textContent = meta.composer ? (meta.composer + ' - ' + title) : title;
+    }
+
+    // AudioData.json 의 volume(0~1) — 곡마다 녹음 음량이 달라서 미리 맞춰둔 기준 볼륨.
+    // 값이 없거나 범위를 벗어나면 1로 취급한다.
+    function targetVolume(key) {
+      var v = (audioData[key] || {}).volume;
+      if (typeof v !== 'number' || isNaN(v)) return 1;
+      return Math.min(1, Math.max(0, v));
+    }
+
+    // AudioData.json 의 playMode — "Once"면 끝까지 재생 후 멈추고,
+    // 그 외(기본값 "Loop")는 끝나면 처음부터 다시 반복 재생한다.
+    function isOnceMode(key) {
+      return (audioData[key] || {}).playMode === 'Once';
+    }
+
+    function setPlayIcon(paused) {
+      els.play.classList.toggle('is-paused', paused);
+    }
+
+    function playKey(soundValue, blockEl) {
+      if (activeBlockEl === blockEl) return; // 같은 구간이면 재시작하지 않음
+
+      if (activeBlockEl) activeBlockEl.classList.remove('is-playing');
+      blockEl.classList.add('is-playing');
+      activeBlockEl = blockEl;
+
+      var key = resolvers.resolveSoundKey(soundValue);
+      var prevAudio = audioEl;
+
+      var next = new Audio(resolvers.resolveSoundUrl(soundValue));
+      next.loop = !isOnceMode(key);
+      next.volume = 0;
+      next.addEventListener('timeupdate', updateProgress);
+      if (!next.loop) {
+        // Once: 끝까지 재생되면 그대로 멈추고 패널도 사라진다 (같은 구간에 계속
+        // 머물러 있는 동안은 다시 재생하지 않음 — 구간을 벗어났다 돌아오면 재생)
+        next.addEventListener('ended', function () {
+          if (audioEl !== next) return;
+          fadeTo(next, 0, FADE_MS, function () {
+            next.pause();
+            if (audioEl === next) {
+              audioEl = null;
+              els.root.classList.remove('is-visible');
+            }
+          });
+        });
+      }
+      next.play().catch(function () { /* 자동재생이 막히면 다음 사용자 조작을 기다린다 */ });
+
+      audioEl = next;
+      fadeTo(next, targetVolume(key), FADE_MS);
+      setPlayIcon(false);
+
+      if (prevAudio) {
+        fadeTo(prevAudio, 0, FADE_MS, function () {
+          prevAudio.pause();
+          prevAudio.src = '';
+        });
+      }
+
+      updateLabel(key);
+      els.root.classList.add('is-visible');
+    }
+
+    function stop() {
+      if (!audioEl) return;
+      var prevAudio = audioEl;
+      if (activeBlockEl) activeBlockEl.classList.remove('is-playing');
+      activeBlockEl = null;
+      audioEl = null;
+      fadeTo(prevAudio, 0, FADE_MS, function () {
+        prevAudio.pause();
+        prevAudio.src = '';
+        // 페이드아웃되는 동안 다른 구간이 새로 재생을 시작했다면(audioEl 이
+        // 이미 그 새 트랙을 가리키고 있다면) 막 나타난 패널을 도로 숨기면
+        // 안 되므로, 여전히 아무것도 재생 중이 아닐 때만 숨긴다.
+        if (!audioEl) {
+          els.root.classList.remove('is-visible');
+        }
+      });
+    }
+
+    els.play.addEventListener('click', function () {
+      if (!audioEl) return;
+      if (audioEl.paused) {
+        audioEl.play();
+        setPlayIcon(false);
+      } else {
+        audioEl.pause();
+        setPlayIcon(true);
+      }
+    });
+
+    els.mute.addEventListener('click', function () {
+      if (!audioEl) return;
+      audioEl.muted = !audioEl.muted;
+      els.mute.classList.toggle('is-muted', audioEl.muted);
+    });
+
+    return { playKey: playKey, stop: stop };
+  }
+
+  // ---------------------------------------------------------------------
+  // 스크롤 재생 트리거 — 뷰포트에 들어온 사운드 구간 중 교차 비율이 가장
+  // 큰 것을 "현재 구간"으로 삼는다. 하나도 없으면 정지.
+  // ---------------------------------------------------------------------
+  function setupScrollTrigger(container, player) {
+    var blocks = Array.prototype.slice.call(container.querySelectorAll('.an-sound-block'));
+    if (!blocks.length || !('IntersectionObserver' in global)) return;
+
+    var state = new Map();
+
+    function recompute() {
+      var best = null;
+      blocks.forEach(function (el) {
+        var s = state.get(el);
+        if (s && s.isIntersecting && (!best || s.ratio > best.ratio)) {
+          best = { el: el, ratio: s.ratio };
+        }
+      });
+      if (best) {
+        player.playKey(best.el.dataset.sound, best.el);
+      } else {
+        player.stop();
+      }
+    }
+
+    // rootMargin 위쪽을 음수로 줄여서, 화면 맨 위로 완전히 빠져나가야 꺼지는 게
+    // 아니라 문단 아래쪽이 화면 중간보다 살짝 아래 지점(위에서 58%)을 넘어가는
+    // 순간 바로 꺼지도록(교차 판정에서 제외) 만든다.
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        state.set(entry.target, { ratio: entry.intersectionRatio, isIntersecting: entry.isIntersecting });
+      });
+      recompute();
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '-58% 0px 0px 0px' });
+
+    blocks.forEach(function (el) { observer.observe(el); });
+  }
+
+  // ---------------------------------------------------------------------
+  // 진입점
+  // ---------------------------------------------------------------------
+  function init(config) {
+    config = config || {};
+    var container = document.getElementById(config.containerId || 'an-content');
+    if (!container) return;
+
+    var resolvers = makeResolvers(config);
+
+    Promise.all([
+      fetch(config.sourceUrl, { cache: 'no-store' }).then(function (r) { return r.text(); }),
+      config.audioDataUrl
+        ? fetch(config.audioDataUrl, { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return {}; })
+        : Promise.resolve({})
+    ]).then(function (results) {
+      var text = results[0];
+      var audioData = results[1];
+
+      var blocks = parse(text);
+      render(container, blocks, resolvers.resolveImgUrl);
+
+      var player = createPlayer(resolvers, audioData);
+      setupScrollTrigger(container, player);
+    });
+  }
+
+  global.AudioNovelReader = { init: init, parse: parse };
+})(window);

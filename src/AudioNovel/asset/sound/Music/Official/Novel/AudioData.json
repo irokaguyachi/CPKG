@@ -1,0 +1,38 @@
+{
+  "OPENING ACT@TSUKUYOMI": {
+    "title": "OPENING ACT@TSUKUYOMI",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "Iroha Sakayori": {
+    "title": "Iroha Sakayori",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "Remember": {
+    "title": "Remember",
+    "composer": "yuigot",
+    "volume": 0.5,
+    "playMode": "Loop"
+  },
+  "Kaguya Is Born (Intro)": {
+    "title": "Kaguya Is Born",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Once"
+  },
+  "Kaguya Is Born (0.18-end)": {
+    "title": "Kaguya Is Born",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Once"
+  },
+  "Borrowed Motherhood": {
+    "title": "Borrowed Motherhood",
+    "composer": "Conisch",
+    "volumn": 1,
+    "playMode": "Loop"
+  }
+}

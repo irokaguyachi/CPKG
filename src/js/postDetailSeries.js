@@ -295,9 +295,16 @@
     ep = ep || {};
     var item = document.createElement('a');
     item.className = 'pds-episode-item';
-    item.href = ep.link || '#';
-    item.target = '_blank';
-    item.rel = 'noopener noreferrer';
+
+    // 오디오 노벨 리더가 준비된 화는 원문 새 탭 대신 이 사이트 안 리더
+    // 페이지로 이동한다 (AudioNovel.md 참고). 준비 안 된 화는 기존과 동일.
+    if (ep.reader) {
+      item.href = 'audioNovelReaderPage.html?chapter=' + encodeURIComponent(ep.reader);
+    } else {
+      item.href = ep.link || '#';
+      item.target = '_blank';
+      item.rel = 'noopener noreferrer';
+    }
 
     var title = document.createElement('p');
     title.className = 'pds-episode-title';
@@ -313,7 +320,7 @@
 
     var link = document.createElement('p');
     link.className = 'pds-episode-link';
-    link.textContent = ep.link || '게시물 링크';
+    link.textContent = ep.reader ? '🎧 오디오 노벨로 읽기' : (ep.link || '게시물 링크');
     item.appendChild(link);
 
     var badge = document.createElement('span');

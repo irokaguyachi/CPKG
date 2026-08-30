@@ -497,6 +497,7 @@
               title: post.title,
               dcId: post.id,
               link: post.link,
+              reader: post.reader,
               episodeLabel: post.episode + ' 화'
             };
           })
@@ -568,6 +569,7 @@
               title: post.title,
               dcId: post.id,
               link: post.link,
+              reader: post.reader,
               episodeLabel: post.episode + ' 화'
             };
           })
