@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="../css/components/modal-series.css" />
 <link rel="stylesheet" href="../css/components/auth.css" />
 <link rel="stylesheet" href="../css/components/bookmarks.css" />
+<link rel="stylesheet" href="../css/components/settings-modal.css" />
 <link rel="stylesheet" href="../css/components/yachiyo-event.css" />
 <link rel="stylesheet" href="../css/pages/main-page.css" />
 <link rel="stylesheet" href="../css/theme.css" />
@@ -71,6 +72,10 @@
     <a href="/series">시리즈</a>
     <a href="/hof">명예관</a>
     <a href="/bookmarks">북마크</a>
+    <button type="button" class="header-nav-settings" data-settings-trigger>
+      <svg class="header-nav-settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="header-nav-settings-label">설정</span>
+    </button>
   </nav>
 </aside>
 
@@ -109,6 +114,8 @@
 <script defer src="../js/authModal.js"></script>
 <script defer src="../js/auth.js"></script>
 <script defer src="../js/sidebar.js"></script>
+<script defer src="../js/audioSettings.js"></script>
+<script defer src="../js/settingsModal.js"></script>
 <script defer src="../js/heroLogo.js"></script>
 <script defer src="../js/yachiyoEvent.js"></script>
 <script defer src="../js/tagConfig.js"></script>

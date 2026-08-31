@@ -51,6 +51,7 @@ src/AudioNovel/
 |---|---|---|
 | 사운드 구간 | `<sound="music/official/novel/fullmoon">...한 문단...</sound>` | 여는 태그부터 해당 곡 재생을 시작하고, 닫는 태그에서 그 문단이 끝남. **문단마다 여닫는 것이 기본 단위** |
 | 이미지 삽입 | `<img="...">` | 닫는 태그 없이 그 위치에 이미지 한 장을 삽입 (self-closing) |
+| 효과음 | `<sfx="이로하_리멤버">` | 닫는 태그 없는 점(point) 트리거 (self-closing). 배경음악(`sound`)과 독립적으로 겹쳐서 재생되며, 그 지점을 읽고 지나치는 순간 **딱 한 번만** 재생된다(loop 없음). 값은 `src/AudioNovel/asset/sound/Sfx/Official/` 기준 확장자 없는 파일명 |
 
 예시 (문단마다 여닫되, 같은 곡이 이어지면 값이 반복됨):
 

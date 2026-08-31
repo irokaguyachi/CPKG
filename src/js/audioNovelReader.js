@@ -57,6 +57,16 @@
         continue;
       }
 
+      // 효과음 — 여닫는 구간이 아니라 이 지점을 읽고 지나치는 순간 딱 한 번만
+      // 재생되는 점(point) 트리거. <img> 처럼 self-closing.
+      var sfxMatch = line.match(/^<sfx="([^"]*)">$/);
+      if (sfxMatch) {
+        flushParagraph();
+        segments.push({ type: 'sfx', src: sfxMatch[1], gap: pendingGap });
+        pendingGap = 0;
+        continue;
+      }
+
       var soundStartMatch = line.match(/^<sound="([^"]*)">$/);
       if (soundStartMatch) {
         flushParagraph();
@@ -142,6 +152,11 @@
         p2.textContent = block.text;
         applyGap(p2, block.gap);
         frag.appendChild(p2);
+      } else if (block.type === 'sfx') {
+        var marker = document.createElement('span');
+        marker.className = 'an-sfx-marker';
+        marker.dataset.sfx = block.src;
+        frag.appendChild(marker);
       }
     });
 
@@ -163,7 +178,10 @@
     function resolveImgUrl(value) {
       return config.imgBase + String(value).split('/').map(encodeURIComponent).join('/');
     }
-    return { resolveSoundKey: resolveSoundKey, resolveSoundUrl: resolveSoundUrl, resolveImgUrl: resolveImgUrl };
+    function resolveSfxUrl(value) {
+      return config.sfxBase + String(value).split('/').map(encodeURIComponent).join('/') + '.mp3';
+    }
+    return { resolveSoundKey: resolveSoundKey, resolveSoundUrl: resolveSoundUrl, resolveImgUrl: resolveImgUrl, resolveSfxUrl: resolveSfxUrl };
   }
 
   // ---------------------------------------------------------------------
@@ -267,12 +285,23 @@
     }
 
     // AudioData.json 의 volume(0~1) — 곡마다 녹음 음량이 달라서 미리 맞춰둔 기준 볼륨.
-    // 값이 없거나 범위를 벗어나면 1로 취급한다.
+    // 값이 없거나 범위를 벗어나면 1로 취급한다. 여기에 설정창(오디오 문학
+    // 탭)의 마스터 볼륨(AudioSettings)을 곱해서 최종 재생 볼륨을 낸다.
     function targetVolume(key) {
       var v = (audioData[key] || {}).volume;
-      if (typeof v !== 'number' || isNaN(v)) return 1;
-      return Math.min(1, Math.max(0, v));
+      var base = (typeof v !== 'number' || isNaN(v)) ? 1 : Math.min(1, Math.max(0, v));
+      var master = global.AudioSettings ? global.AudioSettings.get().volume : 1;
+      return base * master;
     }
+
+    // 재생 중에 설정창에서 음량 슬라이더를 움직이면 바로 들리게, 지금 트는
+    // 곡의 볼륨을 즉시 다시 계산해서 앉힌다(페이드 없이 스냅).
+    function applyVolumeSettingNow() {
+      if (!audioEl || !activeBlockEl) return;
+      var key = resolvers.resolveSoundKey(activeBlockEl.dataset.sound);
+      audioEl.volume = targetVolume(key);
+    }
+    global.addEventListener('chokaguya:audio-settings-change', applyVolumeSettingNow);
 
     // AudioData.json 의 playMode — "Once"면 끝까지 재생 후 멈추고,
     // 그 외(기본값 "Loop")는 끝나면 처음부터 다시 반복 재생한다.
@@ -312,12 +341,17 @@
           });
         });
       }
-      userPaused = false;
-      attemptPlay(next); // 자동재생이 막히면 다음 사용자 조작 때 다시 시도한다
+      // 설정창의 "자동재생" 스위치가 꺼져 있으면 트랙만 준비해두고 재생은
+      // 시작하지 않는다 — 미니 플레이어의 재생 버튼을 직접 눌러야 나온다.
+      var autoplayEnabled = !global.AudioSettings || global.AudioSettings.get().autoplay;
+      if (autoplayEnabled) {
+        userPaused = false;
+        attemptPlay(next); // 자동재생이 막히면 다음 사용자 조작 때 다시 시도한다
+      }
 
       audioEl = next;
       fadeTo(next, targetVolume(key), FADE_MS);
-      setPlayIcon(false);
+      setPlayIcon(!autoplayEnabled);
 
       if (prevAudio) {
         fadeTo(prevAudio, 0, FADE_MS, function () {
@@ -411,6 +445,45 @@
   }
 
   // ---------------------------------------------------------------------
+  // 효과음 트리거 — <soundEffect> 마커가 배경음악 전환에 쓰는 것과 같은
+  // "화면 위에서 58% 지점" 기준선을 아래→위로 지나가는 순간(=그 지점을 읽고
+  // 지나친 순간) 딱 한 번 재생한다. 배경음악과는 독립적으로 겹쳐서 재생되며
+  // loop 없이 끝까지 재생되고 자연히 멈춘다. 위로 스크롤해 그 지점 아래로
+  // 다시 내려가면(재교차) 재무장되어, 다시 지나칠 때 또 재생된다.
+  // ---------------------------------------------------------------------
+  function playSfx(url) {
+    var el = new Audio(url);
+    el.loop = false;
+    el.volume = global.AudioSettings ? global.AudioSettings.get().volume : 1;
+    el.play().catch(function () {}); // 자동재생 정책에 막혀도 조용히 무시(효과음은 재시도할 트리거가 마땅치 않음)
+  }
+
+  function setupSfxTrigger(container, resolvers) {
+    var markers = Array.prototype.slice.call(container.querySelectorAll('.an-sfx-marker'));
+    if (!markers.length || !('IntersectionObserver' in global)) return;
+
+    var wasIntersecting = new Map();
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var el = entry.target;
+        var before = wasIntersecting.get(el);
+        // rootMargin 으로 위쪽이 58% 눌린 root 를 기준으로 판정해야 한다.
+        // 실제 뷰포트 맨 위(0)가 아니라 그 기준선(entry.rootBounds.top)을
+        // 지나 위로 빠져나갈 때가 "지나친 순간"이다. 아래로(뷰포트 밖 화면
+        // 아래) 빠져나간 경우(위로 스크롤해 멀어짐)는 재무장만 하고 재생하지
+        // 않는다.
+        if (before && !entry.isIntersecting && entry.rootBounds && entry.boundingClientRect.top < entry.rootBounds.top) {
+          playSfx(resolvers.resolveSfxUrl(el.dataset.sfx));
+        }
+        wasIntersecting.set(el, entry.isIntersecting);
+      });
+    }, { threshold: 0, rootMargin: '-58% 0px 0px 0px' });
+
+    markers.forEach(function (el) { observer.observe(el); });
+  }
+
+  // ---------------------------------------------------------------------
   // 진입점
   // ---------------------------------------------------------------------
   function init(config) {
@@ -449,6 +522,7 @@
       function start() {
         var player = createPlayer(resolvers, audioData);
         setupScrollTrigger(container, player);
+        setupSfxTrigger(container, resolvers);
       }
       if (typeof global.whenLoadingFinished === 'function') {
         global.whenLoadingFinished(start);
