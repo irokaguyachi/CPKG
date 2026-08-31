@@ -1,15 +1,20 @@
-/* 헤더 로고 옆 소제목 — 로고가 position:fixed 라 같은 기준으로 고정해서
-   나란히 둔다. 좌표는 데스크톱/모바일 로고 위치(header.css)에 맞춤. */
+/* 헤더 소제목 — 로고가 position:fixed 라 같은 기준으로 고정하고,
+   로고 옆이 아니라 화면 가운데에 맞춘다. 세로 좌표는 데스크톱/모바일
+   로고 위치(header.css)에 맞춤. */
 .an-header-title {
   position: fixed;
   top: 48px;
-  left: 155px;
-  transform: translateY(-50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 21;
   font-size: 22px;
   font-weight: 600;
   color: #000000;
+  text-align: center;
   white-space: nowrap;
+  max-width: calc(100% - 320px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-theme="dark"] .an-header-title {
@@ -19,8 +24,8 @@
 @media (max-width: 768px) {
   .an-header-title {
     top: 36px;
-    left: 118px;
     font-size: 16px;
+    max-width: calc(100% - 200px);
   }
 }
 

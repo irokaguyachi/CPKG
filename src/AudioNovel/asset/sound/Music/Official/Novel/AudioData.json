@@ -3,13 +3,13 @@
     "title": "OPENING ACT@TSUKUYOMI",
     "composer": "Conisch",
     "volume": 1,
-    "playMode": "Loop"
+    "playMode": "Once"
   },
   "Iroha Sakayori": {
     "title": "Iroha Sakayori",
     "composer": "Conisch",
     "volume": 1,
-    "playMode": "Loop"
+    "playMode": "Once"
   },
   "Remember": {
     "title": "Remember",
@@ -31,6 +31,12 @@
   },
   "Borrowed Motherhood": {
     "title": "Borrowed Motherhood",
+    "composer": "Conisch",
+    "volumn": 1,
+    "playMode": "Loop"
+  },
+  "Kaguya Being Kaguya": {
+    "title": "Kaguya Being Kaguya",
     "composer": "Conisch",
     "volumn": 1,
     "playMode": "Loop"

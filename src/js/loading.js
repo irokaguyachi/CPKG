@@ -77,6 +77,64 @@
   var INTRO_MS = 1300;
   var OUTRO_MS = 2200;
 
+  // ---------------------------------------------------------------------
+  // 페이지별 준비 작업 게이트
+  // 페이지가 자기 데이터(예: 오디오 노벨 본문 .md, 오디오 메타)를 다 불러올
+  // 때까지 로더를 붙잡아두고, 로더가 완전히 걷힌 뒤에야 "시작해도 되는" 동작
+  // (자동 재생 등)을 실행시키기 위한 장치.
+  //   registerLoadingTask(promise) — 이 작업이 끝나야 로더가 걷힌다
+  //   whenLoadingFinished(cb)      — 로더가 걷힌(또는 애초에 안 뜬) 뒤 실행
+  // ---------------------------------------------------------------------
+  var pendingTasks = [];
+  var loadingFinished = false;
+  var finishCallbacks = [];
+  var MAX_TASK_WAIT_MS = 10000; // 네트워크가 죽어도 로더가 영원히 남지 않도록
+
+  window.registerLoadingTask = function (promise) {
+    if (!promise || typeof promise.then !== 'function') return promise;
+    // 실패해도 로더는 걷혀야 하므로 거부를 여기서 흡수한다
+    pendingTasks.push(promise.then(null, function () {}));
+    return promise;
+  };
+
+  window.whenLoadingFinished = function (cb) {
+    if (typeof cb !== 'function') return;
+    if (loadingFinished) cb();
+    else finishCallbacks.push(cb);
+  };
+
+  function markLoadingFinished() {
+    if (loadingFinished) return;
+    loadingFinished = true;
+    var cbs = finishCallbacks.splice(0, finishCallbacks.length);
+    cbs.forEach(function (cb) {
+      try { cb(); } catch (e) {}
+    });
+  }
+
+  // 대기 중 새 작업이 추가될 수 있으므로(예: 본문을 받은 뒤 이미지 프리로드)
+  // 목록이 더 이상 늘지 않을 때까지 반복해서 기다린다.
+  function waitForTasks() {
+    var snapshot = pendingTasks.slice();
+    return Promise.all(snapshot).then(function () {
+      if (pendingTasks.length !== snapshot.length) return waitForTasks();
+    });
+  }
+
+  function waitForTasksCapped() {
+    return Promise.race([
+      waitForTasks(),
+      new Promise(function (resolve) { setTimeout(resolve, MAX_TASK_WAIT_MS); })
+    ]);
+  }
+
+  // 준비 작업은 DOMContentLoaded 시점의 인라인 스크립트에서 등록되므로,
+  // 목록을 확인하기 전에 최소한 load 이후까지는 기다려야 한다.
+  function afterPageLoad(fn) {
+    if (document.readyState === 'complete') setTimeout(fn, 0);
+    else window.addEventListener('load', fn);
+  }
+
   // 로더가 화면을 덮고 있는 동안은 그 뒤의 실제 페이지가 스크롤되지 않게 막음
   // — 안 막으면 로더가 안 보이는 사이에 그리드가 이미 스크롤된 채로 드러남
   function lockScroll() {
@@ -120,6 +178,7 @@
     setTimeout(function () {
       loaderEl.classList.add('is-hidden');
       unlockScroll();
+      markLoadingFinished();
     }, OUTRO_REVEAL_MS);
   };
 
@@ -137,6 +196,11 @@
 
   if (!isFreshEntry()) {
     loaderEl.style.display = 'none';
+    // 로더를 건너뛰는 경우에도 "이제 시작해도 된다" 신호는 똑같이 필요하다.
+    // 다만 등록된 준비 작업이 끝난 뒤여야 한다 (본문이 없는데 재생부터 하면 안 됨).
+    afterPageLoad(function () {
+      waitForTasksCapped().then(markLoadingFinished);
+    });
   } else {
     lockScroll();
     playIntro();
@@ -146,14 +210,14 @@
     var MIN_VISIBLE_MS = 1500;
     var startedAt = Date.now();
     function ready() {
-      var wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
-      setTimeout(window.finishLoading, wait);
+      // window load 뿐 아니라 페이지가 등록한 준비 작업(본문/오디오 메타 등)까지
+      // 끝나야 로더를 걷는다.
+      waitForTasksCapped().then(function () {
+        var wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
+        setTimeout(window.finishLoading, wait);
+      });
     }
-    if (document.readyState === 'complete') {
-      ready();
-    } else {
-      window.addEventListener('load', ready);
-    }
+    afterPageLoad(ready);
   }
 
   // locked nav links (e.g. 번역) have no destination yet — they shake in place

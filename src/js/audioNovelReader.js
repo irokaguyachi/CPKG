@@ -184,23 +184,51 @@
     var audioEl = null;
     var activeBlockEl = null;
 
-    // 페이지 맨 위에 있는 사운드 구간은 스크롤 같은 사용자 동작이 하나도
-    // 없었던 시점(로드 직후)에 바로 재생을 시도하게 되는데, 이때는 브라우저의
-    // 자동재생 정책에 막혀 소리 없이 조용히 실패한다(뒤쪽 구간은 이미 스크롤
-    // 이라는 사용자 동작이 있었던 뒤라 정상 재생됨). 첫 사용자 동작이 들어오면
-    // 그 시점의 audioEl 이 아직 멈춰 있을 경우 재생을 다시 시도한다.
+    // 브라우저 자동재생 정책 — 사용자 동작이 한 번도 없었던 시점(로드 직후)의
+    // play() 는 소리 없이 조용히 거부된다. 거부됐을 때만 사용자 동작 리스너를
+    // 걸어두고, 실제로 재생에 성공할 때까지 계속 재시도한다 (한 번 시도하고
+    // 리스너를 떼버리면 그 시점에 아직 트랙이 없었을 경우 영영 막힌 채로 남는다).
     var resumeEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
-    function retryBlockedPlay() {
-      if (audioEl && audioEl.paused) {
-        audioEl.play().catch(function () {});
+    var resumeArmed = false;
+    var userPaused = false; // 사용자가 직접 일시정지한 경우엔 멋대로 되살리지 않는다
+
+    function onResumeEvent() {
+      if (userPaused || !audioEl || !audioEl.paused) {
+        disarmResume();
+        return;
       }
+      attemptPlay(audioEl);
+    }
+    function armResume() {
+      if (resumeArmed) return;
+      resumeArmed = true;
       resumeEvents.forEach(function (ev) {
-        document.removeEventListener(ev, retryBlockedPlay);
+        document.addEventListener(ev, onResumeEvent, { passive: true });
       });
     }
-    resumeEvents.forEach(function (ev) {
-      document.addEventListener(ev, retryBlockedPlay, { once: false, passive: true });
-    });
+    function disarmResume() {
+      if (!resumeArmed) return;
+      resumeArmed = false;
+      resumeEvents.forEach(function (ev) {
+        document.removeEventListener(ev, onResumeEvent);
+      });
+    }
+    function attemptPlay(el) {
+      var promise;
+      try {
+        promise = el.play();
+      } catch (e) {
+        armResume();
+        return;
+      }
+      if (promise && typeof promise.then === 'function') {
+        promise.then(function () {
+          disarmResume();
+        }, function () {
+          if (audioEl === el && !userPaused) armResume();
+        });
+      }
+    }
 
     function fmtTime(sec) {
       if (!isFinite(sec) || sec < 0) return '0:00';
@@ -284,7 +312,8 @@
           });
         });
       }
-      next.play().catch(function () { /* 자동재생이 막히면 다음 사용자 조작을 기다린다 */ });
+      userPaused = false;
+      attemptPlay(next); // 자동재생이 막히면 다음 사용자 조작 때 다시 시도한다
 
       audioEl = next;
       fadeTo(next, targetVolume(key), FADE_MS);
@@ -303,6 +332,7 @@
 
     function stop() {
       if (!audioEl) return;
+      disarmResume();
       var prevAudio = audioEl;
       if (activeBlockEl) activeBlockEl.classList.remove('is-playing');
       activeBlockEl = null;
@@ -322,9 +352,12 @@
     els.play.addEventListener('click', function () {
       if (!audioEl) return;
       if (audioEl.paused) {
-        audioEl.play();
+        userPaused = false;
+        attemptPlay(audioEl);
         setPlayIcon(false);
       } else {
+        userPaused = true;
+        disarmResume();
         audioEl.pause();
         setPlayIcon(true);
       }
@@ -387,7 +420,11 @@
 
     var resolvers = makeResolvers(config);
 
-    Promise.all([
+    // 본문(.md)과 오디오 메타를 모두 받아서 렌더링까지 끝낸 뒤에야 준비 완료.
+    // 이 약속을 로더에 등록해두면(registerLoadingTask) 로딩 스크린이 그때까지
+    // 남아 있으므로, "아직 아무것도 안 불러온 상태에서 재생부터 시도했다가
+    // 조용히 실패" 하는 상황 자체가 생기지 않는다.
+    var ready = Promise.all([
       fetch(config.sourceUrl, { cache: 'no-store' }).then(function (r) { return r.text(); }),
       config.audioDataUrl
         ? fetch(config.audioDataUrl, { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return {}; })
@@ -398,9 +435,26 @@
 
       var blocks = parse(text);
       render(container, blocks, resolvers.resolveImgUrl);
+      return audioData;
+    });
 
-      var player = createPlayer(resolvers, audioData);
-      setupScrollTrigger(container, player);
+    if (typeof global.registerLoadingTask === 'function') {
+      global.registerLoadingTask(ready);
+    }
+
+    ready.then(function (audioData) {
+      // 재생/스크롤 감지는 로딩 스크린이 완전히 걷힌 뒤에 켠다. 로더가 화면을
+      // 덮고 있는 동안 재생이 시작되면 사용자에겐 들리지도 않고, 자동재생
+      // 정책에 막혀 그대로 죽어버리는 구간이 생긴다.
+      function start() {
+        var player = createPlayer(resolvers, audioData);
+        setupScrollTrigger(container, player);
+      }
+      if (typeof global.whenLoadingFinished === 'function') {
+        global.whenLoadingFinished(start);
+      } else {
+        start();
+      }
     });
   }
 

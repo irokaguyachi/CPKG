@@ -119,7 +119,7 @@
     var chapter = AN_CHAPTERS[chapterParam] || AN_CHAPTERS['1'];
 
     document.title = '오디오 노벨 — ' + chapter.title.slice(chapter.title.length - 2);
-    document.getElementById('an-header-title').textContent = '- ' + chapter.title;
+    document.getElementById('an-header-title').textContent = chapter.title;
 
     var link = document.getElementById('an-source-link-a');
     link.href = 'https://gall.dcinside.com/mgallery/board/view/?id=singles&no=' + chapter.dcId;
