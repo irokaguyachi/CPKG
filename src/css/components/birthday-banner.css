@@ -1,0 +1,137 @@
+/* ==========================================================================
+   야치요 생일 축하 배너 (Figma "Birthday Banner", node 2257:2)
+   src/js/mainPage.js가 메인 페이지 콘텐츠 맨 위에 붙인다. 이벤트 종료 후엔
+   mainPage.js의 createBirthdayBanner() 호출부와 이 파일, 헤드의 <link>만
+   지우면 깔끔하게 제거된다.
+   ========================================================================== */
+
+.birthday-banner {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  min-height: 170px;
+  padding: 24px clamp(20px, 5vw, 44px);
+  border-radius: 20px;
+  background: linear-gradient(120deg, #241a3d 0%, #47284f 55%, #6b2f4f 100%);
+  margin-bottom: 4px;
+}
+
+.birthday-banner-text {
+  position: relative;
+  z-index: 1;
+  max-width: 58%;
+}
+
+.birthday-banner-title {
+  margin: 0 0 10px;
+  font-size: clamp(19px, 2.6vw, 29px);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.birthday-banner-desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 팬케이크 주기 버튼 — src/js/pancakeCounter.js가 클릭을 처리한다.
+   클릭할 때마다 서버로 보내지 않고 5초 idle 후 배치로 반영하므로, 지금
+   보이는 숫자는 아직 서버에 반영 전인 값도 곧바로 포함한다(낙관적 갱신). */
+.birthday-banner-cta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.birthday-banner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #000000;
+  background: var(--mint);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.birthday-banner-cta:hover {
+  background: var(--mint-hover);
+}
+.birthday-banner-cta:active,
+.birthday-banner-cta.is-bump {
+  transform: scale(0.94);
+}
+
+.birthday-banner-pancake-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+/* 클릭 시 버튼에서 터져 나오는 팬케이크 파티클(src/js/pancakeCounter.js가
+   document.body에 직접 붙인다 — .birthday-banner의 overflow:hidden에
+   잘리지 않게 하려고 배너 바깥에 fixed로 띄운다). */
+.pancake-particle {
+  position: fixed;
+  z-index: 700;
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
+  animation: pancake-burst 0.7s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes pancake-burst {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* 캐릭터 아트(우산 쓴 야치요, 425x196) — 오른쪽에 붙이고, 왼쪽 끝은
+   배경으로 자연스럽게 번지도록 mask-image 그라데이션을 건다
+   (Figma의 그라데이션 마스크 재현). */
+.birthday-banner-art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: clamp(220px, 34vw, 460px);
+  background-image: url("../../offline_src/ForEvent/Yachiyo_Birthday_Banner.png");
+  background-size: contain;
+  background-position: center right;
+  background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000000 30%);
+  mask-image: linear-gradient(to right, transparent 0%, #000000 30%);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .birthday-banner {
+    min-height: 150px;
+    padding: 20px;
+  }
+  .birthday-banner-text {
+    max-width: 66%;
+  }
+  .birthday-banner-art {
+    width: clamp(150px, 40vw, 260px);
+  }
+}

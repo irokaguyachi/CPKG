@@ -86,3 +86,12 @@ namespace_id = "1005"
   [ratelimits.simple]
   limit = 20
   period = 60
+
+# 생일 배너의 팬케이크 카운터(/pancake/add) — 클라이언트가 5초 idle마다
+# 배치로 한 번만 부르므로(src/js/pancakeCounter.js) 넉넉히 잡아도 된다.
+[[ratelimits]]
+name = "RL_PANCAKE"
+namespace_id = "1006"
+  [ratelimits.simple]
+  limit = 20
+  period = 60

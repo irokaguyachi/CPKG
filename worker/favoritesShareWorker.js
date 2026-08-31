@@ -164,6 +164,61 @@ const USER_SYNC_MAX_ATTEMPTS = 3;
 const RATE_LIMIT_USER_SIGNUP_PER_DAY = 5;
 const DAY_MS = 86400000;
 
+// ---- 생일 배너 팬케이크 카운터(/pancake) ----
+// 클라이언트(src/js/pancakeCounter.js)가 클릭할 때마다 서버로 보내지 않고,
+// 5초간 클릭이 멈추면 그동안 쌓인 개수를 한 번에 더한다 — 연타 한 번에
+// R2 쓰기 하나만 나가면 된다. 인증도, 이벤트 종료 후 되돌릴 방법도 필요
+// 없는 가벼운 카운터라 FAVORITES_BUCKET에 오브젝트 하나(count 필드)로 둔다.
+const PANCAKE_KEY = 'pancake/count.json';
+// 한 번의 배치 요청으로 더할 수 있는 최대치 — 5초 동안 사람이 실제로 누를
+// 수 있는 양보다 넉넉히 크게 잡아서, 직접 API를 호출하는 악의적 요청 한
+// 번의 피해만 제한한다.
+const PANCAKE_MAX_AMOUNT = 300;
+const PANCAKE_MAX_ATTEMPTS = 3;
+
+function pancakePutOptions() {
+  return { httpMetadata: { contentType: 'application/json' } };
+}
+
+async function readPancakeCount(env) {
+  var object = await env.FAVORITES_BUCKET.get(PANCAKE_KEY);
+  if (!object) return { count: 0, object: null };
+  var record = await object.json();
+  return { count: record.count || 0, object: object };
+}
+
+async function handlePancakeGet(request, env) {
+  var current = await readPancakeCount(env);
+  return jsonResponse(request, { count: current.count });
+}
+
+async function handlePancakeAdd(request, env) {
+  if (!(await checkLimit(env.RL_PANCAKE, clientIp(request)))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+
+  var body = await readJsonBody(request, 256);
+  if (body.error) return body.error;
+  var amount = body.value && body.value.amount;
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount > PANCAKE_MAX_AMOUNT) {
+    return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+
+  for (var attempt = 0; attempt < PANCAKE_MAX_ATTEMPTS; attempt++) {
+    var current = await readPancakeCount(env);
+    var next = { count: current.count + amount };
+    var putOptions = Object.assign(
+      { onlyIf: current.object ? { etagMatches: current.object.etag } : { etagDoesNotMatch: '*' } },
+      pancakePutOptions()
+    );
+    var written = await env.FAVORITES_BUCKET.put(PANCAKE_KEY, JSON.stringify(next), putOptions);
+    if (written) return jsonResponse(request, { ok: true, count: next.count });
+    // etag 가 어긋났다 = 방금 사이에 누가 썼다. 다시 읽어서 재시도.
+  }
+
+  return jsonResponse(request, { error: 'conflict, try again' }, 409);
+}
+
 // API 는 이제 정적 사이트와 같은 Worker(src/_worker.js)라 모든 정상 호출이
 // 동일 출처다(bookmarkLibrary.js/userData.js 의 WORKER_BASE = ''). 예전
 // workers.dev 시절의 '*' 는 아무 사이트나 자기 방문자의 브라우저로 이 API 를
@@ -1110,6 +1165,12 @@ async function route(request, env) {
   }
   if (url.pathname === '/user/sync' && request.method === 'PUT') {
     return handleUserSync(request, env);
+  }
+  if (url.pathname === '/pancake' && request.method === 'GET') {
+    return handlePancakeGet(request, env);
+  }
+  if (url.pathname === '/pancake/add' && request.method === 'POST') {
+    return handlePancakeAdd(request, env);
   }
   if (url.pathname.indexOf('/library/') === 0) {
     var libRest = url.pathname.slice('/library/'.length);
