@@ -80,7 +80,9 @@
   justify-content: center;
   gap: 3px;
   width: 150px;
-  padding: 5px 0;
+  /* 오른쪽에만 패딩을 줘서 [아이콘+라벨] 그룹을 왼쪽으로 밀어, 왼쪽에 붙은
+     🎧 아이콘 폭만큼 오른쪽으로 치우쳐 보이던 글자를 띠 중앙에 맞춘다. */
+  padding: 5px 18px 5px 0;
   background: var(--mint);
   color: #000000;
   font-size: 12px;
@@ -93,12 +95,6 @@
 }
 .audio-novel-ribbon-icon {
   font-size: 13px;
-}
-/* 아이콘(🎧)이 왼쪽에 붙어 [아이콘+라벨] 그룹의 중심이 오른쪽으로 밀리고,
-   그 상태로 45도 회전하면 글자가 리본 띠 한쪽으로 치우쳐 보인다. 라벨 오른쪽에
-   음수 마진을 줘 그룹을 왼쪽으로 당겨 글자가 띠 중앙에 오도록 보정한다. */
-.audio-novel-ribbon-label {
-  margin-right: -18px;
 }
 
 /* 오디오 노벨이 적용된 작품 카드 — 코너 리본에 더해, 시리즈 상세 모달의
@@ -343,7 +339,7 @@
     top: 10px;
     left: -32px;
     width: 120px;
-    padding: 4px 0;
+    padding: 4px 16px 4px 0;
     font-size: 11px;
   }
 }
