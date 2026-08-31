@@ -19,6 +19,32 @@
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
+  // gridPage.js와 같은 기준(화들 중 하나라도 post.reader가 있으면 오디오
+  // 노벨 리본 표시) — 카드 마크업이 이 파일 소유라 gridPage.js의 함수를
+  // 그대로 재사용할 수 없어 같은 로직을 복사해 둔다.
+  function hasAudioNovel(item) {
+    var posts = item && item.posts;
+    if (!posts || !posts.length) return false;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i] && posts[i].reader) return true;
+    }
+    return false;
+  }
+
+  function createAudioRibbon() {
+    var ribbon = document.createElement('span');
+    ribbon.className = 'audio-novel-ribbon';
+    var icon = document.createElement('span');
+    icon.className = 'audio-novel-ribbon-icon';
+    icon.textContent = '🎧';
+    var label = document.createElement('span');
+    label.className = 'audio-novel-ribbon-label';
+    label.textContent = '오디오노벨';
+    ribbon.appendChild(icon);
+    ribbon.appendChild(label);
+    return ribbon;
+  }
+
   function createCard(item, favType) {
     var card = document.createElement('article');
     card.className = 'post-row';
@@ -37,6 +63,7 @@
     if (favId != null && global.BookmarkPicker) {
       image.appendChild(global.BookmarkPicker.createButton(favType, favId));
     }
+    if (hasAudioNovel(item)) image.appendChild(createAudioRibbon());
     card.appendChild(image);
 
     var info = document.createElement('div');
@@ -90,6 +117,7 @@
           title: post.title,
           dcId: post.id,
           link: post.link,
+          reader: post.reader,
           episodeLabel: (post.episode != null ? post.episode + ' 화' : (item.charCount || '1 화'))
         };
       });

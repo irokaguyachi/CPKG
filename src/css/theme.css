@@ -511,6 +511,16 @@ html.theme-transitioning *:after {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
+/* modal-series.css의 .is-audio-novel 배경과 특이도가 같아서(둘 다 클래스
+   2개), 이 규칙이 없으면 로드 순서상 위 기본 다크 배경이 이겨버린다. */
+[data-theme="dark"] .pds-episode-item.is-audio-novel {
+  background: linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(37, 39, 46, 0));
+  border-color: rgba(0, 255, 204, 0.4);
+}
+[data-theme="dark"] .pds-episode-item.is-audio-novel:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 204, 0.2), rgba(45, 48, 56, 0));
+}
+
 [data-theme="dark"] .pds-episode-title {
   color: var(--dark-emphasis);
   font-weight: 500;

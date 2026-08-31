@@ -310,10 +310,22 @@
       item.rel = 'noopener noreferrer';
     }
 
+    // 오디오 노벨이 적용된 화는 카드 전체를 강조한다 — 배경 톤, 제목 앞
+    // 헤드폰 아이콘, 우상단 AUDIO 배지 세 가지를 함께 써서 목록을 훑을 때
+    // 바로 눈에 띄게 한다 (gridPage.js의 시리즈 카드 리본과는 별개로,
+    // 여긴 화 단위 표시).
+    if (ep.reader) item.classList.add('is-audio-novel');
+
     var title = document.createElement('p');
     title.className = 'pds-episode-title';
     var titleInner = document.createElement('span');
     titleInner.className = 'pds-episode-title-inner';
+    if (ep.reader) {
+      var titleIcon = document.createElement('span');
+      titleIcon.className = 'pds-episode-audio-icon';
+      titleIcon.textContent = '🎧 ';
+      titleInner.appendChild(titleIcon);
+    }
     titleInner.appendChild(document.createTextNode((ep.title || '게시물 이름') + ' '));
     var idSpan = document.createElement('span');
     idSpan.className = 'pds-episode-id';
@@ -324,13 +336,20 @@
 
     var link = document.createElement('p');
     link.className = 'pds-episode-link';
-    link.textContent = ep.reader ? '🎧 오디오 노벨로 읽기' : (ep.link || '게시물 링크');
+    link.textContent = ep.reader ? '오디오 노벨로 읽기' : (ep.link || '게시물 링크');
     item.appendChild(link);
 
     var badge = document.createElement('span');
     badge.className = 'pds-episode-badge';
     badge.textContent = ep.episodeLabel || '00 화';
     item.appendChild(badge);
+
+    if (ep.reader) {
+      var audioBadge = document.createElement('span');
+      audioBadge.className = 'pds-episode-audio-badge';
+      audioBadge.textContent = 'AUDIO';
+      item.appendChild(audioBadge);
+    }
 
     return item;
   }

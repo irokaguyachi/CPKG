@@ -64,6 +64,35 @@
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
+  overflow: hidden; /* 오디오 노벨 리본이 이미지 밖으로 새지 않도록 */
+}
+
+/* 오디오 노벨이 적용된 작품의 썸네일 코너 리본 — 브라우징 화면에서부터
+   바로 눈에 띄도록. 색은 audio-novel-player.css의 진행 바와 같은
+   var(--mint) 를 재사용해 "오디오 노벨" 하면 떠오르는 색을 통일했다. */
+.audio-novel-ribbon {
+  position: absolute;
+  top: 16px;
+  left: -38px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 150px;
+  padding: 5px 0;
+  background: var(--mint);
+  color: #000000;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-align: center;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.audio-novel-ribbon-icon {
+  font-size: 13px;
 }
 
 /* 즐겨찾기/북마크 버튼 — 카드 클릭(상세보기 열기)과 겹치지 않도록 이미지 우상단에 고정 */
@@ -212,6 +241,7 @@
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
+  overflow: hidden; /* 오디오 노벨 리본이 이미지 밖으로 새지 않도록 */
 }
 .post-row-image::after {
   content: '';
@@ -285,6 +315,14 @@
     font-size: 16px;
     padding: 0 16px 0 6px;
   }
+  /* 이미지가 좁아진 만큼 리본도 같이 줄여서 정보 영역을 침범하지 않게 */
+  .post-row-image .audio-novel-ribbon {
+    top: 10px;
+    left: -32px;
+    width: 120px;
+    padding: 4px 0;
+    font-size: 11px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -299,6 +337,21 @@
     display: none;
   }
   .post-row-episode {
+    display: none;
+  }
+  /* 96px 정사각 썸네일에는 대각선 리본이 안 맞으므로, 코너에 작은
+     원형 배지(🎧만)로 바뀐다 — series-card-fav 버튼과 같은 크기감. */
+  .post-row-image .audio-novel-ribbon {
+    top: 6px;
+    left: 6px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 50%;
+    transform: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+  .post-row-image .audio-novel-ribbon-label {
     display: none;
   }
 }
