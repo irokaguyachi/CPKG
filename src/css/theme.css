@@ -307,6 +307,20 @@ html.theme-transitioning *:after {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* 오디오 노벨 강조(series-card.css) 다크 대응 — 기본 다크 카드 배경 규칙과
+   특이도가 같고 이 파일이 나중에 로드되므로 여기서 덮어써야 한다.
+   그라데이션은 불투명 다크 서피스 위에 얹는다. */
+[data-theme="dark"] .series-card.is-audio-novel,
+[data-theme="dark"] .post-row.is-audio-novel {
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(0, 255, 204, 0)),
+    var(--dark-surface);
+  border-color: rgba(0, 255, 204, 0.4);
+}
+[data-theme="dark"] .series-card.is-audio-novel .series-card-info {
+  background: transparent;
+}
+
 /* ==========================================================================
    Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
    ========================================================================== */

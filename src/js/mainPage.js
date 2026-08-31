@@ -63,7 +63,10 @@
     if (favId != null && global.BookmarkPicker) {
       image.appendChild(global.BookmarkPicker.createButton(favType, favId));
     }
-    if (hasAudioNovel(item)) image.appendChild(createAudioRibbon());
+    if (hasAudioNovel(item)) {
+      image.appendChild(createAudioRibbon());
+      card.classList.add('is-audio-novel');
+    }
     card.appendChild(image);
 
     var info = document.createElement('div');

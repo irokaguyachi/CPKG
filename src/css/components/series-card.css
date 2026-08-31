@@ -94,6 +94,29 @@
 .audio-novel-ribbon-icon {
   font-size: 13px;
 }
+/* 아이콘(🎧)이 왼쪽에 붙어 [아이콘+라벨] 그룹의 중심이 오른쪽으로 밀리고,
+   그 상태로 45도 회전하면 글자가 리본 띠 한쪽으로 치우쳐 보인다. 라벨 오른쪽에
+   음수 마진을 줘 그룹을 왼쪽으로 당겨 글자가 띠 중앙에 오도록 보정한다. */
+.audio-novel-ribbon-label {
+  margin-right: -18px;
+}
+
+/* 오디오 노벨이 적용된 작품 카드 — 코너 리본에 더해, 시리즈 상세 모달의
+   화 목록(.pds-episode-item.is-audio-novel)과 같은 민트 그라데이션/테두리로
+   목록에서부터 은은하게 강조한다. 그라데이션은 불투명 베이스 위에 얹어
+   카드가 비쳐 보이지 않게 한다. */
+.series-card.is-audio-novel,
+.post-row.is-audio-novel {
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.16), rgba(0, 255, 204, 0)),
+    #ffffff;
+  border-color: rgba(0, 179, 133, 0.5);
+}
+/* .series-card-info 는 라이트에서 투명이라 그라데이션이 그대로 비치지만,
+   혹시 모를 배경 상속을 끊어 하단까지 그라데이션이 이어지게 한다. */
+.series-card.is-audio-novel .series-card-info {
+  background: transparent;
+}
 
 /* 즐겨찾기/북마크 버튼 — 카드 클릭(상세보기 열기)과 겹치지 않도록 이미지 우상단에 고정 */
 .series-card-fav {
