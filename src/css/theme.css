@@ -321,6 +321,24 @@ html.theme-transitioning *:after {
   background: transparent;
 }
 
+/* main-page.css의 .audio-novel-promo 배경과 같은 이유로 다크 배경을
+   여기서 덮어써야 한다 — .series-card.is-audio-novel과 완전히 같은 레시피. */
+[data-theme="dark"] .audio-novel-promo {
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(0, 255, 204, 0)),
+    var(--dark-surface);
+  border-color: rgba(0, 255, 204, 0.4);
+}
+[data-theme="dark"] .audio-novel-promo-desc {
+  color: var(--dark-text);
+}
+[data-theme="dark"] .audio-novel-promo-close {
+  background: rgba(255, 255, 255, 0.15);
+}
+[data-theme="dark"] .audio-novel-promo-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* ==========================================================================
    Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
    ========================================================================== */

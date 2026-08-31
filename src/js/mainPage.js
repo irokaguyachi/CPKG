@@ -4,6 +4,10 @@
 
   var DATA = global.dataUrl || function (p) { return p; };
 
+  // 오디오 노벨 홍보 카드를 한 번 닫으면 이 브라우저에서는 다시 안 뜨도록
+  // 기억하는 키 — chokaguya_theme/chokaguya_tipVisited와 같은 네이밍 관례.
+  var AUDIO_PROMO_DISMISS_KEY = 'chokaguya_audioPromoDismissed';
+
   // 태그 색상/이모지/정렬 — gridPage.js와 공유하는 단일 소스(tagConfig.js)로 옮김.
   // 예전엔 이 파일이 직접 들고 있었는데, gridPage.js가 쓰던 표와 이모지 9개가
   // 실제로 어긋나 있었다(같은 태그가 페이지마다 다르게 보임) — tagConfig.js의
@@ -29,6 +33,20 @@
       if (posts[i] && posts[i].reader) return true;
     }
     return false;
+  }
+
+  // 시리즈/작품 상세 모달(PostDetailSeries)에 넘길 화 목록 매핑 — createCard의
+  // 클릭 핸들러와 오디오 노벨 홍보 카드가 함께 쓰도록 뽑아둔 공용 헬퍼.
+  function buildEpisodes(item) {
+    return (item.posts || []).map(function (post) {
+      return {
+        title: post.title,
+        dcId: post.id,
+        link: post.link,
+        reader: post.reader,
+        episodeLabel: (post.episode != null ? post.episode + ' 화' : (item.charCount || '1 화'))
+      };
+    });
   }
 
   function createAudioRibbon() {
@@ -115,21 +133,89 @@
       if (e.target.closest('.bkm-heart-btn')) return;
       if (!global.PostDetailSeries) return;
 
-      var episodes = (item.posts || []).map(function (post) {
-        return {
-          title: post.title,
-          dcId: post.id,
-          link: post.link,
-          reader: post.reader,
-          episodeLabel: (post.episode != null ? post.episode + ' 화' : (item.charCount || '1 화'))
-        };
+      PostDetailSeries.open({
+        seriesName: item.name,
+        imageUrl: item.image,
+        episodes: buildEpisodes(item)
       });
+    });
+
+    return card;
+  }
+
+  // 메인페이지 최상단 오디오 노벨 홍보 카드 — 특정 작품명을 문구에 박아두지
+  // 않고 범용 소개로 두었기 때문에, 실제로 보여줄 작품(썸네일/클릭 시 열릴
+  // 상세 모달)은 Official.json에서 오디오 노벨이 연결된 첫 항목을 찾아 쓴다.
+  // 나중에 다른 작품에도 오디오 노벨이 붙어도 이 함수는 손댈 필요가 없다.
+  function createAudioPromoBanner(item) {
+    var card = document.createElement('article');
+    card.className = 'audio-novel-promo';
+
+    var thumb = document.createElement('div');
+    thumb.className = 'audio-novel-promo-thumb';
+    if (item.image) {
+      if (global.lazyLoadBackground) {
+        global.lazyLoadBackground(thumb, item.image);
+      } else {
+        var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
+        thumb.style.backgroundImage = 'url("' + finalImg + '")';
+      }
+    }
+    card.appendChild(thumb);
+
+    var body = document.createElement('div');
+    body.className = 'audio-novel-promo-body';
+
+    var eyebrow = document.createElement('p');
+    eyebrow.className = 'audio-novel-promo-eyebrow';
+    eyebrow.textContent = '🎧 오디오 노벨';
+    body.appendChild(eyebrow);
+
+    var desc = document.createElement('p');
+    desc.className = 'audio-novel-promo-desc';
+    desc.textContent = '이제 소설을 눈이 아니라 귀로도 즐길 수 있어요';
+    body.appendChild(desc);
+
+    var cta = document.createElement('span');
+    cta.className = 'audio-novel-promo-cta';
+    var ctaLabel = document.createElement('span');
+    ctaLabel.textContent = '더 알아보기';
+    cta.appendChild(ctaLabel);
+    var ctaArrow = document.createElement('span');
+    ctaArrow.className = 'content-heading-arrow';
+    ctaArrow.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    cta.appendChild(ctaArrow);
+    body.appendChild(cta);
+
+    card.appendChild(body);
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'audio-novel-promo-close';
+    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.textContent = '×';
+    card.appendChild(closeBtn);
+
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.audio-novel-promo-close')) return;
+      if (!global.PostDetailSeries) return;
 
       PostDetailSeries.open({
         seriesName: item.name,
         imageUrl: item.image,
-        episodes: episodes
+        episodes: buildEpisodes(item)
       });
+    });
+
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      try { localStorage.setItem(AUDIO_PROMO_DISMISS_KEY, '1'); } catch (err) {}
+      card.classList.add('is-dismissing');
+      // CSS 트랜지션(0.2s)이 끝난 뒤 DOM에서 제거 — series-card.css의 트랜지션
+      // 관례와 같은 시간 감각으로 맞춤.
+      setTimeout(function () {
+        if (card.parentNode) card.parentNode.removeChild(card);
+      }, 220);
     });
 
     return card;
@@ -271,6 +357,39 @@
     return section;
   }
 
+  // 오디오 노벨 홍보 카드 — #content의 첫 자식으로 붙는다. Recent.json 쪽
+  // fetch가 응답하면 contentEl.innerHTML = '' 로 #content를 통째로 비우고
+  // 다시 채우는데, 이 배너가 그보다 먼저 붙어있었다면 함께 지워진다. 그래서
+  // 두 fetch 중 어느 쪽이 먼저 끝나든 항상 배너가 맨 위에 있도록, 만들어둔
+  // 배너를 audioPromoEl에 쥐고 있다가 필요한 시점마다 placeAudioPromo()로
+  // 다시 끼워 넣는다.
+  var audioPromoEl = null;
+  function placeAudioPromo() {
+    if (audioPromoEl && audioPromoEl.parentNode !== contentEl) {
+      contentEl.insertBefore(audioPromoEl, contentEl.firstChild);
+    }
+  }
+
+  var audioPromoDismissed = false;
+  try { audioPromoDismissed = !!localStorage.getItem(AUDIO_PROMO_DISMISS_KEY); } catch (e) {}
+
+  if (!audioPromoDismissed) {
+    fetch(DATA('../data/PageData/Official.json'))
+      .then(function (r) { return r.json(); })
+      .then(function (items) {
+        items = Array.isArray(items) ? items : [];
+        var promoItem = null;
+        for (var i = 0; i < items.length; i++) {
+          if (hasAudioNovel(items[i])) { promoItem = items[i]; break; }
+        }
+        if (!promoItem) return; // 아직 오디오 노벨이 붙은 작품이 없음 — 조용히 스킵
+
+        audioPromoEl = createAudioPromoBanner(promoItem);
+        placeAudioPromo();
+      })
+      .catch(function () {}); // Official.json이 없거나 실패해도 나머지 페이지는 그대로
+  }
+
   // 최신 10 + 10장만 그리면서 Novel.json(약 600KB) + Series.json(약 170KB)을
   // 통째로 받아 slice(0, 10) 두 번만 쓰던 걸 걷어냈다. 랜딩 페이지라 방문자당
   // 무조건 발생하는 요청이었다. Recent.json 은 src/scripts/8_build_recent_page_data.py
@@ -292,6 +411,7 @@
       }
 
       contentEl.innerHTML = '';
+      placeAudioPromo(); // Official.json이 먼저 응답해 이미 붙어있던 배너를 방금 지웠다면 되살림
 
       // 1. 최신 등록 문학
       if (novels.length) {
