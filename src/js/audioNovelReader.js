@@ -199,6 +199,9 @@
     };
 
     var FADE_MS = 600;
+    // 루프 곡이 끝에 도달하기 이만큼 전에 같은 곡을 새로 하나 더 띄워 겹쳐
+    // 재생한다(크로스페이드) — attachLoopCrossfade() 참고.
+    var LOOP_CROSSFADE_MS = 1500;
     var audioEl = null;
     var activeBlockEl = null;
 
@@ -309,6 +312,38 @@
       return (audioData[key] || {}).playMode === 'Once';
     }
 
+    // 루프 곡 전용 — 네이티브 loop 속성 대신, 곡이 끝나기 LOOP_CROSSFADE_MS
+    // 전에 같은 곡의 새 인스턴스를 하나 더 만들어 재생을 시작해서, 기존 트랙은
+    // 페이드아웃하고 새 트랙은 페이드인시켜 두 트랙이 겹치며 매끄럽게 이어지게
+    // 한다. 새 인스턴스가 audioEl 자리를 이어받으면 자기 자신도 다시
+    // attachLoopCrossfade()로 다음 순번을 예약해서, 구간을 벗어날 때까지
+    // 이 과정이 계속 이어진다.
+    function attachLoopCrossfade(el, key) {
+      if (isOnceMode(key)) return;
+      var scheduled = false; // timeupdate가 자주 발생하므로 한 번만 트리거되게 잠근다
+      el.addEventListener('timeupdate', function () {
+        if (scheduled || audioEl !== el) return; // 이미 다른 트랙으로 넘어갔으면 무시
+        if (!el.duration || !isFinite(el.duration)) return;
+        if (el.duration - el.currentTime > LOOP_CROSSFADE_MS / 1000) return;
+        scheduled = true;
+
+        var loopNext = new Audio(el.src);
+        loopNext.loop = false;
+        loopNext.muted = el.muted; // 음소거 상태는 그대로 이어받는다
+        loopNext.volume = 0;
+        loopNext.addEventListener('timeupdate', updateProgress);
+        attachLoopCrossfade(loopNext, key); // 이 트랙도 언젠가 다시 끝에 다다르면 똑같이 이어붙인다
+        attemptPlay(loopNext);
+
+        audioEl = loopNext;
+        fadeTo(loopNext, targetVolume(key), LOOP_CROSSFADE_MS);
+        fadeTo(el, 0, LOOP_CROSSFADE_MS, function () {
+          el.pause();
+          el.src = '';
+        });
+      });
+    }
+
     function setPlayIcon(paused) {
       els.play.classList.toggle('is-paused', paused);
     }
@@ -324,10 +359,13 @@
       var prevAudio = audioEl;
 
       var next = new Audio(resolvers.resolveSoundUrl(soundValue));
-      next.loop = !isOnceMode(key);
+      // 네이티브 loop는 쓰지 않는다 — 끝에서 처음으로 순간 이동하면 이음매가
+      // 뚝 끊겨 들리므로, 루프 곡은 attachLoopCrossfade()가 끝나기 직전에
+      // 같은 곡을 하나 더 겹쳐 재생해서(페이드 인/아웃) 매끄럽게 잇는다.
+      next.loop = false;
       next.volume = 0;
       next.addEventListener('timeupdate', updateProgress);
-      if (!next.loop) {
+      if (isOnceMode(key)) {
         // Once: 끝까지 재생되면 그대로 멈추고 패널도 사라진다 (같은 구간에 계속
         // 머물러 있는 동안은 다시 재생하지 않음 — 구간을 벗어났다 돌아오면 재생)
         next.addEventListener('ended', function () {
@@ -340,6 +378,8 @@
             }
           });
         });
+      } else {
+        attachLoopCrossfade(next, key);
       }
       // 설정창의 "자동재생" 스위치가 꺼져 있으면 트랙만 준비해두고 재생은
       // 시작하지 않는다 — 미니 플레이어의 재생 버튼을 직접 눌러야 나온다.
