@@ -73,7 +73,11 @@
 <div class="hero-space" data-hero-space></div>
 
 <p class="an-source-link">
-  원문(디시인사이드) 보기: <a id="an-source-link-a" href="#" target="_blank" rel="noopener noreferrer"></a>
+  <a id="an-source-link-a" class="an-source-link-btn" href="#" target="_blank" rel="noopener noreferrer">
+    <svg class="an-source-link-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 2.5H3.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 2.5h4.5V7M13.2 2.8 7.3 8.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>원문(디시인사이드) 보기</span>
+    <span class="an-source-link-chapter" id="an-source-link-chapter"></span>
+  </a>
 </p>
 
 <article class="an-content" id="an-content"></article>
@@ -138,7 +142,7 @@
 
     var link = document.getElementById('an-source-link-a');
     link.href = 'https://gall.dcinside.com/mgallery/board/view/?id=singles&no=' + chapter.dcId;
-    link.textContent = chapter.dcLabel;
+    document.getElementById('an-source-link-chapter').textContent = chapter.dcLabel;
 
     // src/AudioNovel 전체가 이제 R2 CDN(sync_to_r2.py)에 올라가 있으므로,
     // 로컬 상대경로 대신 그 주소를 그대로 쓴다 (cdnConfig.js 의 R2_CDN_BASE).
