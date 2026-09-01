@@ -32,13 +32,61 @@
   "Borrowed Motherhood": {
     "title": "Borrowed Motherhood",
     "composer": "Conisch",
-    "volumn": 1,
-    "playMode": "Loop"
+    "volume": 1,
+    "playMode": "Once"
   },
   "Kaguya Being Kaguya": {
     "title": "Kaguya Being Kaguya",
     "composer": "Conisch",
-    "volumn": 1,
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "Bon Appétit!": {
+    "title": "Bon Appétit!",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "Kaguya Is Born": {
+    "title": "Kaguya Is Born",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "Sweet After School(First)": {
+    "title": "Sweet After School(First)",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "Sweet After School(Kaguya)": {
+    "title": "Sweet After School(Kaguya)",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "TSUKUYOMI": {
+    "title": "TSUKUYOMI",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "TSUKUYOMI(First)": {
+    "title": "TSUKUYOMI(First)",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Loop"
+  },
+  "TSUKUYOMI(Second)": {
+    "title": "TSUKUYOMI(Second)",
+    "composer": "Conisch",
+    "volume": 1,
+    "playMode": "Once"
+  },
+  "TSUKUYOMI(End)": {
+    "title": "TSUKUYOMI(End)",
+    "composer": "Conisch",
+    "volume": 1,
     "playMode": "Loop"
   }
 }
