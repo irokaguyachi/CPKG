@@ -431,15 +431,15 @@
       }
     }
 
-    // rootMargin 위쪽을 음수로 줄여서, 화면 맨 위로 완전히 빠져나가야 꺼지는 게
-    // 아니라 문단 아래쪽이 화면 중간보다 살짝 아래 지점(위에서 58%)을 넘어가는
-    // 순간 바로 꺼지도록(교차 판정에서 제외) 만든다.
+    // rootMargin 위/아래를 모두 음수로 줄여서, 교차 판정 영역을 화면 위에서
+    // 45%~70% 사이의 좁은 띠로 제한한다. 구간이 아래에서 올라와 70% 선에 닿는
+    // 순간 음악이 시작되고, 위로 올라가 바닥이 45% 선을 넘는 순간 꺼진다.
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         state.set(entry.target, { ratio: entry.intersectionRatio, isIntersecting: entry.isIntersecting });
       });
       recompute();
-    }, { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '-58% 0px 0px 0px' });
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '-45% 0px -30% 0px' });
 
     blocks.forEach(function (el) { observer.observe(el); });
   }
