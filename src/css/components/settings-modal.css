@@ -67,7 +67,8 @@
   height: 0;
   background: rgba(0, 0, 0, 0.08);
   border-radius: 10px;
-  transition: transform 0.25s var(--ease-out-site), height 0.25s var(--ease-out-site);
+  transition: transform 0.25s var(--ease-out-site), height 0.25s var(--ease-out-site),
+              left 0.25s var(--ease-out-site), width 0.25s var(--ease-out-site);
   pointer-events: none;
   z-index: 0;
 }
@@ -349,10 +350,23 @@
   .settings-rail {
     flex: 0 0 auto;
     flex-direction: row;
-    padding: 20px 16px 12px;
+    padding: 16px 16px 12px;
     border-right: none;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+  }
+  /* 세로 목록일 땐 width:100%로 각 항목이 레일 폭을 꽉 채우면 되지만,
+     가로 한 줄에서 그대로 두면 폭이 서로 다르게 찌그러져 정렬이 어긋난다
+     — 균등한 폭으로 나누고 글자도 가운데로 맞춘다. */
+  .settings-rail-btn {
+    flex: 1 1 0;
+    width: auto;
+    text-align: center;
+  }
+  /* 좁은 화면에서는 가로 한 줄 탭 옆에 닫기 버튼이 겹쳐 보인다 — 바깥
+     딤 배경을 눌러도 닫히므로 버튼 없이도 닫는 방법은 남아있다. */
+  .settings-card .pds-close {
+    display: none;
   }
   .settings-pane {
     padding: 24px 20px;

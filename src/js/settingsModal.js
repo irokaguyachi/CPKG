@@ -79,11 +79,36 @@
     return overlayEl;
   }
 
+  var MOBILE_QUERY = '(max-width: 640px)';
+
+  // 좁은 화면(settings-modal.css의 640px 브레이크포인트와 맞춤)에서는
+  // 레일이 세로 목록이 아니라 가로 한 줄이 되므로, 활성 표시도 위아래로
+  // 미끄러지는 대신 좌우로 미끄러져야 한다 — 두 축을 각각 명시해서 이전
+  // 모드의 값이 남지 않게 한다.
   function positionIndicator(btn) {
     if (!railIndicator || !btn) return;
-    railIndicator.style.transform = 'translateY(' + btn.offsetTop + 'px)';
-    railIndicator.style.height = btn.offsetHeight + 'px';
+    var isMobile = window.matchMedia && window.matchMedia(MOBILE_QUERY).matches;
+    if (isMobile) {
+      railIndicator.style.top = '0';
+      railIndicator.style.height = '100%';
+      railIndicator.style.left = btn.offsetLeft + 'px';
+      railIndicator.style.right = 'auto';
+      railIndicator.style.width = btn.offsetWidth + 'px';
+      railIndicator.style.transform = 'none';
+    } else {
+      railIndicator.style.left = '12px';
+      railIndicator.style.right = '12px';
+      railIndicator.style.width = 'auto';
+      railIndicator.style.height = btn.offsetHeight + 'px';
+      railIndicator.style.transform = 'translateY(' + btn.offsetTop + 'px)';
+    }
   }
+
+  // 창 폭이 브레이크포인트를 넘나들 때(모바일 회전, 창 크기 조절)도 지금
+  // 활성 탭 기준으로 다시 계산한다.
+  window.addEventListener('resize', function () {
+    if (railEls[activeTab]) positionIndicator(railEls[activeTab]);
+  });
 
   function switchTab(tabId) {
     var changed = activeTab !== tabId || !paneEl.firstChild;
