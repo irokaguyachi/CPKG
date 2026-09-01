@@ -2,39 +2,34 @@
   'use strict';
 
   // Local-only easter egg. Click the locked "번역" nav link — cumulative
-  // clicks (persisted in localStorage) hit five milestones, each popping
+  // clicks (persisted in localStorage) hit three milestones, each popping
   // Yachiyo (src/offline_src/ForEvent/yachiyo.png — not part of the deploy
-  // pipeline) in from the side with one of the dialogue1..dialogue5 arrays
+  // pipeline) in from the side with one of the dialogue1..dialogue3 arrays
   // from src/data/ForEvent/YachiyoDialogue.json. A full-page overlay blocks
   // every other click on the site for as long as she's on screen; lines
   // type out one character at a time, and clicking either finishes the
-  // current line instantly or advances to the next one. At the last
-  // milestone (168), once her final line finishes typing, a button slides
-  // in next to her linking to the KakaoTalk open chat, and clicking past
-  // that point does nothing (just a bounce) until she's actually clicked
-  // through to Kakao. The counter resets to 0 after the 168 milestone so
-  // the whole 30/60/90/120/168 sequence can play out again. A small
-  // source-credit badge/link sits over the art the whole time she's on
-  // screen (always visible, not click-gated).
+  // current line instantly or advances to the next one. The counter resets
+  // to 0 after the 90 milestone so the 30/60/90 sequence loops forever. A
+  // small source-credit badge/link sits over the art the whole time she's
+  // on screen (always visible, not click-gated).
   var STORAGE_KEY = 'yachiyoEventClicks';
   var DIALOGUE_URL = '../data/ForEvent/YachiyoDialogue.json';
   var FALLBACK_LINES = ['...?'];
   var TYPE_MS = 40;
-  var KAKAO_URL = 'https://open.kakao.com/o/s8KC6pKi';
   // 야치요 그림 출처 — showYachiyo()가 그림 위에 항상 이 링크를 띄운다.
   var IMAGE_SOURCE_URL = 'https://x.com/TERURU_sakura/status/2057038861575008490?s=20';
   var IMAGE_SOURCE_LABEL = '출처: X(@TERURU_sakura)';
 
+  // isLoop: 마지막 항목 — 여기 도달하면 카운터를 0으로 되돌려 처음부터
+  // 다시 30/60/90 순서로 반복되게 한다.
   var MILESTONES = [
     { count: 30, key: 'dialogue1' },
     { count: 60, key: 'dialogue2' },
-    { count: 90, key: 'dialogue3' },
-    { count: 120, key: 'dialogue4' },
-    { count: 168, key: 'dialogue5', isFinal: true }
+    { count: 90, key: 'dialogue3', isLoop: true }
   ];
 
   // fetched once and cached; src/data/ForEvent/YachiyoDialogue.json holds
-  // dialogue1..dialogue5 — edit that file to change lines per milestone
+  // dialogue1..dialogue3 — edit that file to change lines per milestone
   var dialoguePromise = fetch(DIALOGUE_URL)
     .then(function (res) { return res.json(); })
     .catch(function () { return {}; });
@@ -57,7 +52,7 @@
     try { localStorage.setItem(STORAGE_KEY, String(n)); } catch (e) {}
   }
 
-  function showYachiyo(lines, isFinal) {
+  function showYachiyo(lines) {
     if (document.querySelector('.yachiyo-event')) return;
 
     var blocker = document.createElement('div');
@@ -81,7 +76,6 @@
     var isTyping = false;
     var typingTimer = null;
     var lineIndex = 0;
-    var kakaoJoined = false;
 
     function bounce() {
       img.classList.remove('is-talking');
@@ -89,21 +83,7 @@
       img.classList.add('is-talking');
     }
 
-    function showJoinButton() {
-      if (wrap.querySelector('.yachiyo-event-cta')) return;
-      var cta = document.createElement('div');
-      cta.className = 'yachiyo-event-cta';
-      cta.innerHTML =
-        '<a href="' + KAKAO_URL + '" target="_blank" rel="noopener noreferrer">오픈채팅 참여하기</a>';
-      cta.querySelector('a').addEventListener('click', function () {
-        kakaoJoined = true;
-      });
-      wrap.insertBefore(cta, bubble);
-      void cta.offsetWidth;
-      cta.classList.add('is-in');
-    }
-
-    function typeLine(text, onComplete) {
+    function typeLine(text) {
       bubble.classList.add('is-visible');
       bubble.textContent = '';
       isTyping = true;
@@ -120,26 +100,21 @@
           clearInterval(myTimer);
           typingTimer = null;
           isTyping = false;
-          if (onComplete) onComplete();
         }
       }, TYPE_MS);
       typingTimer = myTimer;
     }
 
-    function completeTyping(onComplete) {
+    function completeTyping() {
       clearInterval(typingTimer);
       typingTimer = null;
       bubble.textContent = lines[lineIndex];
       isTyping = false;
-      if (onComplete) onComplete();
     }
 
     function showLine(i) {
       bounce();
-      var isLastLine = i === lines.length - 1;
-      typeLine(lines[i], function () {
-        if (isFinal && isLastLine) showJoinButton();
-      });
+      typeLine(lines[i]);
     }
 
     function dismiss() {
@@ -156,18 +131,11 @@
     blocker.addEventListener('click', function () {
       if (!ready) return;
       if (isTyping) {
-        var isLastLine = lineIndex === lines.length - 1;
-        completeTyping(function () {
-          if (isFinal && isLastLine) showJoinButton();
-        });
+        completeTyping();
         return;
       }
       var atLastLine = lineIndex === lines.length - 1;
       if (atLastLine) {
-        if (isFinal && !kakaoJoined) {
-          bounce(); // nudge: won't close until she's actually joined
-          return;
-        }
         dismiss();
         return;
       }
@@ -200,9 +168,9 @@
           setCount(count);
           return;
         }
-        setCount(milestone.isFinal ? 0 : count);
+        setCount(milestone.isLoop ? 0 : count);
         dialoguePromise.then(function (data) {
-          showYachiyo(linesFor(data, milestone.key), !!milestone.isFinal);
+          showYachiyo(linesFor(data, milestone.key));
         });
       });
     }
