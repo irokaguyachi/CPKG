@@ -50,6 +50,141 @@ body.is-top .header-logo {
   margin-bottom: 24px;
 }
 
+/* 오디오 노벨 기능 홍보 카드 — #content(위 .content, flex column)의 첫
+   자식으로 mainPage.js가 붙인다. 부모가 이미 max-width/가운데 정렬을
+   맡고 있어 여기선 그냥 flex 자식으로만 둔다. 배경 그라데이션/보더는
+   series-card.css의 .series-card.is-audio-novel과 같은 값을 써서
+   사이트 전체의 "오디오 노벨" 톤을 통일했다. */
+.audio-novel-promo {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 24px;
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.16), rgba(0, 255, 204, 0)),
+    #ffffff;
+  border: 0.5px solid rgba(0, 179, 133, 0.5);
+  border-radius: 15px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease, opacity 0.2s ease;
+}
+.audio-novel-promo:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+}
+.audio-novel-promo.is-dismissing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.audio-novel-promo-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 220px;
+  min-height: 130px;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.audio-novel-promo-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 48px 16px 24px;
+}
+
+.audio-novel-promo-eyebrow {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mint-hover);
+}
+
+.audio-novel-promo-desc {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.audio-novel-promo-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mint-hover);
+}
+.audio-novel-promo-cta .content-heading-arrow {
+  transition: transform 0.2s var(--ease-out-site);
+}
+.audio-novel-promo:hover .audio-novel-promo-cta .content-heading-arrow {
+  transform: translateX(4px);
+}
+
+/* 닫기 버튼 — 카드 클릭(상세 모달 열기)과 겹치지 않도록 우상단에 고정.
+   mainPage.js가 closest()로 카드 클릭 핸들러에서 제외한다
+   (.bkm-heart-btn과 같은 방식). */
+.audio-novel-promo-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.audio-novel-promo-close:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 768px) {
+  .audio-novel-promo-thumb {
+    width: 140px;
+    min-height: 110px;
+  }
+  .audio-novel-promo-body {
+    padding: 12px 40px 12px 16px;
+  }
+  .audio-novel-promo-desc {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 520px) {
+  .audio-novel-promo-thumb {
+    width: 96px;
+    min-height: 96px;
+  }
+  .audio-novel-promo-eyebrow {
+    font-size: 12px;
+  }
+  .audio-novel-promo-desc {
+    font-size: 13px;
+  }
+  .audio-novel-promo-cta {
+    font-size: 12px;
+  }
+}
+
 .content-heading {
   display: inline-flex;
   align-items: center;

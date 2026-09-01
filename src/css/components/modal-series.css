@@ -237,6 +237,27 @@
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
+/* 오디오 노벨이 연결된 화 — 은은한 강조 배경/테두리로 카드 자체를 눈에
+   띄게 한다. 색은 audio-novel-player.css/시리즈 카드 리본과 같은
+   var(--mint) 계열로 통일. */
+.pds-episode-item.is-audio-novel {
+  background: linear-gradient(135deg, rgba(0, 255, 204, 0.16), rgba(0, 255, 204, 0.02));
+  border-color: rgba(0, 179, 133, 0.5);
+}
+
+.pds-episode-audio-badge {
+  position: absolute;
+  right: 23px;
+  top: 16px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--mint);
+  color: #000000;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .pds-episode-title {
   position: absolute;
   left: 23px;
@@ -508,5 +529,20 @@
     transform: translateY(-50%);
     font-size: 14px;
     font-weight: 700;
+  }
+
+  .pds-episode-audio-badge {
+    right: 14px;
+    top: 10px;
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+
+  /* 오디오 노벨 화는 우상단에 AUDIO 배지가 들어오므로, 세로 중앙에 있던
+     '화' 배지를 아래쪽으로 내려 서로 겹치지 않게 한다. */
+  .pds-episode-item.is-audio-novel .pds-episode-badge {
+    top: auto;
+    bottom: 10px;
+    transform: none;
   }
 }

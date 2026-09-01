@@ -1,93 +1,97 @@
 {
   "totals": {
-    "novel": 1289,
-    "series": 94
+    "novel": 1310,
+    "series": 97
   },
   "novels": [
     {
-      "name": "하지 못한 말",
-      "image": null,
+      "name": "녹아버릴 것 같아!",
+      "image": "../assets/Image/크롤링사진/문학/2026-09-01/302028_1.jpg",
       "tags": [
+        "로맨스",
         "일상"
       ],
-      "charCount": "1,125자",
-      "author": "양아양양(always8495)",
+      "charCount": "2,577자",
+      "author": "라스콜(lascol)",
       "posts": [
         {
-          "id": 295568,
-          "title": "하지 못한 말",
+          "id": 302028,
+          "title": "녹아버릴 것 같아!",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=295568"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=302028"
         }
       ]
     },
     {
-      "name": "글카스)식객 라이의 비밀메뉴",
+      "name": "이로하의 우당탕탕 고백 대작전!",
+      "image": null,
+      "tags": [
+        "로맨스",
+        "코미디"
+      ],
+      "charCount": "2,872자",
+      "author": "카구얏쵸(secret2128)",
+      "posts": [
+        {
+          "id": 302025,
+          "title": "이로하의 우당탕탕 고백 대작전!",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=302025"
+        }
+      ]
+    },
+    {
+      "name": "야치요의 생일 - 오지 않는 날",
       "image": null,
       "tags": [
         "짧문",
-        "글카스"
+        "슬픔",
+        "감동"
       ],
-      "charCount": "642자",
-      "author": "라일락과백합(suitable0465)",
+      "charCount": "630자",
+      "author": "카구얏쵸(secret2128)",
       "posts": [
         {
-          "id": 294066,
-          "title": "글카스)식객 라이의 비밀메뉴",
+          "id": 301967,
+          "title": "야치요의 생일 - 오지 않는 날",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=294066"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=301967"
         }
       ]
     },
     {
-      "name": "문학 끌올 겸 후기",
-      "image": "../assets/Image/크롤링사진/문학/2026-08-20/293575_1.jpg",
-      "tags": [
-        "소설",
-        "일상"
-      ],
-      "charCount": "3,939자",
-      "author": "이스이(cheat7794)",
-      "posts": [
-        {
-          "id": 293575,
-          "title": "문학 끌올 겸 후기",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=293575"
-        }
-      ]
-    },
-    {
-      "name": "[창작단편] 생각난대로 써보다.",
+      "name": "《 나 버리지 마 》",
       "image": null,
       "tags": [
-        "일상"
+        "피폐"
       ],
-      "charCount": "1,443자",
-      "author": "아르세아키라(restore8952)",
+      "charCount": "1,643자",
+      "author": "별바다를불태우리(flock4442)",
       "posts": [
         {
-          "id": 293078,
-          "title": "[창작단편] 생각난대로 써보다.",
+          "id": 301746,
+          "title": "《 나 버리지 마 》",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=293078"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=301746"
         }
       ]
     },
     {
-      "name": "랜짤문 - 어째서",
-      "image": "../assets/Image/크롤링사진/문학/2026-08-17/291315_1.jpg",
+      "name": "《 놀이공원 》",
+      "image": null,
       "tags": [
+        "소설",
+        "로맨스",
         "일상"
       ],
-      "charCount": "1,711자",
-      "author": "아르세아키라(restore8952)",
+      "charCount": "5,164자",
+      "author": "별바다를불태우리(flock4442)",
       "posts": [
         {
-          "id": 291315,
-          "title": "랜짤문 - 어째서",
+          "id": 301500,
+          "title": "《 놀이공원 》",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=291315"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=301500"
         }
       ]
     }

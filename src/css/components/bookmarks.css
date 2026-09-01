@@ -406,7 +406,7 @@
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .bkm-chip:hover { color: rgba(0, 0, 0, 0.8); }
-/* 로그인 버튼(사이드바의 민트 알약, sidebar.css 의 .auth-header-btn)과
+/* 로그인 버튼(설정창의 민트 알약, settings-modal.css 의 .settings-btn.is-primary)과
    같은 색으로 맞췄다 — 사이트 안에서 "선택된/활성" 상태를 나타내는 색이
    하나로 통일되게. */
 .bkm-chip.is-active {

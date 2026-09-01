@@ -2,11 +2,12 @@
  * - 2026-08-22, 예전 가로 헤더의 .header-nav(네비게이션·다크모드 토글·
  *   로그인 버튼)를 화면 오른쪽 세로 사이드바로 옮겼다. 로고는 그대로
  *   src/css/layout/header.css 의 .header/.header-logo 에 남아있다.
- * - .header-nav 라는 클래스명은 그대로 유지했다 — src/js/theme.js 의
- *   injectThemeToggle(), src/js/auth.js 의 renderHeaderButton(),
- *   src/js/loading.js 가 전부 `.header-nav` 를 클래스 셀렉터로 찾아
- *   동작하므로, 컨테이너를 <header><nav> 에서 <aside><nav> 로 옮겨도
- *   클래스명만 유지하면 이 JS들은 무수정으로 그대로 동작한다.
+ * - .header-nav 라는 클래스명은 그대로 유지했다 — src/js/auth.js 의
+ *   renderVersionTag(), src/js/loading.js 가 전부 `.header-nav` 를 클래스
+ *   셀렉터로 찾아 동작하므로, 컨테이너를 <header><nav> 에서 <aside><nav>
+ *   로 옮겨도 클래스명만 유지하면 이 JS들은 무수정으로 그대로 동작한다.
+ *   다크모드 토글/로그인 버튼은 이제 헤더에 없다 — 통합 설정창
+ *   (src/js/settingsModal.js)으로 옮겨갔다.
  * - 처음엔 항상 떠 있는 고정 사이드바로 만들었다가, 오른쪽 위 메뉴
  *   버튼(.sidebar-toggle-btn)을 눌러야 옆에서 슬라이드인 되는 오프캔버스
  *   방식으로 바꿨다(src/js/sidebar.js 가 열고 닫는 로직을 맡는다). 평소엔
@@ -125,25 +126,10 @@
   margin-bottom: 28px;
 }
 
-/* 다크모드 토글(JS가 여기 주입) 위에 고정 여백을 둬서 네비 링크 목록과
-   눈에 띄게 떨어뜨린다 — 위쪽은 네비게이션, 아래쪽은 설정·계정이라는 흔한
-   사이드바 구성과 맞고, "auto"로 하단에 딱 붙이는 것보다 실제 화면에서
-   간격이 더 뚜렷하게 보인다. */
-.sidebar .header-nav .theme-toggle-btn {
+/* "설정" 버튼(정적 마크업, data-settings-trigger) 위에 고정 여백을 둬서
+   네비 링크 목록과 눈에 띄게 떨어뜨린다 — 위쪽은 네비게이션, 아래쪽은
+   설정이라는 흔한 사이드바 구성과 맞고, "auto"로 하단에 딱 붙이는 것보다
+   실제 화면에서 간격이 더 뚜렷하게 보인다. */
+.sidebar .header-nav .header-nav-settings {
   margin-top: 60px;
-}
-
-/* Figma 의 로그인 버튼(민트 알약)을 반영 — 로그인된 뒤의 "개인 코드 관리"
-   상태(.is-logged-in)는 Figma에 없는 화면이라 기존 파란 배색을 그대로
-   쓴다. :not(.is-logged-in) 으로 한정해서, 이 규칙과 auth.css 의
-   .auth-header-btn.is-logged-in 규칙이 같은 특이도라도 로드 순서와
-   무관하게 항상 올바른 색이 나오게 했다(다크모드 특이도 함정과 같은
-   부류의 문제를 애초에 피하는 방법 — BOOKMARK_SYSTEM_PLAN.md 참고). */
-.sidebar .header-nav .auth-header-btn:not(.is-logged-in) {
-  background: var(--mint);
-  border-color: transparent;
-  color: #000000;
-}
-.sidebar .header-nav .auth-header-btn:not(.is-logged-in):hover {
-  background: var(--mint-hover);
 }

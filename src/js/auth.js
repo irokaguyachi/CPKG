@@ -1,7 +1,5 @@
 /**
- * ChoKaguya Auth Header (헤더의 로그인/개인 코드 관리 버튼)
- * - src/js/theme.js 의 injectThemeToggle() 패턴을 따라, 페이지 로드 시
- *   .header-nav 에 버튼을 하나 주입한다(모든 페이지 공통 스크립트).
+ * ChoKaguya Auth (로그인/개인 코드 관리 — 통합 설정창의 "계정" 탭)
  * - 비로그인 상태: "로그인" 버튼 → src/js/authModal.js 의 로그인 모달(코드
  *   입력창). 거기서 "새로 발급받으세요!" 링크를 누르면 회원가입으로
  *   전환된다. 북마크처럼 로그인이 필요한 다른 기능들(bookmarkPicker.js,
@@ -9,60 +7,80 @@
  *   화면부터 띄운다 — 회원가입 화면을 먼저 보여주면, 이미 계정이 있는데
  *   지금 로그아웃 상태인 사람이 새로 뜬 코드를 그대로 확정해 버려 쓰지도
  *   않을 계정이 서버에 하나 더 생기기 때문이다.
- * - 로그인 상태: "개인 코드 관리" 버튼 → 버튼 옆에 뜨는 작은 패널(코드
- *   보기·복사, 기존 코드 마이그레이션, 로그아웃). 이 패널은 딤 배경이 없는
- *   앵커 팝오버라서, bookmarksPage.js 의 openSharePanel/ensureSharePanel
- *   패턴(document.body 싱글턴, position:fixed + getBoundingClientRect)을
- *   그대로 재사용했다.
- * - window 의 'chokaguya:auth-change' 이벤트(bookmarkLibrary.js 가 로그인/
- *   로그아웃 시 발생시킴)를 들어서, 새로고침 없이 버튼을 다시 그린다.
+ * - 로그인 상태: 개인 코드 보기·복사, 로그아웃, 클라우드 동기화(저장/
+ *   불러오기)를 renderAccountSettings() 가 하나의 컨테이너에 인라인으로
+ *   그린다 — 예전엔 헤더 버튼 + 앵커 팝오버(popoverKit.js)였지만, 이제
+ *   src/js/settingsModal.js 의 "계정" 탭 안에 이미 자리가 있어서 팝오버가
+ *   필요 없다.
+ * - window 의 'chokaguya:auth-change'/'chokaguya:sync-state' 이벤트를 듣고
+ *   있다가, 계정 탭이 지금 열려 있으면 다시 그린다.
  */
 (function (global) {
-  var SITE_VERSION = 'v0.1';
-  var manageEl = null;
+  // 사이드바에 찍히는 사이트 버전 — src/js/siteConfig.js 가 이미 fetch해둔
+  // src/data/SiteConfig.json 을 그대로 재사용한다(같은 파일을 또 받지
+  // 않도록). 대표님이 이 값을 바꾸고 싶을 때 코드를 건드릴 필요 없이 그
+  // JSON 파일의 "version" 값만 고치면 된다.
+  var SITE_VERSION = 'v?'; // JSON을 아직 못 불러왔을 때만 아주 잠깐 보이는 기본값
+  var siteVersionPromise = (global.SiteConfig ? global.SiteConfig.ready : Promise.resolve({}))
+    .then(function (data) {
+      if (data && typeof data.version === 'string' && data.version) {
+        SITE_VERSION = data.version;
+      }
+      return SITE_VERSION;
+    });
+  var currentMount = null; // 지금 계정 탭이 열려 있으면 그 컨테이너, 아니면 null
 
-  // popoverKit.js — bookmarkPicker.js/bookmarksPage.js와 동일한 앵커
-  // 팝오버 메커니즘(싱글턴 + 바깥클릭/Escape로 닫힘 + 뷰포트 클램프).
-  var managePopover = global.PopoverKit.createPopover('bkm-picker auth-manage-panel', 280);
-
-  function ensureManagePanel() {
-    manageEl = managePopover.ensure();
-    return manageEl;
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
   }
 
-  function closeManagePanel() {
-    managePopover.close();
+  function settingsButton(label, variant) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'settings-btn' + (variant ? ' ' + variant : '');
+    btn.textContent = label;
+    return btn;
   }
 
-  function positionManagePanel(anchorEl) {
-    managePopover.position(anchorEl);
+  // 클라우드 동기화가 지금 어떤 상태인지 — 로컬에만 저장됐는데 저장됐다고
+  // 믿는 상황을 막는 게 목적이라, 로그인 상태에서만 보여준다. 자동 동기화가
+  // 없으므로(userData.js) 이 라벨은 곧 버튼이다 — 눌러야 실제로 맞춰진다.
+  var SYNC_STATE_LABELS = {
+    synced: '동기화됨',
+    pending: '동기화 필요 · 아래에서 저장/불러오기',
+    syncing: '동기화 중...',
+    cooldown: '동기화 쿨타임중..',
+    offline: '오프라인 (이 기기에만 저장 중)',
+    error: '동기화 실패 · 다시 눌러보세요'
+  };
+
+  function renderLoggedOut(container) {
+    container.innerHTML = '';
+    container.appendChild(el('p', 'settings-desc', '로그인하면 북마크를 다른 기기와 동기화할 수 있어요.'));
+    var loginBtn = settingsButton('로그인', 'is-primary');
+    loginBtn.addEventListener('click', function () {
+      global.AuthModal.openSignIn({ onSuccess: function () { renderAccountSettings(container); } });
+    });
+    container.appendChild(loginBtn);
   }
 
-  function panelHeader(text) {
-    return global.PopoverKit.header(text);
-  }
+  function renderLoggedIn(container) {
+    container.innerHTML = '';
 
-  function panelButton(label, variant) {
-    return global.PopoverKit.button(label, variant);
-  }
-
-  function openManagePanel(anchorEl) {
-    var panel = ensureManagePanel();
-    panel.innerHTML = '';
-    panel.appendChild(panelHeader('개인 코드 관리'));
-
-    var codeRow = document.createElement('div');
-    codeRow.className = 'bkm-inline-create';
+    container.appendChild(el('p', 'settings-field-label', '개인 코드'));
+    var codeRow = el('div', 'settings-inline-row');
     var codeInput = document.createElement('input');
     codeInput.type = 'text';
-    codeInput.className = 'bkm-share-code';
+    codeInput.className = 'settings-code-display';
     codeInput.readOnly = true;
     codeInput.value = global.BookmarkLibrary.formatPersonalCodeForDisplay(global.BookmarkLibrary.getPersonalCode() || '');
     codeInput.addEventListener('focus', function () { codeInput.select(); });
     codeRow.appendChild(codeInput);
-    panel.appendChild(codeRow);
 
-    var copyBtn = panelButton('복사');
+    var copyBtn = settingsButton('복사');
     copyBtn.addEventListener('click', function () {
       codeInput.focus();
       codeInput.select();
@@ -77,72 +95,44 @@
         try { document.execCommand('copy'); showCopied(); } catch (e) {}
       }
     });
-    panel.appendChild(copyBtn);
+    codeRow.appendChild(copyBtn);
+    container.appendChild(codeRow);
 
-    var logoutBtn = panelButton('로그아웃', 'is-danger');
+    container.appendChild(el('p', 'settings-field-label', '클라우드 동기화'));
+    var state = (global.UserData && global.UserData.getStatus()) || 'offline';
+    container.appendChild(el('p', 'settings-sync-status is-' + state, SYNC_STATE_LABELS[state] || SYNC_STATE_LABELS.offline));
+
+    var syncRow = el('div', 'settings-inline-row');
+    var saveBtn = settingsButton('이 기기 → 서버에 저장', 'is-primary');
+    saveBtn.addEventListener('click', function () { if (global.UserData) global.UserData.saveToServer(); });
+    syncRow.appendChild(saveBtn);
+    var loadBtn = settingsButton('서버 → 이 기기로 불러오기');
+    loadBtn.addEventListener('click', function () { if (global.UserData) global.UserData.loadFromServer(); });
+    syncRow.appendChild(loadBtn);
+    container.appendChild(syncRow);
+
+    var logoutBtn = settingsButton('로그아웃', 'is-danger');
     logoutBtn.addEventListener('click', function () {
       if (!global.confirm('로그아웃할까요? 이 브라우저의 개인 코드가 지워져요. 다시 로그인하려면 그 코드를 알고 있어야 해요(단, 이 브라우저가 직접 관리 코드를 쥔 게시물은 로그아웃 후에도 계속 관리할 수 있어요).')) return;
       global.BookmarkLibrary.logout();
-      closeManagePanel();
     });
-    panel.appendChild(logoutBtn);
-
-    positionManagePanel(anchorEl);
-    panel.classList.add('is-open');
+    container.appendChild(logoutBtn);
   }
 
-  var LOGIN_ICON = '<svg class="auth-icon-login" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>';
-  var MANAGE_ICON = '<svg class="auth-icon-manage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
-
-  // 클라우드 동기화가 지금 어떤 상태인지 — 로컬에만 저장됐는데 저장됐다고
-  // 믿는 상황을 막는 게 목적이라, 로그인 상태에서만 띄운다. 자동 동기화가
-  // 없으므로(userData.js) 이 뱃지는 곧 버튼이다 — 눌러야 실제로 맞춰진다.
-  var SYNC_STATE_LABELS = {
-    synced: '동기화됨',
-    pending: '동기화 필요 · 눌러서 저장/불러오기',
-    syncing: '동기화 중...',
-    cooldown: '동기화 쿨타임중..',
-    offline: '오프라인 (이 기기에만 저장 중)',
-    error: '동기화 실패 · 다시 눌러보세요'
-  };
-
-  // 동기화 버튼을 누르면 뜨는 "저장"/"불러오기" 선택 패널 — 개인 코드 관리
-  // 패널과 같은 앵커 팝오버 메커니즘(popoverKit.js)을 그대로 재사용한다.
-  // 예전엔 버튼 하나가 "서버가 더 최신이면 받고 아니면 올린다"를 알아서
-  // 판단했는데, "이미 버전이 맞더라도 서버 걸 그대로 가져오고 싶다"는
-  // 요청을 처리할 방법이 없어서 방향을 직접 고르게 나눴다
-  // (src/js/userData.js 의 saveToServer/loadFromServer).
-  var syncPopover = global.PopoverKit.createPopover('bkm-picker auth-sync-panel', 240);
-
-  function closeSyncPanel() {
-    syncPopover.close();
+  // settingsModal.js 의 "계정" 탭이 호출하는 진입점 — 탭이 열릴 때마다,
+  // 그리고 로그인 상태/동기화 상태가 바뀔 때마다 이 컨테이너를 다시 그린다.
+  function renderAccountSettings(container) {
+    currentMount = container;
+    if (global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn()) {
+      renderLoggedIn(container);
+    } else {
+      renderLoggedOut(container);
+    }
   }
 
-  function openSyncPanel(anchorEl) {
-    var panel = syncPopover.ensure();
-    panel.innerHTML = '';
-    panel.appendChild(panelHeader('클라우드 동기화'));
-
-    var saveBtn = panelButton('이 기기 → 서버에 저장', 'is-primary');
-    saveBtn.addEventListener('click', function () {
-      closeSyncPanel();
-      if (global.UserData) global.UserData.saveToServer();
-    });
-    panel.appendChild(saveBtn);
-
-    var loadBtn = panelButton('서버 → 이 기기로 불러오기');
-    loadBtn.addEventListener('click', function () {
-      closeSyncPanel();
-      if (global.UserData) global.UserData.loadFromServer();
-    });
-    panel.appendChild(loadBtn);
-
-    positionSyncPanel(anchorEl);
-    panel.classList.add('is-open');
-  }
-
-  function positionSyncPanel(anchorEl) {
-    syncPopover.position(anchorEl);
+  function refreshIfMounted() {
+    if (currentMount && currentMount.isConnected) renderAccountSettings(currentMount);
+    else currentMount = null;
   }
 
   // 실제로 지금 떠 있는 게 어느 배포인지 확인용 — 버전 태그를 누르면
@@ -167,127 +157,54 @@
     return buildInfoPromise;
   }
 
-  // 로그인/개인 코드 관리 버튼 아래에 붙는 사이트 버전 표시.
-  // syncBadge 와 마찬가지로 매번 버튼 바로 뒤로 강제 재배치해서 순서를
-  // 고정한다(로그인 버튼 → (로그인시) 동기화 뱃지 → 버전).
-  // 눌러서 버전 <-> 실제 배포 시각을 토글한다.
+  // 사이드바 맨 아래에 붙는 사이트 버전 표시. 계정과 무관한 배포 확인용
+  // 스탬프라 설정창으로 옮기지 않고 그대로 사이드바에 둔다. 눌러서 버전
+  // <-> 실제 배포 시각을 토글한다.
   function renderVersionTag(nav) {
-    var tag = nav.querySelector('.auth-version-tag');
-    if (!tag) {
-      tag = document.createElement('button');
-      tag.type = 'button';
-      tag.className = 'auth-version-tag';
-      tag.textContent = SITE_VERSION;
-      tag.title = '눌러서 실제 배포 시각 확인';
-      tag.setAttribute('data-showing-time', '0');
-      tag.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (tag.getAttribute('data-showing-time') === '1') {
-          tag.setAttribute('data-showing-time', '0');
-          tag.textContent = SITE_VERSION;
-          return;
-        }
-        tag.setAttribute('data-showing-time', '1');
-        tag.textContent = '확인 중...';
-        fetchBuildTimeText().then(function (text) {
-          // 응답이 오기 전에 다시 눌러서 버전으로 돌아갔다면 덮어쓰지 않는다.
-          if (tag.getAttribute('data-showing-time') !== '1') return;
-          tag.textContent = text;
-        });
-      });
-    }
-    var authBtn = nav.querySelector('.auth-header-btn');
-    if (authBtn) {
-      authBtn.insertAdjacentElement('afterend', tag);
-    } else if (!tag.parentNode) {
-      nav.appendChild(tag);
-    }
-    return tag;
-  }
-
-  function renderSyncBadge(nav, loggedIn) {
-    var badge = nav.querySelector('.auth-sync-badge');
-    if (!loggedIn) {
-      if (badge) badge.remove();
-      return;
-    }
-    if (!badge) {
-      badge = document.createElement('button');
-      badge.type = 'button';
-      badge.className = 'auth-sync-badge';
-      badge.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        openSyncPanel(badge);
-      });
-    }
-    // userData.js 의 초기 상태 이벤트(chokaguya:sync-state)가 스크립트 로드
-    // 순서상 renderHeaderButton 보다 먼저 도착할 수 있어(로그인된 채로
-    // 페이지를 새로고침한 경우 흔함), 그때는 이 뱃지가 개인 코드 관리
-    // 버튼보다 먼저 nav 에 붙어버린다. 매번 로그인 버튼 바로 뒤로 강제
-    // 재배치해서 순서를 고정한다 — renderVersionTag가 버전 태그를 항상
-    // authBtn 바로 뒤에 꽂아두므로, 이 뱃지를 다시 authBtn 뒤로 넣으면
-    // 버전 태그가 자연스럽게 뱃지 뒤로 밀려나 "버튼 → 뱃지 → 버전" 순서가
-    // 유지된다.
-    var authBtn = nav.querySelector('.auth-header-btn');
-    if (authBtn) {
-      authBtn.insertAdjacentElement('afterend', badge);
-    } else if (!badge.parentNode) {
-      nav.appendChild(badge);
-    }
-    var state = (global.UserData && global.UserData.getStatus()) || 'offline';
-    var label = SYNC_STATE_LABELS[state] || SYNC_STATE_LABELS.offline;
-    badge.className = 'auth-sync-badge is-' + state;
-    badge.title = label;
-    badge.setAttribute('aria-label', '클라우드 동기화 상태: ' + label + '. 눌러서 저장 또는 불러오기 선택');
-    badge.innerHTML = '<span class="auth-sync-dot" aria-hidden="true"></span>' +
-      '<span class="auth-sync-badge-label">' + label + '</span>';
-  }
-
-  function renderHeaderButton() {
-    var nav = document.querySelector('.header-nav');
-    if (!nav) return;
-    var loggedIn = global.BookmarkLibrary.isLoggedIn();
-
-    var btn = nav.querySelector('.auth-header-btn');
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'auth-header-btn';
-      nav.appendChild(btn);
-    }
-    btn.classList.toggle('is-logged-in', loggedIn);
-    var icon = loggedIn ? MANAGE_ICON : LOGIN_ICON;
-    var text = loggedIn ? '개인 코드 관리' : '로그인';
-    btn.innerHTML = icon + '<span class="auth-header-btn-label">' + text + '</span>';
-    btn.onclick = function (e) {
+    if (nav.querySelector('.auth-version-tag')) return;
+    var tag = document.createElement('button');
+    tag.type = 'button';
+    tag.className = 'auth-version-tag';
+    tag.textContent = SITE_VERSION;
+    tag.title = '눌러서 실제 배포 시각 확인';
+    tag.setAttribute('data-showing-time', '0');
+    // SiteConfig.json 로딩이 끝나면 실제 버전으로 갱신 — 그사이 배포 시각을
+    // 보여주는 중으로 전환했다면 덮어쓰지 않는다.
+    siteVersionPromise.then(function () {
+      if (tag.getAttribute('data-showing-time') === '0') tag.textContent = SITE_VERSION;
+    });
+    tag.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (global.BookmarkLibrary.isLoggedIn()) {
-        openManagePanel(btn);
-      } else {
-        global.AuthModal.openSignIn();
+      if (tag.getAttribute('data-showing-time') === '1') {
+        tag.setAttribute('data-showing-time', '0');
+        tag.textContent = SITE_VERSION;
+        return;
       }
-    };
-
-    renderVersionTag(nav);
-    renderSyncBadge(nav, loggedIn);
+      tag.setAttribute('data-showing-time', '1');
+      tag.textContent = '확인 중...';
+      fetchBuildTimeText().then(function (text) {
+        // 응답이 오기 전에 다시 눌러서 버전으로 돌아갔다면 덮어쓰지 않는다.
+        if (tag.getAttribute('data-showing-time') !== '1') return;
+        tag.textContent = text;
+      });
+    });
+    nav.appendChild(tag);
   }
 
-  window.addEventListener('chokaguya:auth-change', function () {
-    closeManagePanel();
-    renderHeaderButton();
-  });
+  window.addEventListener('chokaguya:auth-change', refreshIfMounted);
+  window.addEventListener('chokaguya:sync-state', refreshIfMounted);
 
-  window.addEventListener('chokaguya:sync-state', function () {
+  function init() {
     var nav = document.querySelector('.header-nav');
-    if (nav) renderSyncBadge(nav, global.BookmarkLibrary.isLoggedIn());
-  });
+    if (nav) renderVersionTag(nav);
+  }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', renderHeaderButton);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    renderHeaderButton();
+    init();
   }
+
+  global.AuthUI = { renderAccountSettings: renderAccountSettings };
 })(window);

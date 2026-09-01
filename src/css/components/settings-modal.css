@@ -1,0 +1,374 @@
+/* 통합 설정창 (src/js/settingsModal.js) — auth-overlay/auth-card(auth.css)의
+   수치·트랜지션 감각을 그대로 베끼되, 좌측 레일+우측 패널 2단 레이아웃에
+   맞게 새 클래스로 둔다. 다크모드 대응은 이 파일이 아니라 theme.css 끝에
+   몰아둔다(다른 컴포넌트 CSS와 같은 관례). */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.settings-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.settings-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 760px;
+  height: min(560px, 80vh);
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transform: translateY(16px) scale(0.98);
+  opacity: 0;
+  transition: transform 0.25s var(--ease-out-site), opacity 0.25s ease;
+}
+.settings-overlay.is-open .settings-card {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.settings-card .pds-close {
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+}
+
+.settings-rail {
+  flex: 0 0 180px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 56px 12px 20px;
+  background: #f7f7f8;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+}
+
+/* 활성 탭 배경 — 버튼마다 배경을 켜고 끄는 대신, 이 하나가 버튼 사이를
+   부드럽게 미끄러져 이동한다(position:absolute + transform translateY). */
+.settings-rail-indicator {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 0;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  transition: transform 0.25s var(--ease-out-site), height 0.25s var(--ease-out-site),
+              left 0.25s var(--ease-out-site), width 0.25s var(--ease-out-site);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.settings-rail-btn {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  color: rgba(0, 0, 0, 0.65);
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.settings-rail-btn:hover {
+  color: #000000;
+  background: rgba(0, 0, 0, 0.04);
+}
+.settings-rail-btn.is-active {
+  color: #000000;
+}
+.settings-rail-btn.is-active:hover {
+  background: transparent;
+}
+
+.settings-pane {
+  flex: 1 1 auto;
+  padding: 32px 36px;
+  overflow-y: auto;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+.settings-pane.is-fading {
+  opacity: 0;
+}
+
+.settings-pane-title {
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #000000;
+}
+
+.settings-field-label {
+  margin: 24px 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.5);
+}
+.settings-field-label:first-of-type {
+  margin-top: 0;
+}
+
+.settings-desc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.settings-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* 설정 행 — 왼쪽 라벨 / 오른쪽 컨트롤, 아래 구분선으로 칸을 나눈다
+   (Claude 설정창의 "트랜스크립트 너비" 행 참고). */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.settings-row:first-of-type {
+  padding-top: 0;
+}
+.settings-row-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.settings-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 18px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.settings-mode-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+.settings-mode-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.settings-btn {
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  background: rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.settings-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+.settings-btn.is-primary {
+  color: #000000;
+  background: var(--mint);
+  border-color: transparent;
+}
+.settings-btn.is-primary:hover {
+  background: var(--mint-hover);
+}
+.settings-btn.is-danger {
+  color: #e03131;
+  background: transparent;
+  border-color: rgba(224, 49, 49, 0.35);
+}
+.settings-btn.is-danger:hover {
+  background: rgba(224, 49, 49, 0.08);
+}
+
+.settings-code-display {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 42px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #000000;
+  background: #f5f6f8;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.settings-sync-status {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+}
+.settings-sync-status.is-synced { color: #2f9e44; }
+.settings-sync-status.is-pending,
+.settings-sync-status.is-syncing { color: #f08c00; }
+.settings-sync-status.is-error { color: #e03131; }
+
+/* 토글 스위치 — 일반 탭의 다크 모드, 오디오 문학 탭의 자동재생이 공유 */
+.settings-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.18);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.settings-toggle.is-on {
+  background: var(--mint);
+}
+.settings-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s var(--ease-out-site);
+}
+.settings-toggle.is-on .settings-toggle-knob {
+  transform: translateX(18px);
+}
+
+/* .settings-row 왼쪽 칸 — 라벨 + 그 아래 설명 한 줄 */
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.settings-row-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* 오디오 문학 탭 — 음량 슬라이더 (audio-novel-player.css의 슬라이더 색상 재사용).
+   .an-player-slider 처럼 폭을 잡아서 행 오른쪽에 짧고 깔끔하게 보이게 한다. */
+.settings-volume-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  width: 200px;
+}
+.settings-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.15);
+  outline: none;
+}
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--mint);
+  cursor: pointer;
+}
+.settings-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--mint);
+  cursor: pointer;
+}
+.settings-slider-value {
+  flex-shrink: 0;
+  width: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.6);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .settings-card {
+    flex-direction: column;
+    height: min(640px, 88vh);
+  }
+  .settings-rail {
+    flex: 0 0 auto;
+    flex-direction: row;
+    padding: 16px 16px 12px;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    overflow-x: auto;
+  }
+  /* 세로 목록일 땐 width:100%로 각 항목이 레일 폭을 꽉 채우면 되지만,
+     가로 한 줄에서 그대로 두면 폭이 서로 다르게 찌그러져 정렬이 어긋난다
+     — 균등한 폭으로 나누고 글자도 가운데로 맞춘다. */
+  .settings-rail-btn {
+    flex: 1 1 0;
+    width: auto;
+    text-align: center;
+  }
+  /* 좁은 화면에서는 가로 한 줄 탭 옆에 닫기 버튼이 겹쳐 보인다 — 바깥
+     딤 배경을 눌러도 닫히므로 버튼 없이도 닫는 방법은 남아있다. */
+  .settings-card .pds-close {
+    display: none;
+  }
+  .settings-pane {
+    padding: 24px 20px;
+  }
+}

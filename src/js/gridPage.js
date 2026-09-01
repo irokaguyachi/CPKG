@@ -61,6 +61,32 @@
     return arr;
   }
 
+  // 화들 중 하나라도 오디오 노벨 리더가 연결돼 있으면(post.reader) 그
+  // 시리즈는 목록 단계에서부터 코너 리본으로 표시한다 (postDetailSeries.js가
+  // 상세 모달 안에서 화 단위로 하는 표시와는 별개 — 여긴 작품 단위).
+  function hasAudioNovel(s) {
+    var posts = s && s.posts;
+    if (!posts || !posts.length) return false;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i] && posts[i].reader) return true;
+    }
+    return false;
+  }
+
+  function createAudioRibbon() {
+    var ribbon = document.createElement('span');
+    ribbon.className = 'audio-novel-ribbon';
+    var icon = document.createElement('span');
+    icon.className = 'audio-novel-ribbon-icon';
+    icon.textContent = '🎧';
+    var label = document.createElement('span');
+    label.className = 'audio-novel-ribbon-label';
+    label.textContent = '오디오노벨';
+    ribbon.appendChild(icon);
+    ribbon.appendChild(label);
+    return ribbon;
+  }
+
   function create(config) {
     config = config || {};
 
@@ -457,6 +483,10 @@
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      if (hasAudioNovel(s)) {
+        image.appendChild(createAudioRibbon());
+        card.classList.add('is-audio-novel');
+      }
       card.appendChild(image);
 
       var info = document.createElement('div');
@@ -497,6 +527,7 @@
               title: post.title,
               dcId: post.id,
               link: post.link,
+              reader: post.reader,
               episodeLabel: post.episode + ' 화'
             };
           })
@@ -526,6 +557,10 @@
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      if (hasAudioNovel(s)) {
+        image.appendChild(createAudioRibbon());
+        card.classList.add('is-audio-novel');
+      }
       card.appendChild(image);
 
       var info = document.createElement('div');
@@ -568,6 +603,7 @@
               title: post.title,
               dcId: post.id,
               link: post.link,
+              reader: post.reader,
               episodeLabel: post.episode + ' 화'
             };
           })

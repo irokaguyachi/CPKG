@@ -1,7 +1,8 @@
 /* ==========================================================================
    Yachiyo click easter egg (local-only, src/offline_src/ForEvent/yachiyo.png)
-   Triggered from src/js/yachiyoEvent.js after 168 clicks on the locked
-   "번역" nav link. Not part of the deployed asset pipeline.
+   Triggered from src/js/yachiyoEvent.js by clicking the locked "번역" nav
+   link — every 30/60/90th click, looping. Not part of the deployed asset
+   pipeline.
    ========================================================================== */
 
 .yachiyo-event-block {
@@ -83,35 +84,6 @@
   100% { transform: translateY(0); }
 }
 
-.yachiyo-event-cta {
-  margin: 0 0 48px 0;
-  transform: translateX(30px);
-  opacity: 0;
-  transition: transform 0.5s var(--ease-out-site), opacity 0.5s ease;
-  pointer-events: none;
-}
-
-.yachiyo-event-cta.is-in {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-.yachiyo-event-cta a {
-  display: inline-flex;
-  align-items: center;
-  padding: 10px 18px;
-  background: #fee500;
-  color: #191919;
-  font-weight: 700;
-  font-size: 13px;
-  border-radius: var(--radius-pill);
-  text-decoration: none;
-  white-space: nowrap;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-  pointer-events: auto;
-  cursor: pointer;
-}
-
 .yachiyo-event-bubble {
   position: relative;
   margin: 0 0 48px 0;
@@ -168,9 +140,5 @@
 
   .yachiyo-event-img.is-talking {
     animation: none;
-  }
-
-  .yachiyo-event-cta {
-    transition-duration: 0.01s;
   }
 }

@@ -77,6 +77,45 @@ body.is-top .header-logo {
 .header-nav a:hover {
   transform: translateY(-3px);
 }
+
+/* "설정" 버튼 — 예전 다크모드 토글 버튼(.theme-toggle-btn, 통합 설정창으로
+   옮겨가며 삭제됨)의 알약 모양을 그대로 재사용한다. 장르 페이지가 아니라
+   중립 항목이라 .header-nav a:nth-child(N) 무지개 hover색과는 무관하다
+   (버튼 요소라 그 셀렉터가 애초에 안 걸리기도 함) — settingsModal.js가
+   클릭을 처리. */
+.header-nav-settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 18px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 0.25s var(--ease-out-site),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease;
+}
+.header-nav-settings:hover {
+  transform: translateY(-3px) scale(1.03);
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+.header-nav-settings-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
 /* "메인"+"업데이트 로그"는 .header-nav-primary 로 한 묶음에 들어 있어 더 이상
    .header-nav 의 직계 <a> 가 아니다 — nth-child 대신 클래스로 지정한다.
    업데이트 로그는 페이지 네비 특유의 무지개 hover색 없이 기본 스타일만. */

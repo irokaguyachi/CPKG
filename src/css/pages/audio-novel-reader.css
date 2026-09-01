@@ -1,0 +1,152 @@
+/* 헤더 소제목 — 로고가 position:fixed 라 같은 기준으로 고정하고,
+   로고 옆이 아니라 화면 가운데에 맞춘다. 세로 좌표는 데스크톱/모바일
+   로고 위치(header.css)에 맞춤. */
+.an-header-title {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 21;
+  font-size: 22px;
+  font-weight: 600;
+  color: #000000;
+  text-align: center;
+  white-space: nowrap;
+  max-width: calc(100% - 320px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .an-header-title {
+  color: var(--dark-text);
+}
+
+@media (max-width: 768px) {
+  .an-header-title {
+    top: 36px;
+    font-size: 16px;
+    max-width: calc(100% - 200px);
+  }
+}
+
+.an-source-link {
+  display: block;
+  max-width: var(--content-max-width);
+  margin: 24px auto 0;
+  padding: 0 var(--content-padding);
+}
+
+.an-source-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #000000;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.an-source-link-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.an-source-link-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.an-source-link-chapter {
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 500;
+}
+.an-source-link-chapter::before {
+  content: "·";
+  margin-right: 8px;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .an-source-link-btn {
+  color: var(--dark-text, #f1f3f5);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme="dark"] .an-source-link-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+[data-theme="dark"] .an-source-link-chapter {
+  color: rgba(255, 255, 255, 0.55);
+}
+[data-theme="dark"] .an-source-link-chapter::before {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.an-content {
+  max-width: 680px;
+  margin: 24px auto 140px;
+  padding: 0 var(--content-padding);
+  color: #1a1a1a;
+  font-size: 17px;
+  line-height: 1.9;
+  word-break: keep-all;
+}
+
+.an-heading {
+  margin: 0 0 24px;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.an-figure {
+  margin: 0 0 20px;
+}
+
+.an-figure img {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+}
+
+.an-p {
+  margin: 0 0 18px;
+}
+
+/* 프로토타입 확인용 — 지금 재생 중인 사운드 구간을 왼쪽 얇은 민트 라인으로 표시 */
+.an-sound-block {
+  padding-left: 14px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+.an-sound-block.is-playing {
+  border-left-color: var(--mint);
+}
+
+/* 효과음 트리거 지점 — 화면에 보이지 않아야 하지만, 스크롤 위치 판정을 위해
+   display:none 은 쓰지 않는다(레이아웃에서 완전히 빠지면 교차 판정이 안 됨). */
+.an-sfx-marker {
+  display: block;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+:root:not([data-theme="light"]) .an-content {
+  color: #e6e6e6;
+}
+
+[data-theme="dark"] .an-content {
+  color: #e6e6e6;
+}
