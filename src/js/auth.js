@@ -16,7 +16,18 @@
  *   있다가, 계정 탭이 지금 열려 있으면 다시 그린다.
  */
 (function (global) {
-  var SITE_VERSION = 'v0.1';
+  // 사이드바에 찍히는 사이트 버전 — src/js/siteConfig.js 가 이미 fetch해둔
+  // src/data/SiteConfig.json 을 그대로 재사용한다(같은 파일을 또 받지
+  // 않도록). 대표님이 이 값을 바꾸고 싶을 때 코드를 건드릴 필요 없이 그
+  // JSON 파일의 "version" 값만 고치면 된다.
+  var SITE_VERSION = 'v?'; // JSON을 아직 못 불러왔을 때만 아주 잠깐 보이는 기본값
+  var siteVersionPromise = (global.SiteConfig ? global.SiteConfig.ready : Promise.resolve({}))
+    .then(function (data) {
+      if (data && typeof data.version === 'string' && data.version) {
+        SITE_VERSION = data.version;
+      }
+      return SITE_VERSION;
+    });
   var currentMount = null; // 지금 계정 탭이 열려 있으면 그 컨테이너, 아니면 null
 
   function el(tag, className, text) {
@@ -157,6 +168,11 @@
     tag.textContent = SITE_VERSION;
     tag.title = '눌러서 실제 배포 시각 확인';
     tag.setAttribute('data-showing-time', '0');
+    // SiteConfig.json 로딩이 끝나면 실제 버전으로 갱신 — 그사이 배포 시각을
+    // 보여주는 중으로 전환했다면 덮어쓰지 않는다.
+    siteVersionPromise.then(function () {
+      if (tag.getAttribute('data-showing-time') === '0') tag.textContent = SITE_VERSION;
+    });
     tag.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
