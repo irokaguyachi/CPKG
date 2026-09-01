@@ -61,8 +61,16 @@ def download_attached_photos(post_id, photo_field):
     """'첨부 사진' 필드에 이미 적힌 상대경로 그대로 실제 파일을 받는다."""
     if not photo_field or photo_field == "없음":
         return
-    targets = [(p.strip(), os.path.join(BASE, p.strip()))
-               for p in photo_field.split(",") if p.strip()]
+    photo_root = os.path.join(os.path.dirname(__file__), "..", "assets", "Image", "크롤링사진", "문학")
+    targets = []
+    for p in photo_field.split(","):
+        p_str = p.strip()
+        if not p_str:
+            continue
+        rel_sub = p_str.replace("사진/", "")
+        local_path = os.path.join(photo_root, rel_sub)
+        targets.append((p_str, local_path))
+
     if all(os.path.exists(path) and os.path.getsize(path) > 0 for _, path in targets):
         photo_stats["skipped"] += len(targets)
         return
@@ -223,13 +231,16 @@ for t, c in sorted(tag_counter.items(), key=lambda x: -x[1]):
 deduped.sort(key=lambda e: -e["id"])
 
 print("\n=== 첨부 사진 다운로드 ===")
-to_download = [e for e in deduped if e.get("photo") and e["photo"] != "없음"]
-print(f"사진 첨부된 글: {len(to_download)}개")
-for i, e in enumerate(to_download, 1):
-    download_attached_photos(e["id"], e["photo"])
-    if i % 50 == 0 or i == len(to_download):
-        print(f"  진행: {i}/{len(to_download)}  {photo_stats}")
-print("사진 다운로드 결과:", photo_stats)
+if "--download-photos" in sys.argv:
+    to_download = [e for e in deduped if e.get("photo") and e["photo"] != "없음"]
+    print(f"사진 첨부된 글: {len(to_download)}개")
+    for i, e in enumerate(to_download, 1):
+        download_attached_photos(e["id"], e["photo"])
+        if i % 50 == 0 or i == len(to_download):
+            print(f"  진행: {i}/{len(to_download)}  {photo_stats}")
+    print("사진 다운로드 결과:", photo_stats)
+else:
+    print("사진 다운로드 건너뜀 (--download-photos 플래그로 활성화 가능)")
 
 out_path = os.path.join(os.path.dirname(__file__), "crawl_entries.json")
 with open(out_path, "w", encoding="utf-8") as f:
