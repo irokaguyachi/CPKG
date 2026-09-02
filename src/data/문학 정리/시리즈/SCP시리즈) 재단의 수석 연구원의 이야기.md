@@ -17,7 +17,7 @@
 
 - **게시물 링크**: [https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&amp;no=65640](https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=65640)
 - **작성자**: 분탕치는카구야(floor3542)
-- **태그**: [소설, 일상]
+- **태그**: [일상]
 - **글자 수**: 3,800자
 - **첨부 사진**: 사진/시리즈/SCP/65640_1.png, 사진/시리즈/SCP/65640_2.png, 사진/시리즈/SCP/65640_3.png
 
