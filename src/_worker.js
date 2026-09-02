@@ -30,6 +30,12 @@
  *   블록과 OLD_DOMAIN을 지우면 된다.
  */
 import backend from '../worker/favoritesShareWorker.js';
+import statsApi from './statsApi.js';
+import { PresenceDO } from './presenceDO.js';
+
+// 방문자 통계용 Durable Object 클래스. wrangler가 배포 시 이 export를 보고
+// [[durable_objects.bindings]] / [[migrations]] 와 연결한다.
+export { PresenceDO };
 
 var OLD_DOMAIN = 'ckpg.cloud';
 var NEW_DOMAIN = 'cpkg.cloud';
@@ -39,6 +45,100 @@ var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get',
 function isApiPath(pathname) {
   if (API_EXACT_PATHS.indexOf(pathname) !== -1) return true;
   return pathname.indexOf('/library/') === 0;
+}
+
+// 방문자 통계 API(하트비트 + 관리자 조회). favoritesShareWorker와 달리
+// 별도 모듈로 두는 이유는 북마크 API와 책임이 완전히 다르고, R2/KV가 아니라
+// Durable Object와 Analytics Engine을 쓰기 때문이다.
+function isStatsPath(pathname) {
+  return pathname.indexOf('/api/presence/') === 0 || pathname.indexOf('/api/stats/') === 0;
+}
+
+// 이 요청이 "사람이 페이지를 열어본 것"인지 판정한다. Analytics Engine에
+// 방문 기록을 남길지 여기서 거른다 — 정적 자산(js/css/이미지)과 fetch API
+// 호출은 제외하고, HTML 문서 요청만 센다.
+function isPageView(request, url) {
+  if (request.method !== 'GET') return false;
+  var accept = request.headers.get('Accept') || '';
+  if (accept.indexOf('text/html') === -1) return false;
+  // 확장자가 붙은 경로(/foo.png, /bar.js)는 문서로 보지 않는다. .html은 예외.
+  var last = url.pathname.split('/').pop() || '';
+  if (last.indexOf('.') !== -1 && last.slice(-5) !== '.html') return false;
+  return true;
+}
+
+async function sha256Hex(str) {
+  var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  var bytes = new Uint8Array(digest);
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
+function deviceTypeFromUA(ua) {
+  var s = (ua || '').toLowerCase();
+  if (/ipad|tablet|kindle|playbook|silk/.test(s)) return 'tablet';
+  if (/mobi|iphone|android.*mobile|windows phone/.test(s)) return 'mobile';
+  if (/android/.test(s)) return 'tablet';
+  return 'desktop';
+}
+
+// Analytics Engine에 방문 기록 한 줄을 남긴다. 인덱스는 "그날의 방문자 해시"라,
+// 같은 사람은 하루에 한 번만 고유값으로 잡히고 날짜가 바뀌면 값도 바뀐다
+// (개인 식별을 남기지 않으면서 "일별 순 방문자"를 얻는 방법). 통계는 어디까지나
+// 부가 기능이라, 여기서 무슨 일이 생겨도 페이지 응답에는 영향을 주지 않는다.
+async function recordPageView(request, env, url) {
+  try {
+    if (!env.VISITS_AE) return;
+    var ua = request.headers.get('User-Agent') || '';
+    var ip = request.headers.get('CF-Connecting-IP') || '';
+    var cf = request.cf || {};
+    var daySalt = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    var visitorId = (await sha256Hex(daySalt + '|' + ip + '|' + ua)).slice(0, 32);
+    var refHost = '';
+    try {
+      var ref = request.headers.get('Referer');
+      if (ref) refHost = new URL(ref).hostname;
+    } catch (e) {}
+    env.VISITS_AE.writeDataPoint({
+      indexes: [visitorId],
+      blobs: [
+        String(cf.country || 'XX'),
+        deviceTypeFromUA(ua),
+        url.pathname.slice(0, 96),
+        refHost.slice(0, 96)
+      ],
+      doubles: [1]
+    });
+  } catch (e) {
+    // 기록 실패는 삼킨다 — 통계보다 페이지가 우선이다.
+  }
+}
+
+// 1분 Cron이 부른다. Durable Object에서 현재 접속자 수와 피크를 읽어
+// Analytics Engine(PRESENCE_AE)에 한 줄로 적재한다 → 커스텀 대시보드/Grafana가
+// 이 데이터셋을 시계열로 그린다(동시 접속자 추이 = avg(double1) 또는
+// max(double1), 피크 = 하루치 max(double2)). 접속자가 0이어도 한 줄을 남겨
+// 그래프가 끊기지 않게 한다.
+async function recordPresenceSample(env) {
+  try {
+    if (!env.PRESENCE_AE || !env.PRESENCE) return;
+    var id = env.PRESENCE.idFromName('global');
+    var res = await env.PRESENCE.get(id).fetch('https://do/stats', { method: 'GET' });
+    var s = await res.json();
+    env.PRESENCE_AE.writeDataPoint({
+      // 인덱스는 표본화 그룹 키일 뿐이라 상수로 둔다(게이지는 카디널리티가 낮다).
+      indexes: ['presence'],
+      blobs: [String(s.peakDay || '')],
+      doubles: [
+        Number(s.online) || 0,
+        Number(s.peakToday) || 0,
+        Number(s.peakAllTime) || 0
+      ]
+    });
+  } catch (e) {
+    // Cron 한 번 걸러도 다음 분에 다시 찍힌다 — 조용히 넘어간다.
+  }
 }
 
 // 짧은 주소 <-> 실제 파일(src/page/ 아래) 매핑. 사이드바 등 사이트 내부
@@ -52,7 +152,10 @@ var PAGE_SLUGS = {
   hof: 'HOFPage.html',
   official: 'OfficialPage.html',
   bookmarks: 'bookmarksPage.html',
-  notice: 'changelogPage.html'
+  notice: 'changelogPage.html',
+  // 관리자용 방문자 통계 페이지. 화면 자체는 데이터가 없으면 아무것도 안
+  // 보여주고, 실제 수치는 /api/stats/* 가 STATS_ADMIN_TOKEN 으로 막는다.
+  stats: 'statsPage.html'
 };
 
 var LEGACY_HTML_TO_SLUG = {};
@@ -61,6 +164,11 @@ for (var slug in PAGE_SLUGS) {
 }
 
 export default {
+  // 1분 Cron(wrangler.toml [triggers]). 접속자 게이지를 Analytics Engine에 적재.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(recordPresenceSample(env));
+  },
+
   async fetch(request, env, ctx) {
     var url = new URL(request.url);
 
@@ -70,6 +178,12 @@ export default {
       var newUrl = new URL(url);
       newUrl.hostname = NEW_DOMAIN;
       return Response.redirect(newUrl.toString(), 301);
+    }
+
+    // 방문자 통계 API — 하트비트(공개)와 관리자 조회. backend(북마크 API)와
+    // 완전히 분리된 모듈로 넘긴다.
+    if (isStatsPath(url.pathname)) {
+      return statsApi.fetch(request, env, ctx);
     }
 
     // CORS 프리플라이트(OPTIONS)는 API 경로에서만 의미가 있지만, 정적 자산은
@@ -105,6 +219,14 @@ export default {
       var redirectUrl = new URL(url);
       redirectUrl.pathname = legacyTarget;
       return Response.redirect(redirectUrl.toString(), 308);
+    }
+
+    // 여기까지 왔다는 건 리다이렉트 없이 실제 페이지를 돌려준다는 뜻이다.
+    // 사람이 문서를 연 요청이면 Analytics Engine에 방문 한 줄을 남긴다
+    // (waitUntil로 응답 흐름 밖에서 처리). 관리자 통계 페이지 자신은 세지
+    // 않는다 — 수치를 보는 행위가 수치를 흔들면 안 된다.
+    if (url.pathname !== '/stats' && isPageView(request, url)) {
+      ctx.waitUntil(recordPageView(request, env, url));
     }
 
     // "/"는 메인 페이지 슬러그(main)와 같은 것으로 취급한다.

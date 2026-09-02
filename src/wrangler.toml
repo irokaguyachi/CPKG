@@ -95,3 +95,47 @@ namespace_id = "1006"
   [ratelimits.simple]
   limit = 20
   period = 60
+
+# ---- 방문자 통계 ----
+# 목표는 Cloudflare 커스텀 대시보드(Traffic overview)에서 이 수치를 차트로
+# 보는 것이다. 커스텀 대시보드는 GraphQL API 데이터셋만 그리는데, Analytics
+# Engine 데이터셋도 GraphQL로 조회되므로("Cloudflare 대시보드를 돌리는 그
+# API") 후보가 된다. 두 데이터셋으로 나눈 이유는 방문 이벤트와 접속자 게이지가
+# 스키마도 조회 방식도 달라서, 한 데이터셋에 섞으면 차트마다 판별용 필터를
+# 걸어야 하기 때문이다.
+#
+# 1) 순 방문자·페이지뷰. _worker.js의 recordPageView가 문서 요청마다
+#    writeDataPoint를 한 줄씩 남긴다. dataset 이름을 바꾸면 statsApi.js의
+#    AE_DATASET 상수도 같이 바꿔야 한다.
+[[analytics_engine_datasets]]
+binding = "VISITS_AE"
+dataset = "cpkg_visits"
+
+# 2) 동시 접속자 게이지. 아래 [triggers] Cron이 1분마다 Durable Object에서
+#    현재 접속자 수를 읽어 이 데이터셋에 한 줄씩 적재한다 → 시계열 차트로
+#    "동시 접속자 추이"를, 하루치 MAX로 "피크"를 그릴 수 있다.
+[[analytics_engine_datasets]]
+binding = "PRESENCE_AE"
+dataset = "cpkg_presence"
+
+# 3) 실시간 동시 접속자 수와 피크는 Durable Object 하나(이름 "global")가
+#    들고 있다. new_sqlite_classes 로 올려서 무료 요금제에서도 동작한다.
+#    class_name 은 _worker.js가 export 하는 클래스 이름과 정확히 같아야 한다.
+[[durable_objects.bindings]]
+name = "PRESENCE"
+class_name = "PresenceDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PresenceDO"]
+
+# 1분마다 scheduled 핸들러(_worker.js)를 깨워 접속자 게이지를 PRESENCE_AE에
+# 적재한다. 사이트에 아무도 없어도 online=0 한 줄이 남아 그래프가 끊기지 않는다.
+[triggers]
+crons = ["* * * * *"]
+
+# Analytics Engine SQL API 호출에 쓰는 계정 ID. 시크릿이 아니라 vars 로 둔다.
+# 조회용 토큰(CF_ANALYTICS_TOKEN, Account Analytics: Read)과 통계 페이지
+# 접근 토큰(STATS_ADMIN_TOKEN)은 `wrangler secret put` 으로 따로 넣는다.
+[vars]
+CF_ACCOUNT_ID = "494ceae5bf9fdce6201060393a5a1d30"

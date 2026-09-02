@@ -49,10 +49,13 @@
         }
       }
 
+      // sound가 아직 닫히지 않은 상태(currentSound)에서 만난 img/sfx는 그
+      // 구간 소속으로 함께 표시해둔다 — 아래 병합 단계에서 이걸로 "같은
+      // 사운드 구간 안의 이미지"와 "구간 밖의 독립 이미지"를 구분한다.
       var imgMatch = line.match(/^<img="([^"]*)">$/);
       if (imgMatch) {
         flushParagraph();
-        segments.push({ type: 'img', src: imgMatch[1], gap: pendingGap });
+        segments.push({ type: 'img', src: imgMatch[1], gap: pendingGap, sound: currentSound });
         pendingGap = 0;
         continue;
       }
@@ -62,7 +65,7 @@
       var sfxMatch = line.match(/^<sfx="([^"]*)">$/);
       if (sfxMatch) {
         flushParagraph();
-        segments.push({ type: 'sfx', src: sfxMatch[1], gap: pendingGap });
+        segments.push({ type: 'sfx', src: sfxMatch[1], gap: pendingGap, sound: currentSound });
         pendingGap = 0;
         continue;
       }
@@ -86,16 +89,26 @@
     }
     flushParagraph();
 
-    // 인접한 문단의 sound 값이 같으면 하나의 구간(sound-block)으로 병합
+    // 인접한 세그먼트의 sound 값이 같으면 하나의 구간(sound-block)으로 병합.
+    // 문단뿐 아니라 그 구간 안에서 만난 img/sfx도 같이 묶는다 — 안 그러면
+    // <sound>...<img>...</sound> 처럼 구간 중간에 이미지가 끼었을 때 앞뒤
+    // 문단이 서로 다른 sound-block(DOM 엘리먼트)으로 쪼개져서, 스크롤로 그
+    // 이미지를 지나가는 순간 재생 중이던 같은 곡이 "새 구간 진입"으로
+    // 오인되어 처음부터 다시 시작되는 것처럼 끊겨 들린다
+    // (audioNovelReader.js의 playKey가 구간을 DOM 엘리먼트 참조로 구분하기
+    // 때문 — 아래 setupScrollTrigger/createPlayer 참고).
     var blocks = [];
     for (var j = 0; j < segments.length; j++) {
       var seg = segments[j];
-      if (seg.type === 'p' && seg.sound) {
+      if (seg.sound) {
+        var item = seg.type === 'p'
+          ? { type: 'p', text: seg.text, gap: seg.gap }
+          : { type: seg.type, src: seg.src, gap: seg.gap };
         var last = blocks[blocks.length - 1];
         if (last && last.type === 'sound-block' && last.sound === seg.sound) {
-          last.paragraphs.push({ text: seg.text, gap: seg.gap });
+          last.items.push(item);
         } else {
-          blocks.push({ type: 'sound-block', sound: seg.sound, paragraphs: [{ text: seg.text, gap: seg.gap }] });
+          blocks.push({ type: 'sound-block', sound: seg.sound, items: [item] });
         }
       } else {
         blocks.push(seg);
@@ -114,6 +127,34 @@
     if (gap) el.style.marginTop = (gap * GAP_UNIT_PX) + 'px';
   }
 
+  // sound-block 안/밖 어디서든 재사용하는 엘리먼트 빌더 — 구간에 딸린
+  // img/sfx도 구간 밖의 독립 img/sfx와 완전히 같은 모양으로 그려야 하므로
+  // 렌더링 코드를 한 군데로 모은다.
+  function buildImgEl(src, gap, resolveImgUrl) {
+    var figure = document.createElement('figure');
+    figure.className = 'an-figure';
+    applyGap(figure, gap);
+    var img = document.createElement('img');
+    img.src = resolveImgUrl(src);
+    img.alt = '';
+    img.loading = 'lazy';
+    figure.appendChild(img);
+    return figure;
+  }
+  function buildSfxEl(src) {
+    var marker = document.createElement('span');
+    marker.className = 'an-sfx-marker';
+    marker.dataset.sfx = src;
+    return marker;
+  }
+  function buildPEl(text, gap) {
+    var p = document.createElement('p');
+    p.className = 'an-p';
+    p.textContent = text;
+    applyGap(p, gap);
+    return p;
+  }
+
   function render(container, blocks, resolveImgUrl) {
     container.innerHTML = '';
     var frag = document.createDocumentFragment();
@@ -125,38 +166,25 @@
         h1.textContent = block.text;
         frag.appendChild(h1);
       } else if (block.type === 'img') {
-        var figure = document.createElement('figure');
-        figure.className = 'an-figure';
-        applyGap(figure, block.gap);
-        var img = document.createElement('img');
-        img.src = resolveImgUrl(block.src);
-        img.alt = '';
-        img.loading = 'lazy';
-        figure.appendChild(img);
-        frag.appendChild(figure);
+        frag.appendChild(buildImgEl(block.src, block.gap, resolveImgUrl));
       } else if (block.type === 'sound-block') {
         var section = document.createElement('section');
         section.className = 'an-sound-block';
         section.dataset.sound = block.sound;
-        block.paragraphs.forEach(function (para) {
-          var p = document.createElement('p');
-          p.className = 'an-p';
-          p.textContent = para.text;
-          applyGap(p, para.gap);
-          section.appendChild(p);
+        block.items.forEach(function (item) {
+          if (item.type === 'img') {
+            section.appendChild(buildImgEl(item.src, item.gap, resolveImgUrl));
+          } else if (item.type === 'sfx') {
+            section.appendChild(buildSfxEl(item.src));
+          } else {
+            section.appendChild(buildPEl(item.text, item.gap));
+          }
         });
         frag.appendChild(section);
       } else if (block.type === 'p') {
-        var p2 = document.createElement('p');
-        p2.className = 'an-p';
-        p2.textContent = block.text;
-        applyGap(p2, block.gap);
-        frag.appendChild(p2);
+        frag.appendChild(buildPEl(block.text, block.gap));
       } else if (block.type === 'sfx') {
-        var marker = document.createElement('span');
-        marker.className = 'an-sfx-marker';
-        marker.dataset.sfx = block.src;
-        frag.appendChild(marker);
+        frag.appendChild(buildSfxEl(block.src));
       }
     });
 
