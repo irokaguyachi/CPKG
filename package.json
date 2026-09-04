@@ -1,0 +1,13 @@
+{
+  "name": "cpk-gallery",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CPK_Gallery 배포용 빌드 도구 (src/ → dist/, JS 난독화)",
+  "scripts": {
+    "build": "node build.js",
+    "deploy": "npm run build && cd dist && npx wrangler deploy"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.1"
+  }
+}

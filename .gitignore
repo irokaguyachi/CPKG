@@ -8,6 +8,11 @@
 worker/.wrangler/
 .wrangler/
 
+# 배포용 빌드 산출물(난독화된 dist/js 포함) — build.js가 매번 새로 생성하므로
+# 커밋하지 않는다. 배포 대상은 항상 이 폴더를 새로 빌드해서 만든다.
+/dist/
+node_modules/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db

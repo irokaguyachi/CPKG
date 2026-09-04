@@ -33,3 +33,26 @@ python 8_build_recent_page_data.py # 메인 페이지 전용 Recent.json 생성 
 python src/scripts/sync_to_r2.py
 ```
 
+## 🔒 배포 (JS 난독화 빌드)
+
+실제 사이트(cpkg.cloud)에 방문자가 원본 `src/js/*.js`를 그대로 받아가지
+않도록, 배포 전 저장소 루트의 `build.js`가 `src/` 전체를 `dist/`로 복사하고
+`dist/js/*.js`만 난독화합니다. `src/`는 계속 가독성 있는 개발용 소스로 남고,
+`dist/`는 매 빌드마다 새로 생성되는 산출물이라 git에 커밋하지 않습니다.
+
+```bash
+# 저장소 루트에서 최초 1회
+npm install
+
+# 빌드 + 배포
+npm run deploy
+# == npm run build (src/ -> dist/, dist/js 난독화) 후 dist/에서 wrangler deploy
+
+# 빌드만 하고 결과를 직접 확인하고 싶을 때
+npm run build
+cd dist && python -m http.server 8000   # http://localhost:8000 에서 난독화된 빌드를 직접 확인
+```
+
+> `_worker.js` / `statsApi.js` / `presenceDO.js`는 Cloudflare Workers 엣지에서만
+> 실행되고 브라우저로 내려가지 않으므로 난독화 대상이 아닙니다.
+
