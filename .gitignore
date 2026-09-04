@@ -13,6 +13,9 @@ worker/.wrangler/
 /dist/
 node_modules/
 
+# 난독화 결과 캐시(해시별 산출물) — build.js가 재생성하는 산출물이라 커밋 안 함
+/.build-cache/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db

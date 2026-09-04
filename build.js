@@ -12,6 +12,10 @@
  *   런타임 로직이 깨질 위험만 커진다.
  * - 개발은 계속 src/에서 한다(`cd src && python -m http.server`).
  *   dist/는 빌드할 때마다 새로 생성되는 산출물이라 git에 커밋하지 않는다.
+ * - 난독화 결과는 .build-cache/에 (원본 내용 + 옵션) 해시로 캐싱한다. dist/는
+ *   매번 통째로 새로 만들어도, 실제로 바뀐 js 파일만 다시 난독화하고 나머지는
+ *   캐시에서 그대로 복사한다 — 옵션(OBFUSCATE_OPTIONS)을 바꾸면 해시가 달라져
+ *   자동으로 전체 재난독화된다. .build-cache/도 산출물이라 git에 커밋하지 않는다.
  *
  * 사용법:
  *   npm run build   # dist/ 생성
@@ -19,11 +23,13 @@
  */
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const JavaScriptObfuscator = require('javascript-obfuscator');
 
 const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
 const DIST = path.join(ROOT, 'dist');
+const CACHE_DIR = path.join(ROOT, '.build-cache', 'js');
 
 // 변수/함수명을 완전히 꼬아서 읽기 어렵게 만드는 게 목적.
 // selfDefending / deadCodeInjection은 일부러 껐다 — 이 두 옵션은 실행 중
@@ -63,27 +69,60 @@ function copySrcToDist() {
   });
 }
 
-function obfuscateJsDir(dir) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      obfuscateJsDir(full);
-      continue;
-    }
-    if (!entry.name.endsWith('.js')) continue;
+// OBFUSCATE_OPTIONS를 해시에 섞어 넣어서, 옵션을 바꾸면 캐시가 자동으로
+// 무효화되고(예전 옵션으로 만든 결과를 재사용하지 않고) 전체가 다시 난독화되게 한다.
+const OPTIONS_FINGERPRINT = crypto
+  .createHash('sha256')
+  .update(JSON.stringify(OBFUSCATE_OPTIONS))
+  .digest('hex')
+  .slice(0, 16);
 
-    const original = fs.readFileSync(full, 'utf8');
-    const relPath = path.relative(DIST, full);
-    try {
-      const obfuscated = JavaScriptObfuscator.obfuscate(original, OBFUSCATE_OPTIONS).getObfuscatedCode();
-      fs.writeFileSync(full, obfuscated, 'utf8');
-      console.log(`  [ok] ${relPath}`);
-    } catch (err) {
-      // 난독화가 실패한 파일은 원본 그대로 둔다(사이트가 깨지는 것보다
-      // 그 파일 하나가 안 꼬이는 게 낫다) — 대신 눈에 띄게 경고한다.
-      console.warn(`  [skip] ${relPath}: ${err.message}`);
+function cachePathFor(original) {
+  const hash = crypto.createHash('sha256').update(original).update(OPTIONS_FINGERPRINT).digest('hex');
+  return path.join(CACHE_DIR, `${hash}.js`);
+}
+
+function obfuscateJsDir(dir) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  let hits = 0;
+  let misses = 0;
+
+  function walk(d) {
+    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.name.endsWith('.js')) continue;
+
+      const original = fs.readFileSync(full, 'utf8');
+      const relPath = path.relative(DIST, full);
+      const cachePath = cachePathFor(original);
+
+      if (fs.existsSync(cachePath)) {
+        fs.copyFileSync(cachePath, full);
+        hits++;
+        console.log(`  [cache] ${relPath}`);
+        continue;
+      }
+
+      try {
+        const obfuscated = JavaScriptObfuscator.obfuscate(original, OBFUSCATE_OPTIONS).getObfuscatedCode();
+        fs.writeFileSync(full, obfuscated, 'utf8');
+        fs.writeFileSync(cachePath, obfuscated, 'utf8');
+        misses++;
+        console.log(`  [ok] ${relPath}`);
+      } catch (err) {
+        // 난독화가 실패한 파일은 원본 그대로 둔다(사이트가 깨지는 것보다
+        // 그 파일 하나가 안 꼬이는 게 낫다) — 대신 눈에 띄게 경고한다.
+        console.warn(`  [skip] ${relPath}: ${err.message}`);
+      }
     }
   }
+
+  walk(dir);
+  console.log(`[build] 난독화 캐시 적중 ${hits}개 / 신규 ${misses}개`);
 }
 
 console.log('[build] src/ -> dist/ 복사 중...');
