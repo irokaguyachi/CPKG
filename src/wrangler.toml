@@ -159,3 +159,120 @@ crons = ["* * * * *"]
 # 접근 토큰(STATS_ADMIN_TOKEN)은 `wrangler secret put` 으로 따로 넣는다.
 [vars]
 CF_ACCOUNT_ID = "494ceae5bf9fdce6201060393a5a1d30"
+
+# ---- dev 브랜치 전용 배포 환경 ----
+# Cloudflare Workers Builds는 Durable Object(PRESENCE/PresenceDO)가 있는
+# Worker에는 브랜치별 프리뷰 URL을 아예 만들어주지 않는다(공식 문서에 명시된
+# 제약). dev 브랜치가 실제로 열어볼 수 있는 고정 링크를 가지려면 별도 이름의
+# Worker(cpkg-dev)로 따로 배포하는 수밖에 없다.
+#
+# 바인딩(vars/durable_objects/kv_namespaces/r2_buckets/d1_databases/
+# ratelimits/assets 등)은 환경 간에 상속되지 않아 전부 다시 선언해야 한다 —
+# 지금은 D1(TAGS_DB)/R2(FAVORITES_BUCKET)/KV(RATE_LIMIT_KV)를 프로덕션과
+# 동일한 리소스로 그대로 재사용한다(별도 D1/R2를 새로 파지 않았다). 즉
+# cpkg-dev에서 투표·북마크·회원가입을 테스트하면 실제 프로덕션 데이터에
+# 그대로 반영된다 — Durable Object 상태만 스크립트 단위라 cpkg-dev의
+# PresenceDO는 프로덕션과 자동으로 분리된다. 방문자 통계(Analytics Engine)만
+# 별도 데이터셋(*_dev)으로 나눠서 dev 접속이 프로덕션 통계를 오염시키지
+# 않게 했다(단, 관리자 통계 페이지의 조회 쿼리는 statsApi.js에 데이터셋
+# 이름이 그대로 박혀 있어서 dev에서 열어도 프로덕션 수치가 보인다 — 그
+# 자체는 문제 없음, dev 전용 조회 화면이 필요해지면 그때 statsApi.js도
+# 환경별로 나누면 된다).
+[env.dev]
+name = "cpkg-dev"
+workers_dev = true
+# routes는 상속된다 — 안 비우면 cpkg.cloud 커스텀 도메인을 프로덕션에서
+# 뺏어와 버린다(wrangler deploy --dry-run이 이 경고를 직접 알려준다).
+routes = []
+
+[env.dev.vars]
+CF_ACCOUNT_ID = "494ceae5bf9fdce6201060393a5a1d30"
+
+[env.dev.assets]
+directory = "."
+binding = "ASSETS"
+html_handling = "none"
+
+[env.dev.version_metadata]
+binding = "CF_VERSION_METADATA"
+
+[[env.dev.r2_buckets]]
+binding = "FAVORITES_BUCKET"
+bucket_name = "chokaguya-assets"
+
+[[env.dev.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "564a89b518d544eeabec62fb758d17ed"
+
+[[env.dev.d1_databases]]
+binding = "TAGS_DB"
+database_name = "cpkg-tags"
+database_id = "ef95b6f7-38e6-4408-8783-0f6d89a077b3"
+
+[[env.dev.ratelimits]]
+name = "RL_LIB_WRITE"
+namespace_id = "1001"
+  [env.dev.ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_LIB_LIST"
+namespace_id = "1002"
+  [env.dev.ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_OWNER_LOOKUP"
+namespace_id = "1003"
+  [env.dev.ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_USER_AUTH"
+namespace_id = "1004"
+  [env.dev.ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_USER_SYNC"
+namespace_id = "1005"
+  [env.dev.ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_PANCAKE"
+namespace_id = "1006"
+  [env.dev.ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_TAG_WRITE"
+namespace_id = "1007"
+  [env.dev.ratelimits.simple]
+  limit = 20
+  period = 60
+
+# 프로덕션 방문자 통계를 오염시키지 않도록 dev 전용 데이터셋을 쓴다.
+# Analytics Engine 데이터셋은 별도 프로비저닝 없이 첫 writeDataPoint에서
+# 자동 생성된다.
+[[env.dev.analytics_engine_datasets]]
+binding = "VISITS_AE"
+dataset = "cpkg_visits_dev"
+
+[[env.dev.analytics_engine_datasets]]
+binding = "PRESENCE_AE"
+dataset = "cpkg_presence_dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "PRESENCE"
+class_name = "PresenceDO"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["PresenceDO"]
