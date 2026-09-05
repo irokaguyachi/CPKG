@@ -176,6 +176,10 @@ html.theme-transitioning *:after {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* .sfp-pool-toggle은 .settings-mode-btn 클래스를 그대로 쓰므로 다크모드도
+   그쪽 정의([data-theme="dark"] .settings-mode-btn)를 그대로 상속한다 —
+   여기 따로 정의할 게 없다. */
+
 /* Post Cards & Series Cards & HOF Cards */
 [data-theme="dark"] .report-heading {
   color: var(--dark-emphasis);
@@ -289,7 +293,8 @@ html.theme-transitioning *:after {
    Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
    ========================================================================== */
 [data-theme="dark"] .series-card-tag,
-[data-theme="dark"] .sfp-label {
+[data-theme="dark"] .sfp-label,
+[data-theme="dark"] .pds-tag-pill {
   background: rgba(255, 255, 255, 0.08) !important;
   color: #e2e8f0 !important;
   border: 0.5px solid rgba(255, 255, 255, 0.12);
@@ -298,98 +303,112 @@ html.theme-transitioning *:after {
 
 /* Individual tag soft tints in dark mode */
 [data-theme="dark"] .series-card-tag[data-tag="소설"],
-[data-theme="dark"] .sfp-label[data-tag="소설"] {
+[data-theme="dark"] .sfp-label[data-tag="소설"],
+[data-theme="dark"] .pds-tag-pill[data-tag="소설"] {
   background: rgba(180, 125, 85, 0.22) !important;
   color: #f2caa7 !important;
   border-color: rgba(215, 150, 105, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="명예관"],
-[data-theme="dark"] .sfp-label[data-tag="명예관"] {
+[data-theme="dark"] .sfp-label[data-tag="명예관"],
+[data-theme="dark"] .pds-tag-pill[data-tag="명예관"] {
   background: rgba(195, 145, 45, 0.22) !important;
   color: #ffd97d !important;
   border-color: rgba(235, 180, 60, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="피폐"],
-[data-theme="dark"] .sfp-label[data-tag="피폐"] {
+[data-theme="dark"] .sfp-label[data-tag="피폐"],
+[data-theme="dark"] .pds-tag-pill[data-tag="피폐"] {
   background: rgba(175, 60, 70, 0.22) !important;
   color: #fca5ac !important;
   border-color: rgba(215, 85, 95, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="로맨스"],
-[data-theme="dark"] .sfp-label[data-tag="로맨스"] {
+[data-theme="dark"] .sfp-label[data-tag="로맨스"],
+[data-theme="dark"] .pds-tag-pill[data-tag="로맨스"] {
   background: rgba(195, 75, 115, 0.22) !important;
   color: #ffaec8 !important;
   border-color: rgba(235, 105, 145, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="슬픔"],
-[data-theme="dark"] .sfp-label[data-tag="슬픔"] {
+[data-theme="dark"] .sfp-label[data-tag="슬픔"],
+[data-theme="dark"] .pds-tag-pill[data-tag="슬픔"] {
   background: rgba(75, 105, 185, 0.22) !important;
   color: #b2c8fb !important;
   border-color: rgba(105, 140, 225, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="일상"],
-[data-theme="dark"] .sfp-label[data-tag="일상"] {
+[data-theme="dark"] .sfp-label[data-tag="일상"],
+[data-theme="dark"] .pds-tag-pill[data-tag="일상"] {
   background: rgba(45, 145, 135, 0.22) !important;
   color: #86ece3 !important;
   border-color: rgba(70, 185, 175, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="코미디"],
-[data-theme="dark"] .sfp-label[data-tag="코미디"] {
+[data-theme="dark"] .sfp-label[data-tag="코미디"],
+[data-theme="dark"] .pds-tag-pill[data-tag="코미디"] {
   background: rgba(180, 145, 35, 0.22) !important;
   color: #ffe67d !important;
   border-color: rgba(220, 180, 50, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="후방주의"],
-[data-theme="dark"] .sfp-label[data-tag="후방주의"] {
+[data-theme="dark"] .sfp-label[data-tag="후방주의"],
+[data-theme="dark"] .pds-tag-pill[data-tag="후방주의"] {
   background: rgba(195, 60, 60, 0.22) !important;
   color: #ff9999 !important;
   border-color: rgba(235, 80, 80, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="짧문"],
-[data-theme="dark"] .sfp-label[data-tag="짧문"] {
+[data-theme="dark"] .sfp-label[data-tag="짧문"],
+[data-theme="dark"] .pds-tag-pill[data-tag="짧문"] {
   background: rgba(175, 75, 160, 0.22) !important;
   color: #f7b2ee !important;
   border-color: rgba(215, 100, 200, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="장편"],
-[data-theme="dark"] .sfp-label[data-tag="장편"] {
+[data-theme="dark"] .sfp-label[data-tag="장편"],
+[data-theme="dark"] .pds-tag-pill[data-tag="장편"] {
   background: rgba(75, 155, 65, 0.22) !important;
   color: #a9f79e !important;
   border-color: rgba(105, 195, 90, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="감동"],
-[data-theme="dark"] .sfp-label[data-tag="감동"] {
+[data-theme="dark"] .sfp-label[data-tag="감동"],
+[data-theme="dark"] .pds-tag-pill[data-tag="감동"] {
   background: rgba(185, 125, 55, 0.22) !important;
   color: #ffd294 !important;
   border-color: rgba(225, 160, 80, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="대회"],
-[data-theme="dark"] .sfp-label[data-tag="대회"] {
+[data-theme="dark"] .sfp-label[data-tag="대회"],
+[data-theme="dark"] .pds-tag-pill[data-tag="대회"] {
   background: rgba(60, 120, 195, 0.22) !important;
   color: #9ecaff !important;
   border-color: rgba(90, 155, 235, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="단편"],
-[data-theme="dark"] .sfp-label[data-tag="단편"] {
+[data-theme="dark"] .sfp-label[data-tag="단편"],
+[data-theme="dark"] .pds-tag-pill[data-tag="단편"] {
   background: rgba(125, 85, 185, 0.22) !important;
   color: #dcb8ff !important;
   border-color: rgba(160, 115, 225, 0.35);
 }
 
 [data-theme="dark"] .series-card-tag[data-tag="글카스"],
-[data-theme="dark"] .sfp-label[data-tag="글카스"] {
+[data-theme="dark"] .sfp-label[data-tag="글카스"],
+[data-theme="dark"] .pds-tag-pill[data-tag="글카스"] {
   background: rgba(110, 115, 125, 0.22) !important;
   color: #d2d7df !important;
   border-color: rgba(145, 150, 160, 0.35);

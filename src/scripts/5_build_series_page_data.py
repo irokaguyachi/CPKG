@@ -11,7 +11,6 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(__file__)
 POST_LINK_BASE = "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no="
-LEADING_TAG_RE = re.compile(r"^\[([^\]]*)\]")
 
 src_path = os.path.join(HERE, "..", "data", "MoonHakdata.json")
 hof_md_path = os.path.join(HERE, "..", "data", "문학 정리", "명예관", "명예관.md")
@@ -20,7 +19,7 @@ out_dir = os.path.join(HERE, "..", "data", "PageData")
 out_path = os.path.join(out_dir, "Series.json")
 
 data = json.load(open(src_path, encoding="utf-8"))
-posts_by_id = {p["i"]: p for p in data["posts"]}
+posts_by_id = {p["id"]: p for p in data["posts"]}
 
 # 기존 파일의 수동 image 매핑 보존 (CLAUDE.md 최우선 규칙 —
 # 7_build_novel_page_data.py 의 existing_image 패턴과 동일).
@@ -50,31 +49,29 @@ if os.path.exists(hof_md_path):
 
 series_out = []
 for s in data["series"]:
-    m = LEADING_TAG_RE.match(s.get("g") or "")
-    tags = [t.strip() for t in m.group(1).split(",")] if m else []
-    tags = [t for t in tags if t]
+    tags = list(s.get("tags") or [])
 
     # the series-level tagline doesn't carry 명예관 (it's a per-post tag),
     # so promote it to the series if any chapter was individually tagged
     if "명예관" not in tags and any(
-        ch["i"] in hof_ids or "명예관" in (posts_by_id.get(ch["i"], {}).get("g") or [])
-        for ch in s.get("ch", [])
+        ch["id"] in hof_ids or "명예관" in (posts_by_id.get(ch["id"], {}).get("tags") or [])
+        for ch in s.get("chapters", [])
     ):
         tags.append("명예관")
 
     posts = [
         {
-            "id": ch["i"],
-            "title": ch["t"],
-            "episode": ch["n"],
-            "link": POST_LINK_BASE + str(ch["i"]),
+            "id": ch["id"],
+            "title": ch["title"],
+            "episode": ch["episode"],
+            "link": POST_LINK_BASE + str(ch["id"]),
         }
-        for ch in s.get("ch", [])
+        for ch in s.get("chapters", [])
     ]
 
     first_post_id = posts[0]["id"] if posts else None
     series_out.append({
-        "name": s["n"],
+        "name": s["name"],
         "image": existing_image_by_first_post.get(first_post_id),
         "tags": tags,
         "posts": posts,

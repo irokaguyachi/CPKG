@@ -54,14 +54,340 @@
       if (e.target === overlayEl) close();
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') close();
+      if (e.key !== 'Escape') return;
+      // 태그 선택 모달이 위에 떠 있으면 그것부터 닫는다(상세 팝업까지 한
+      // 번에 닫히면 모달 두 개가 한꺼번에 사라져 당황스럽다).
+      if (tagPickerOverlayEl) closeTagPicker();
+      else close();
     });
     document.body.appendChild(overlayEl);
     return overlayEl;
   }
 
-  // data: { seriesName, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }] }
+  // ---- 공식 태그 / 유저 인기 태그 섹션 ----
+  // "공식 태그"는 AI가 분류해 둔 기존 장르 태그를 그대로 정적으로 보여주는
+  // 줄이고(투표 불가), "유저 인기 태그"는 스팀 "이 제품의 태그 보기 및 변경"
+  // 다이얼로그를 본뜬 투표 UI다. 둘은 별개 레이어 — 공식 태그를 유저 투표로
+  // 대체하는 게 아니라 그 위에 얹는다. 자유 입력 없음 — PageData/
+  // UserTagCatalog.json(문학 정리/유저인기태그후보.md에서 사람이 직접 정한
+  // 후보)에서만 투표 가능하다. 메인 줄에는 득표 상위 3개만 보이고(0표뿐이면
+  // 아무것도 안 보임), `+`를 누르면 전체 후보를 고를 수 있는 별도 모달이
+  // 뜬다(스팀처럼 인라인으로 옆에 펼치지 않음).
+  var TAG_TOP_VISIBLE = 3;
+  var tagCatalogPromise = null;
+  // 태그 선택 모달은 상세 팝업(.pds-overlay) 위에 겹쳐 뜨는 별도 오버레이라,
+  // Escape 키가 상세 팝업이 아니라 이 모달부터 닫도록 ensureOverlay의 전역
+  // keydown 핸들러가 이 변수를 확인한다.
+  var tagPickerOverlayEl = null;
+
+  function closeTagPicker() {
+    if (!tagPickerOverlayEl) return;
+    tagPickerOverlayEl.remove();
+    tagPickerOverlayEl = null;
+  }
+
+  function getTagCatalog() {
+    if (!tagCatalogPromise) {
+      var fetchJson = global.fetchJsonCached || function (p) { return fetch(p).then(function (r) { return r.json(); }); };
+      var dataUrl = global.dataUrl || function (p) { return p; };
+      tagCatalogPromise = fetchJson(dataUrl('../data/PageData/UserTagCatalog.json'))
+        .then(function (list) { return Array.isArray(list) ? list : []; })
+        .catch(function () {
+          // 실패를 캐시해버리면 네트워크가 살아난 뒤에도 새로고침 전까지
+          // 계속 빈 후보 목록만 보인다 — 다음 호출이 다시 시도하게 한다.
+          tagCatalogPromise = null;
+          return [];
+        });
+    }
+    return tagCatalogPromise;
+  }
+
+  function postTagsJson(path, body) {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (res.ok) return res.json();
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        throw new Error((data && data.error) || ('요청에 실패했어요 (' + res.status + ')'));
+      });
+    });
+  }
+
+  // 정적 표시 전용 — AI가 이미 분류해 둔 태그를 그대로 알약으로 보여줄 뿐,
+  // 클릭해도 아무 일도 일어나지 않는다(투표는 유저 인기 태그 쪽에서만).
+  function renderOfficialTagsRow(tags) {
+    var section = document.createElement('div');
+    section.className = 'pds-tags pds-tags-official';
+
+    var label = document.createElement('p');
+    label.className = 'pds-tags-label';
+    label.textContent = '공식 태그';
+    section.appendChild(label);
+
+    var pillsWrap = document.createElement('div');
+    pillsWrap.className = 'pds-tags-pills';
+    section.appendChild(pillsWrap);
+
+    var TAG_COLORS = global.TagConfig.TAG_COLORS;
+    var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
+    var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
+    var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
+    var sortTags = global.TagConfig.sortTags;
+
+    (sortTags ? sortTags(tags) : tags).forEach(function (tag) {
+      var pill = document.createElement('span');
+      pill.className = 'pds-tag-pill pds-tag-static';
+      pill.dataset.tag = tag;
+      pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
+      pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
+      pillsWrap.appendChild(pill);
+    });
+
+    return section;
+  }
+
+  function renderUserTagsSection(postId) {
+    var section = document.createElement('div');
+    section.className = 'pds-tags pds-tags-user';
+
+    var label = document.createElement('p');
+    label.className = 'pds-tags-label';
+    label.textContent = '유저 인기 태그';
+    section.appendChild(label);
+
+    var pillsWrap = document.createElement('div');
+    pillsWrap.className = 'pds-tags-pills';
+    section.appendChild(pillsWrap);
+
+    var errorEl = document.createElement('p');
+    errorEl.className = 'pds-tags-error';
+    errorEl.hidden = true;
+    section.appendChild(errorEl);
+    var errorTimer = null;
+    function showTagError(message) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+      if (errorTimer) clearTimeout(errorTimer);
+      errorTimer = setTimeout(function () { errorEl.hidden = true; }, 4000);
+    }
+
+    var TAG_COLORS = global.TagConfig.TAG_COLORS;
+    var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
+    var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
+    var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
+
+    var catalog = [];
+    var votes = {};
+    var myTags = [];
+    var pending = {};
+    var pickerListEl = null; // 모달이 열려 있을 때만 채워짐
+
+    function currentPersonalCode() {
+      return (global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn())
+        ? global.BookmarkLibrary.getPersonalCode()
+        : null;
+    }
+
+    function sortedCatalog() {
+      return catalog.slice().sort(function (a, b) { return (votes[b] || 0) - (votes[a] || 0); });
+    }
+
+    // 메인 줄: 득표가 있는 태그만, 상위 3개까지만 보여준다. 득표가 하나도
+    // 없으면 "+" 버튼만 남는다(처음엔 비어 있는 상태) — 스팀도 아무도 안 단
+    // 태그는 목록에서 아예 빠진다.
+    function renderMainRow() {
+      pillsWrap.innerHTML = '';
+      sortedCatalog()
+        .filter(function (t) { return (votes[t] || 0) > 0; })
+        .slice(0, TAG_TOP_VISIBLE)
+        .forEach(function (tag) { pillsWrap.appendChild(createPill(tag)); });
+
+      var addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'pds-tag-pill pds-tag-more';
+      addBtn.setAttribute('aria-label', '태그 선택');
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openPicker();
+      });
+      pillsWrap.appendChild(addBtn);
+    }
+
+    function createPill(tag) {
+      var pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'pds-tag-pill' + (myTags.indexOf(tag) !== -1 ? ' is-voted' : '');
+      pill.dataset.tag = tag;
+      pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
+      pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
+      pill.title = (votes[tag] || 0) + '표';
+      pill.addEventListener('click', function (e) {
+        e.stopPropagation();
+        vote(tag);
+      });
+      return pill;
+    }
+
+    // 스팀 "이 제품의 태그 보기 및 변경" 다이얼로그를 본뜬 전체 후보 목록.
+    // 메인 줄과 별개 오버레이라 상세 팝업 위에 겹쳐 뜬다.
+    function openPicker() {
+      if (tagPickerOverlayEl) return;
+
+      var overlay = document.createElement('div');
+      overlay.className = 'pds-tagpicker-overlay';
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeTagPicker();
+      });
+
+      var dialog = document.createElement('div');
+      dialog.className = 'pds-tagpicker-dialog';
+      dialog.addEventListener('click', function (e) { e.stopPropagation(); });
+      overlay.appendChild(dialog);
+
+      var header = document.createElement('div');
+      header.className = 'pds-tagpicker-header';
+      var title = document.createElement('h3');
+      title.className = 'pds-tagpicker-title';
+      title.textContent = '태그 보기 및 변경';
+      header.appendChild(title);
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'pds-tagpicker-close';
+      closeBtn.setAttribute('aria-label', '닫기');
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeTagPicker();
+      });
+      header.appendChild(closeBtn);
+      dialog.appendChild(header);
+
+      var sub = document.createElement('p');
+      sub.className = 'pds-tagpicker-sub';
+      dialog.appendChild(sub);
+
+      var list = document.createElement('div');
+      list.className = 'pds-tagpicker-list';
+      dialog.appendChild(list);
+      pickerListEl = list;
+
+      renderPicker(sub);
+
+      document.body.appendChild(overlay);
+      tagPickerOverlayEl = overlay;
+    }
+
+    function renderPicker(subEl) {
+      if (subEl) {
+        var popularCount = catalog.filter(function (t) { return (votes[t] || 0) > 0; }).length;
+        subEl.textContent = '이 문학의 인기 태그: ' + popularCount + '개';
+      }
+      if (!pickerListEl) return;
+      pickerListEl.innerHTML = '';
+      sortedCatalog().forEach(function (tag) { pickerListEl.appendChild(createPickerRow(tag)); });
+    }
+
+    function createPickerRow(tag) {
+      var voted = myTags.indexOf(tag) !== -1;
+      var row = document.createElement('div');
+      row.className = 'pds-tagpicker-row' + (voted ? ' is-added' : '');
+
+      var emoji = document.createElement('span');
+      emoji.className = 'pds-tagpicker-row-emoji';
+      emoji.textContent = TAG_EMOJI[tag] || DEFAULT_EMOJI;
+      row.appendChild(emoji);
+
+      var name = document.createElement('span');
+      name.className = 'pds-tagpicker-row-label';
+      name.textContent = tag;
+      row.appendChild(name);
+
+      var count = document.createElement('span');
+      count.className = 'pds-tagpicker-row-count';
+      count.textContent = (votes[tag] || 0) + '표';
+      row.appendChild(count);
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pds-tagpicker-row-btn';
+      btn.textContent = voted ? '✓' : '+';
+      btn.setAttribute('aria-label', (voted ? '태그 투표 취소: ' : '태그 투표: ') + tag);
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        vote(tag);
+      });
+      row.appendChild(btn);
+
+      return row;
+    }
+
+    function vote(tag) {
+      if (pending[tag]) return;
+      var personalCode = currentPersonalCode();
+      if (!personalCode) {
+        if (!global.AuthModal) return;
+        global.AuthModal.requireLogin({
+          reason: '태그에 투표하려면 로그인이 필요해요',
+          onSuccess: function () { vote(tag); }
+        });
+        return;
+      }
+
+      pending[tag] = true;
+      var hadVote = myTags.indexOf(tag) !== -1;
+      applyVoteDelta(tag, hadVote ? -1 : 1, !hadVote);
+      renderMainRow();
+      if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
+
+      postTagsJson('/tags/vote', { personalCode: personalCode, postId: postId, tagName: tag })
+        .catch(function (err) {
+          // 실패 — 낙관적으로 반영했던 변경을 되돌리고 이유를 알려준다
+          applyVoteDelta(tag, hadVote ? 1 : -1, hadVote);
+          renderMainRow();
+          if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
+          showTagError((err && err.message) || '투표에 실패했어요. 잠시 후 다시 시도해주세요.');
+        })
+        .then(function () { delete pending[tag]; });
+    }
+
+    function applyVoteDelta(tag, delta, nowVoted) {
+      votes[tag] = Math.max(0, (votes[tag] || 0) + delta);
+      myTags = nowVoted ? myTags.concat([tag]) : myTags.filter(function (t) { return t !== tag; });
+    }
+
+    getTagCatalog()
+      .then(function (list) {
+        catalog = list;
+        return postTagsJson('/tags/get', { postId: postId, personalCode: currentPersonalCode() || undefined });
+      })
+      .then(function (res) {
+        votes = (res && res.votes) || {};
+        myTags = (res && res.myTags) || [];
+        renderMainRow();
+        // 태그 선택 모달을 열자마자 이 응답이 늦게 도착하면, 이미 그려진
+        // 모달이 빈 목록인 채로 남는다 — 열려 있으면 같이 다시 그린다.
+        if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
+      })
+      .catch(function () {
+        renderMainRow();
+        if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
+      });
+
+    return section;
+  }
+
+  // data: { seriesName, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }],
+  //         favType?, postId?, tags? }
   // 화수는 따로 받지 않고 episodes 길이로 계산합니다 (시리즈 판별 기준과 동일).
+  // favType이 'novel'이고 postId가 있을 때만 "공식 태그"(data.tags를 그대로
+  // 정적 표시) + "유저 인기 태그"(투표 UI) 두 줄을 그립니다. 시리즈/명예관/
+  // 공식은 사용자가 직접 관리하는 영역이라 대상이 아닙니다
+  // (literature-data-scope-boundary). 공식 태그는 모든 개별 문학이 대상이고
+  // (AI 장르 분류는 계속 유지), 유저 인기 태그 투표도 신규·기존 글 구분 없이
+  // 전부 대상입니다.
   function open(data) {
     data = data || {};
     var overlay = ensureOverlay();
@@ -111,12 +437,27 @@
 
     var name = document.createElement('p');
     name.className = 'pds-series-name';
-    name.textContent = data.seriesName || '시리즈 이름';
+    // 긴 제목만 2줄로 잘라야지 화수 배지까지 같이 잘리면 안 되므로, 잘리는
+    // 대상(제목 텍스트)을 배지와 분리된 자기 span으로 감싼다.
+    var nameText = document.createElement('span');
+    nameText.className = 'pds-series-name-text';
+    nameText.textContent = data.seriesName || '시리즈 이름';
+    name.appendChild(nameText);
     var episodeCountEl = document.createElement('span');
     episodeCountEl.className = 'pds-series-episode-count';
     episodeCountEl.textContent = (data.episodes || []).length + ' 화';
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
+
+    if (data.favType === 'novel' && data.postId != null) {
+      var tagsGroup = document.createElement('div');
+      tagsGroup.className = 'pds-tags-group';
+      if (data.tags && data.tags.length) {
+        tagsGroup.appendChild(renderOfficialTagsRow(data.tags));
+      }
+      tagsGroup.appendChild(renderUserTagsSection(data.postId));
+      seriesInfo.appendChild(tagsGroup);
+    }
 
     card.appendChild(seriesInfo);
 
@@ -356,6 +697,7 @@
 
   function close() {
     if (!overlayEl) return;
+    closeTagPicker();
     openCard = null;
     overlayEl.classList.remove('is-open');
     unlockScroll();

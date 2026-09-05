@@ -42,6 +42,17 @@ bucket_name = "chokaguya-assets"
 binding = "RATE_LIMIT_KV"
 id = "564a89b518d544eeabec62fb758d17ed"
 
+# ---- 유저 태그 투표 D1 ----
+# 태그 투표(post_id, tag_name, voter_hash)를 담는다 — 스키마는
+# worker/tags_schema.sql. `wrangler d1 create cpkg-tags`로 만든 실제
+# 데이터베이스(리전 APAC)다. 원격 배포 전에 한 번
+#   wrangler d1 execute cpkg-tags --remote --file=../worker/tags_schema.sql
+# 로 스키마를 적용해야 한다(로컬 검증은 --local로).
+[[d1_databases]]
+binding = "TAGS_DB"
+database_name = "cpkg-tags"
+database_id = "ef95b6f7-38e6-4408-8783-0f6d89a077b3"
+
 # ---- 네이티브 Rate Limiting 바인딩 ----
 # KV 카운터(get→비교→put)를 대체한다. 원자적이고 KV 할당량을 전혀 쓰지 않아서
 # "레이트리밋이 API 전체의 단일 장애점"이던 구조가 없어진다.
@@ -92,6 +103,15 @@ namespace_id = "1005"
 [[ratelimits]]
 name = "RL_PANCAKE"
 namespace_id = "1006"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+# 유저 태그 투표(/tags/vote). 조회(/tags/get, /tags/snapshot)는 읽기 전용이라
+# 레이트리밋을 안 건다 — GET /library/<code>와 같은 방침.
+[[ratelimits]]
+name = "RL_TAG_WRITE"
+namespace_id = "1007"
   [ratelimits.simple]
   limit = 20
   period = 60

@@ -4,6 +4,7 @@
 window.GridPage.create({
   dataUrl: '../data/PageData/Novel.json',
   favType: 'novel',
+  userTags: true,
   countText: function (n) { return n + '개의 문학이 있습니다!'; },
   emptyText: '조건에 맞는 문학이 없어요.'
 });

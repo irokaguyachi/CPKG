@@ -135,6 +135,9 @@
       PostDetailSeries.open({
         seriesName: s.name,
         imageUrl: s.image,
+        favType: type,
+        postId: favId,
+        tags: s.tags,
         episodes: (s.posts || []).map(function (post) {
           return {
             title: post.title,

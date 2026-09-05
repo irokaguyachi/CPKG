@@ -136,6 +136,9 @@
       PostDetailSeries.open({
         seriesName: item.name,
         imageUrl: item.image,
+        favType: favType,
+        postId: favId,
+        tags: item.tags,
         episodes: buildEpisodes(item)
       });
     });

@@ -17,7 +17,7 @@ python -m http.server 8000
 cd src/scripts
 python 1_parse_crawl.py            # 크롤링 파일 + 명예관 + 대회 → crawl_entries.json
 python 2_parse_series.py           # 시리즈 마크다운 → series_entries.json
-python 3_build_data.py             # 통합 MoonHakdata.json 생성
+python 3_build_data.py             # 통합 MoonHakdata.json 생성 (태그보정.md 반영)
 python 5_build_series_page_data.py # 시리즈 페이지 전용 Series.json 생성
 python 7_build_novel_page_data.py  # 문학 페이지 전용 Novel.json 생성
 python 8_build_recent_page_data.py # 메인 페이지 전용 Recent.json 생성 (최신 10+10건)
