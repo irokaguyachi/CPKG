@@ -50,6 +50,63 @@
 }
 .pds-close svg { width: 16px; height: 16px; }
 
+/* 후방주의(성인) 태그 안내 화면 — 이미지/화 목록 없이 안내 문구만 가운데
+   놓아야 하므로, 기본 좌우 2단 레이아웃(.post-detail-series)을 가운데
+   정렬로 덮어쓴다. */
+.pds-mature-blocked {
+  width: auto;
+  height: auto;
+  min-width: 400px;
+  align-items: center;
+  justify-content: center;
+  transform: scale(1) !important;
+}
+.pds-overlay.is-open .pds-mature-blocked {
+  transform: scale(1) !important;
+}
+
+.pds-mature-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 360px;
+  padding: 40px;
+  text-align: center;
+}
+
+.pds-mature-notice-icon {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1;
+}
+
+.pds-mature-notice-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.pds-mature-notice-desc {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.pds-mature-notice-btn {
+  margin-top: 8px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: #1a1a1a;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pds-mature-notice-btn:hover { opacity: 0.85; }
+
 .pds-image {
   position: relative;
   flex-shrink: 0;

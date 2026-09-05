@@ -379,6 +379,84 @@
     return section;
   }
 
+  // 후방주의(성인) 태그 문학의 안내 화면에서 설정을 켜는 즉시 이 팝업을
+  // 이어서 열기 위한 리스너 — close()에서 반드시 정리한다(그대로 두면 다른
+  // 항목을 볼 때도 엉뚱한 data로 재호출된다).
+  var matureUnlockListener = null;
+  function clearMatureUnlockListener() {
+    if (matureUnlockListener) {
+      global.removeEventListener('chokaguya:content-settings-change', matureUnlockListener);
+      matureUnlockListener = null;
+    }
+  }
+
+  // 그리드/추천 목록에서는 애초에 걸러지지만, 북마크한 항목이나 랜덤 섹션의
+  // 회전 카드처럼 목록 필터를 거치지 않는 경로로도 열릴 수 있어 이 진입점
+  // 하나에서 한 번 더 막는다 — 문학/시리즈/명예관/공식/북마크 카드가 전부
+  // PostDetailSeries.open()을 거치므로 여기만 고치면 전체가 커버된다.
+  function openMatureBlocked(data) {
+    var overlay = ensureOverlay();
+    overlay.innerHTML = '';
+    clearMatureUnlockListener();
+
+    var card = document.createElement('div');
+    card.className = 'post-detail-series pds-mature-blocked';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'pds-close';
+    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.innerHTML = ICON_CLOSE;
+    closeBtn.addEventListener('click', close);
+    card.appendChild(closeBtn);
+
+    var notice = document.createElement('div');
+    notice.className = 'pds-mature-notice';
+
+    var icon = document.createElement('p');
+    icon.className = 'pds-mature-notice-icon';
+    icon.textContent = '🔞';
+    notice.appendChild(icon);
+
+    var title = document.createElement('p');
+    title.className = 'pds-mature-notice-title';
+    title.textContent = '후방주의 태그가 붙은 문학이에요';
+    notice.appendChild(title);
+
+    var desc = document.createElement('p');
+    desc.className = 'pds-mature-notice-desc';
+    desc.textContent = '설정에서 표시를 켜야 볼 수 있어요.';
+    notice.appendChild(desc);
+
+    var settingsBtn = document.createElement('button');
+    settingsBtn.type = 'button';
+    settingsBtn.className = 'pds-mature-notice-btn';
+    settingsBtn.textContent = '설정 열기';
+    settingsBtn.addEventListener('click', function () {
+      close();
+      if (global.SettingsModal) global.SettingsModal.open('general');
+    });
+    notice.appendChild(settingsBtn);
+
+    card.appendChild(notice);
+
+    openCard = null;
+    overlay.appendChild(card);
+    void card.offsetWidth;
+    overlay.classList.add('is-open');
+    lockScroll();
+
+    // 안내 화면이 떠 있는 동안 설정을 켜면 새로고침 없이 바로 원래 팝업으로
+    // 이어서 열어준다.
+    matureUnlockListener = function () {
+      if (global.ContentSettings && !global.ContentSettings.isBlocked(data.tags)) {
+        clearMatureUnlockListener();
+        open(data);
+      }
+    };
+    global.addEventListener('chokaguya:content-settings-change', matureUnlockListener);
+  }
+
   // data: { seriesName, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }],
   //         favType?, postId?, tags? }
   // 화수는 따로 받지 않고 episodes 길이로 계산합니다 (시리즈 판별 기준과 동일).
@@ -390,8 +468,13 @@
   // 전부 대상입니다.
   function open(data) {
     data = data || {};
+    if (global.ContentSettings && global.ContentSettings.isBlocked(data.tags)) {
+      openMatureBlocked(data);
+      return;
+    }
     var overlay = ensureOverlay();
     overlay.innerHTML = '';
+    clearMatureUnlockListener();
 
     var card = document.createElement('div');
     card.className = 'post-detail-series';
@@ -698,6 +781,7 @@
   function close() {
     if (!overlayEl) return;
     closeTagPicker();
+    clearMatureUnlockListener();
     openCard = null;
     overlayEl.classList.remove('is-open');
     unlockScroll();

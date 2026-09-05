@@ -148,6 +148,32 @@
     });
     row.appendChild(btn);
     pane.appendChild(row);
+
+    // 후방주의(성인) 태그 문학 노출 토글 — 오디오 탭의 자동재생 토글과 같은
+    // .settings-toggle 마크업/스타일을 그대로 쓴다. 기본 OFF(ContentSettings
+    // 참고) — 국내 법적 리스크와, 원치 않는 방문자가 성인 콘텐츠를 갑자기
+    // 마주치는 상황을 막기 위함.
+    var matureRow = el('div', 'settings-row');
+    var matureText = el('div', 'settings-row-text');
+    matureText.appendChild(el('p', 'settings-row-label', '🔞 후방주의 태그 문학 표시'));
+    matureText.appendChild(el('p', 'settings-row-desc', '성인 서사가 중심인 후방주의 태그 문학을 목록과 상세 화면에 노출합니다'));
+    matureRow.appendChild(matureText);
+
+    var matureToggle = document.createElement('button');
+    matureToggle.type = 'button';
+    var showMature = global.ContentSettings ? global.ContentSettings.get().showMature : false;
+    matureToggle.className = 'settings-toggle' + (showMature ? ' is-on' : '');
+    matureToggle.setAttribute('role', 'switch');
+    matureToggle.setAttribute('aria-checked', String(showMature));
+    matureToggle.innerHTML = '<span class="settings-toggle-knob"></span>';
+    matureToggle.addEventListener('click', function () {
+      var next = !matureToggle.classList.contains('is-on');
+      matureToggle.classList.toggle('is-on', next);
+      matureToggle.setAttribute('aria-checked', String(next));
+      if (global.ContentSettings) global.ContentSettings.setShowMature(next);
+    });
+    matureRow.appendChild(matureToggle);
+    pane.appendChild(matureRow);
   }
 
   // ---- 계정 탭 ----

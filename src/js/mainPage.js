@@ -18,6 +18,14 @@
   var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
   var sortTags = global.TagConfig.sortTags;
 
+  // 설정이 꺼져 있으면(기본값) `후방주의` 태그가 붙은 항목을 최신/랜덤
+  // 섹션과 오디오 노벨 홍보 배너 후보에서 제외한다 — gridPage.js의 grid/
+  // 검색 필터와 같은 기준(ContentSettings.isBlocked)을 공유한다.
+  function filterMature(items) {
+    if (!global.ContentSettings) return items;
+    return items.filter(function (item) { return !global.ContentSettings.isBlocked(item.tags); });
+  }
+
   function formatCount(n) {
     if (n === null || n === undefined) return '0';
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -284,7 +292,7 @@
     fetch(DATA(dataUrl))
       .then(function (r) { return r.json(); })
       .then(function (items) {
-        items = Array.isArray(items) ? items : [];
+        items = filterMature(Array.isArray(items) ? items : []);
         if (!items.length) {
           section.remove();
           return;
@@ -432,7 +440,7 @@
     fetch(DATA('../data/PageData/Official.json'))
       .then(function (r) { return r.json(); })
       .then(function (items) {
-        items = Array.isArray(items) ? items : [];
+        items = filterMature(Array.isArray(items) ? items : []);
         var promoItem = null;
         for (var i = 0; i < items.length; i++) {
           if (hasAudioNovel(items[i])) { promoItem = items[i]; break; }
@@ -454,7 +462,7 @@
   fetch(DATA('../data/PageData/Recent.json'))
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      var novels = (data && Array.isArray(data.novels)) ? data.novels : [];
+      var novels = filterMature((data && Array.isArray(data.novels)) ? data.novels : []);
       var totals = (data && data.totals) || {};
 
       // 총 게시물 수 업데이트 — 전체 배열을 더 이상 안 받으므로 길이를 셀 수
@@ -492,4 +500,11 @@
       contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/PageData/HOF.json', '/hof', 'hof'));
     })
     .catch(function () {});
+
+  // 최신/랜덤 섹션은 fetch가 끝난 시점의 스냅샷을 클로저에 쥐고 도는 중이라
+  // 설정을 여기서 바로 켜고 꺼도 다시 계산해줄 수가 없다 — gridPage.js처럼
+  // 캐시를 다시 거르는 대신, 랜딩 페이지 전체를 새로고침해서 반영한다.
+  global.addEventListener('chokaguya:content-settings-change', function () {
+    global.location.reload();
+  });
 })(window);

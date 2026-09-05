@@ -101,6 +101,7 @@
 
     var countLine = config.countLine || global.SeriesUtil.countLine;
 
+    var rawItems = [];
     var allItems = [];
     var activeTags = {};
     var searchTerm = '';
@@ -136,7 +137,7 @@
     // 돌려주고, 카드 알약도 필터 후보 목록도 전부 그 결과 하나만 쓴다.
     function mergeUserTagSnapshot(snapshot) {
       var postsMap = (snapshot && snapshot.posts) || {};
-      allItems.forEach(function (s) {
+      rawItems.forEach(function (s) {
         var pid = s.posts && s.posts[0] && s.posts[0].id;
         if (pid == null) return;
         var entries = postsMap[String(pid)] || [];
@@ -144,6 +145,17 @@
           .filter(function (e) { return e && e.votes >= TAG_SNAPSHOT_MIN_VOTES; })
           .map(function (e) { return e.tag; });
       });
+    }
+
+    // 설정이 꺼져 있으면(기본값) `후방주의` 태그가 붙은 항목을 그리드에
+    // 올라가는 목록 자체(allItems)에서 제외한다 — 카드도, 검색 결과도,
+    // allTags()가 만드는 태그 필터 체크박스 목록도 이 한 곳만 고치면 전부
+    // 자연히 반영된다(allTags()가 allItems만 훑기 때문).
+    function recomputeAllItems() {
+      var CS = global.ContentSettings;
+      allItems = (!CS || CS.get().showMature)
+        ? rawItems
+        : rawItems.filter(function (s) { return !CS.hasMatureTag(s.tags); });
     }
 
     function finishItemsLoad() {
@@ -163,11 +175,22 @@
 
     Promise.all([itemsPromise, snapshotPromise])
       .then(function (results) {
-        allItems = Array.isArray(results[0]) ? results[0] : [];
+        rawItems = Array.isArray(results[0]) ? results[0] : [];
         if (config.userTags) mergeUserTagSnapshot(results[1]);
+        recomputeAllItems();
         finishItemsLoad();
       })
       .catch(function () {});
+
+    // 설정창에서 토글을 켜고 끌 때 새로고침 없이 바로 반영 — 이미 받아둔
+    // rawItems를 다시 거르기만 하면 되므로 네트워크 재요청은 없다.
+    global.addEventListener('chokaguya:content-settings-change', function () {
+      if (!rawItems.length) return;
+      recomputeAllItems();
+      if (countEl) countEl.textContent = config.countText(allItems.length);
+      renderFilterOptions();
+      renderGrid();
+    });
 
     // rotates the (empty) search input's placeholder through real item
     // names, typed out like loading.js's tip text, so the dim placeholder
