@@ -131,6 +131,11 @@
     // 받으면 되고, 실패해도 정적 태그만으로 화면이 그려져야 하므로 조용히
     // 넘어간다(태그는 부가 정보라 페이지를 막지 않는다).
     var TAG_SNAPSHOT_MIN_VOTES = 2;
+    // 투표 가능한 유저 태그 후보 고정 목록(UserTagCatalog.json). 득표 여부와
+    // 무관하게 필터 옵션으로 항상 보여준다 — 아직 아무도 투표하지 않은
+    // 초기 상태에서도 유저 태그 필터가 빈 칸이 되지 않도록 allTags()가
+    // 스냅샷 득표 태그와 이 목록의 합집합을 돌려준다.
+    var userTagCatalog = [];
     // 공식 태그(s.tags)와는 별개 필드(s.popularUserTags)에 담는다 — 합쳐
     // 버리면 "공식/유저" 탭이 어느 태그가 어느 쪽 출처인지 구분할 수
     // 없어진다. 탭(activePool)에 따라 tagsField(s)가 둘 중 하나만 골라
@@ -172,11 +177,22 @@
     var snapshotPromise = config.userTags
       ? fetch('/tags/snapshot').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       : Promise.resolve(null);
+    // 유저 태그 후보 목록은 postDetailSeries.js의 투표 모달이 읽는 것과 같은
+    // 정적 자산이다. 실패해도 스냅샷 득표 태그만으로 필터가 그려지도록
+    // 조용히 빈 배열로 넘어간다.
+    var catalogPromise = config.userTags
+      ? fetchJson('../data/PageData/UserTagCatalog.json')
+          .then(function (list) { return Array.isArray(list) ? list : []; })
+          .catch(function () { return []; })
+      : Promise.resolve([]);
 
-    Promise.all([itemsPromise, snapshotPromise])
+    Promise.all([itemsPromise, snapshotPromise, catalogPromise])
       .then(function (results) {
         rawItems = Array.isArray(results[0]) ? results[0] : [];
-        if (config.userTags) mergeUserTagSnapshot(results[1]);
+        if (config.userTags) {
+          mergeUserTagSnapshot(results[1]);
+          userTagCatalog = results[2].filter(function (t) { return typeof t === 'string'; });
+        }
         recomputeAllItems();
         finishItemsLoad();
       })
@@ -287,6 +303,12 @@
       allItems.forEach(function (s) {
         tagsField(s).forEach(function (t) { tagSet[t] = true; });
       });
+      // 유저 태그 풀에서는 실제 득표 태그에 더해 아직 표를 받지 못한 후보까지
+      // 전부 필터 옵션으로 노출한다 — 투표 초기라 스냅샷이 비어 있어도
+      // 사용자가 유저 태그로 걸러볼 수 있게 한다.
+      if (activePool === 'user') {
+        userTagCatalog.forEach(function (t) { tagSet[t] = true; });
+      }
       return sortTags(Object.keys(tagSet));
     }
 
