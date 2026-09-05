@@ -125,14 +125,47 @@
       .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })
       .catch(function () {});
 
-    fetch(DATA(config.dataUrl))
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        allItems = Array.isArray(data) ? data : [];
-        if (countEl) countEl.textContent = config.countText(allItems.length);
-        renderFilterOptions();
-        renderGrid();
-        startSearchPlaceholderCycle();
+    // 유저 태그 투표 스냅샷 병합(config.userTags — 지금은 novelPage.js만 켠다).
+    // Cron이 5분마다 D1을 집계해 구워 두는 정적 스냅샷이라 페이지당 한 번만
+    // 받으면 되고, 실패해도 정적 태그만으로 화면이 그려져야 하므로 조용히
+    // 넘어간다(태그는 부가 정보라 페이지를 막지 않는다).
+    var TAG_SNAPSHOT_MIN_VOTES = 2;
+    // 공식 태그(s.tags)와는 별개 필드(s.popularUserTags)에 담는다 — 합쳐
+    // 버리면 "공식/유저" 탭이 어느 태그가 어느 쪽 출처인지 구분할 수
+    // 없어진다. 탭(activePool)에 따라 tagsField(s)가 둘 중 하나만 골라
+    // 돌려주고, 카드 알약도 필터 후보 목록도 전부 그 결과 하나만 쓴다.
+    function mergeUserTagSnapshot(snapshot) {
+      var postsMap = (snapshot && snapshot.posts) || {};
+      allItems.forEach(function (s) {
+        var pid = s.posts && s.posts[0] && s.posts[0].id;
+        if (pid == null) return;
+        var entries = postsMap[String(pid)] || [];
+        s.popularUserTags = entries
+          .filter(function (e) { return e && e.votes >= TAG_SNAPSHOT_MIN_VOTES; })
+          .map(function (e) { return e.tag; });
+      });
+    }
+
+    function finishItemsLoad() {
+      if (countEl) countEl.textContent = config.countText(allItems.length);
+      renderFilterOptions();
+      renderGrid();
+      startSearchPlaceholderCycle();
+    }
+
+    // 목록 본문과 태그 스냅샷은 서로 의존하지 않으니 동시에 요청하고 둘 다
+    // 도착했을 때 합친다 — 태그 스냅샷이 끝나야 목록 요청을 시작하던 예전
+    // 방식은 왕복 하나만큼 첫 렌더를 늦추고 있었다.
+    var itemsPromise = fetch(DATA(config.dataUrl)).then(function (r) { return r.json(); });
+    var snapshotPromise = config.userTags
+      ? fetch('/tags/snapshot').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      : Promise.resolve(null);
+
+    Promise.all([itemsPromise, snapshotPromise])
+      .then(function (results) {
+        allItems = Array.isArray(results[0]) ? results[0] : [];
+        if (config.userTags) mergeUserTagSnapshot(results[1]);
+        finishItemsLoad();
       })
       .catch(function () {});
 
@@ -213,23 +246,76 @@
       return false;
     }
 
+    // pool: 'official'(기본, s.tags) | 'user'(s.popularUserTags). config.userTags가
+    // 꺼져 있는 페이지(시리즈/명예관/공식)는 항상 official만 쓴다 — 그 페이지들엔
+    // popularUserTags 자체가 없으므로 자연히 빈 목록이 되어 안전하다.
+    // 탭은 필터 후보 목록뿐 아니라 카드에 실제로 그려지는 태그 자체도 바꾼다
+    // (createGridCard/createListCard가 tagsField(s, activePool)을 그대로 씀) —
+    // "공식 태그로 볼지 유저 태그로 볼지" 페이지 전체의 보기 모드를 바꾸는
+    // 토글이지, 필터 후보 목록만 왔다갔다 하는 게 아니다.
+    var activePool = 'official';
+
+    function tagsField(s, pool) {
+      return ((pool || activePool) === 'user' ? s.popularUserTags : s.tags) || [];
+    }
+
     function allTags() {
       var tagSet = {};
       allItems.forEach(function (s) {
-        s.tags.forEach(function (t) { tagSet[t] = true; });
+        tagsField(s).forEach(function (t) { tagSet[t] = true; });
       });
       return sortTags(Object.keys(tagSet));
     }
 
+    // "원하는 태그를 고르세요!" 헤더 오른쪽에 다는 공식/유저 토글 — 설정창의
+    // 라이트/다크 모드 버튼(settingsModal.js)과 같은 스타일(.settings-mode-btn)을
+    // 그대로 재사용하지만, 그 버튼과 달리 라벨은 "누르면 바뀔 모드"가 아니라
+    // 지금 보고 있는 모드를 그대로 보여준다(태그는 "지금 뭘 보고 있는지"가
+    // 헷갈리면 안 되는 필터 상태라 라이트/다크 버튼의 관례를 따르지 않기로 함).
+    // 패널이 열릴 때마다 다시 그리는 옵션 목록과 달리 이 버튼은 헤더에 한 번만
+    // 만들어 두고 클릭 때마다 라벨만 다시 칠한다.
+    var poolToggleBtn = null;
+    function setupPoolToggle() {
+      if (!config.userTags || poolToggleBtn) return;
+      var header = filterPanel && filterPanel.querySelector('.sfp-header');
+      if (!header) return;
+
+      poolToggleBtn = document.createElement('button');
+      poolToggleBtn.type = 'button';
+      poolToggleBtn.className = 'settings-mode-btn sfp-pool-toggle';
+      poolToggleBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        activePool = activePool === 'official' ? 'user' : 'official';
+        // 이전 풀에서 고른 체크는 새 풀에서는 의미가 없으니 초기화한다
+        activeTags = {};
+        updateFilterButtonState();
+        paintPoolToggle();
+        renderFilterOptions();
+        renderGrid();
+      });
+      header.appendChild(poolToggleBtn);
+      paintPoolToggle();
+    }
+
+    function paintPoolToggle() {
+      if (!poolToggleBtn) return;
+      // 지금 보고 있는 모드를 그대로 표시한다(누르면 바뀔 모드가 아니라).
+      poolToggleBtn.textContent = activePool === 'official' ? '공식 태그' : '유저 태그';
+    }
+
     function renderFilterOptions() {
       if (!optionsEl) return;
+      setupPoolToggle();
       var tags = allTags();
 
       optionsEl.innerHTML = '';
+
       if (!tags.length) {
         var empty = document.createElement('div');
         empty.className = 'sfp-empty';
-        empty.textContent = '일치하는 옵션이 없어요';
+        empty.textContent = activePool === 'user'
+          ? '아직 투표된 유저 태그가 없어요'
+          : '일치하는 옵션이 없어요';
         optionsEl.appendChild(empty);
         return;
       }
@@ -360,12 +446,20 @@
     }
     applyViewMode(getStoredViewMode(), true);
 
+    // 항상 activePool 쪽 필드(s.tags 또는 s.popularUserTags)만 본다 — 풀을
+    // 바꾸면 activeTags가 초기화되므로 여기서 두 풀을 섞어 볼 일이 없다.
+    function matchesActiveTags(s, activeList) {
+      if (!activeList.length) return true;
+      var field = tagsField(s);
+      return activeList.some(function (tag) { return field.indexOf(tag) !== -1; });
+    }
+
     function renderGrid(preserveCount) {
       var term = searchTerm.trim().toLowerCase();
       var activeList = Object.keys(activeTags);
       var filtered = allItems.filter(function (s) {
         if (!matchesSearch(s, term)) return false;
-        if (activeList.length && !activeList.some(function (t) { return s.tags.indexOf(t) !== -1; })) return false;
+        if (!matchesActiveTags(s, activeList)) return false;
         return true;
       });
 
@@ -505,7 +599,7 @@
       var tagsWrap = document.createElement('div');
       tagsWrap.className = 'series-card-tags';
       // 4개째부터는 2줄로 넘어가면서 형제 카드와 높이가 어긋나므로 3개까지만 보여준다
-      sortTags(s.tags).slice(0, 3).forEach(function (tag) {
+      sortTags(tagsField(s)).slice(0, 3).forEach(function (tag) {
         var pill = document.createElement('span');
         pill.className = 'series-card-tag';
         pill.dataset.tag = tag;
@@ -522,6 +616,9 @@
         PostDetailSeries.open({
           seriesName: s.name,
           imageUrl: s.image,
+          favType: config.favType,
+          postId: favId,
+          tags: s.tags,
           episodes: (s.posts || []).map(function (post) {
             return {
               title: post.title,
@@ -576,7 +673,7 @@
 
       var tagsWrap = document.createElement('div');
       tagsWrap.className = 'post-row-tags';
-      sortTags(s.tags).slice(0, 3).forEach(function (tag) {
+      sortTags(tagsField(s)).slice(0, 3).forEach(function (tag) {
         var pill = document.createElement('span');
         pill.className = 'series-card-tag';
         pill.dataset.tag = tag;
@@ -598,6 +695,9 @@
         PostDetailSeries.open({
           seriesName: s.name,
           imageUrl: s.image,
+          favType: config.favType,
+          postId: favId,
+          tags: s.tags,
           episodes: (s.posts || []).map(function (post) {
             return {
               title: post.title,

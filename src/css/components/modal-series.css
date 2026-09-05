@@ -101,12 +101,278 @@
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
 }
 
+.pds-series-name-text {
+  /* 개별 문학 게시글 제목은 원문 그대로라 40자를 넘기도 한다 — 줄바꿈이
+     3줄 이상으로 늘어나면 아래 고정 위치(top: 260px)의 .pds-tags-group과
+     겹친다. 제목 텍스트만 2줄로 잘라 항상 그 아래 공간을 침범하지 않게
+     한다(화수 배지는 별도 span이라 같이 잘리지 않는다). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
 .pds-series-episode-count {
   display: block;
   margin-top: 12px;
   font-size: 28px;
   font-weight: 400;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+
+/* 공식 태그(정적) + 유저 인기 태그(투표) 두 줄을 묶는 컨테이너 — 개별
+   문학 상세 팝업에만 렌더링됨. .pds-series-info가 pointer-events:none이라
+   여기서 다시 auto로 켜야 알약을 클릭할 수 있다. 절대 위치는 이 그룹에만
+   걸고, 안의 두 .pds-tags 줄은 flex로 그냥 쌓는다. */
+.pds-tags-group {
+  position: absolute;
+  left: 50px;
+  top: 260px;
+  width: 662px;
+  max-width: calc(100% - 67px);
+  pointer-events: auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pds-tags-label {
+  /* 반투명 흰 글자+그림자만으로는 배경 이미지의 밝은 부분과 겹치면 대비가
+     거의 안 났다. 화수 배지(.pds-series-episode-count)처럼 어두운 알약
+     배경을 깔아 배경 이미지 색과 무관하게 항상 잘 보이게 한다. */
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(4px);
+}
+
+.pds-tags-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pds-tags-error {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffb3b3;
+  background: rgba(0, 0, 0, 0.55);
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(4px);
+}
+
+.pds-tag-pill {
+  /* 색상·테두리·다크모드 틴트는 카드 미리보기 알약(.series-card-tag)과
+     계속 공유하지만(theme.css의 다크모드 규칙이 .pds-tag-pill도 함께
+     스코프함), 자세히 보기는 화면이 넓어서 카드보다 큼직하게 키운다. */
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 18px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #2c2d30;
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.pds-tag-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.pds-tag-pill:active {
+  transform: scale(0.96);
+}
+.pds-tag-pill.is-voted {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9) inset;
+}
+.pds-tag-pill.pds-tag-static {
+  /* 공식 태그는 정적 표시일 뿐이라 클릭 가능한 것처럼 보이면 안 된다 */
+  cursor: default;
+}
+.pds-tag-pill.pds-tag-static:hover,
+.pds-tag-pill.pds-tag-static:active {
+  transform: none;
+  box-shadow: none;
+}
+.pds-tag-pill.pds-tag-more {
+  /* 다른 알약은 파스텔 배경+어두운 글자라 어떤 배경 이미지 위에서도 잘
+     보이지만, 여긴 배경 이미지 색에 기대면 안 되므로 항상 어둡게 깔고
+     흰 테두리로 대비를 고정한다(반투명 흰 배경은 밝은 이미지 위에서
+     텍스트와 거의 구분이 안 갔다). */
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+  font-weight: 700;
+  padding: 9px 16px;
+}
+.pds-tag-pill.pds-tag-more:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ---- 태그 선택 모달 (스팀 "이 제품의 태그 보기 및 변경" 다이얼로그 참고) ----
+   상세 팝업(.pds-overlay, z-index:500) 위에 겹쳐 뜨는 별도 오버레이다.
+   .auth-overlay(로그인 모달, z-index:560)보다는 낮게 잡아서, 태그 모달
+   안에서 투표하다 로그인이 필요해지면 그 위에 로그인 모달이 얹힌다. */
+.pds-tagpicker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 530;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.pds-tagpicker-dialog {
+  width: min(420px, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+[data-theme="dark"] .pds-tagpicker-dialog {
+  background: var(--dark-surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+}
+
+.pds-tagpicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.pds-tagpicker-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+[data-theme="dark"] .pds-tagpicker-title {
+  color: #ffffff;
+}
+
+.pds-tagpicker-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: #1a1a1a;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pds-tagpicker-close:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+[data-theme="dark"] .pds-tagpicker-close {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+[data-theme="dark"] .pds-tagpicker-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.pds-tagpicker-sub {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .pds-tagpicker-sub {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pds-tagpicker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pds-tagpicker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.035);
+}
+[data-theme="dark"] .pds-tagpicker-row {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pds-tagpicker-row-emoji {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.pds-tagpicker-row-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+[data-theme="dark"] .pds-tagpicker-row-label {
+  color: #ffffff;
+}
+
+.pds-tagpicker-row-count {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .pds-tagpicker-row-count {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pds-tagpicker-row-btn {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-theme="dark"] .pds-tagpicker-row-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.pds-tagpicker-row.is-added .pds-tagpicker-row-btn {
+  background: var(--mint);
+  color: #ffffff;
 }
 
 .pds-stats {
@@ -434,6 +700,34 @@
     backdrop-filter: blur(4px);
     vertical-align: middle;
     text-shadow: none;
+  }
+
+  /* 모바일에서는 .pds-series-info가 flex-column이라 이 섹션도 절대좌표
+     대신 흐름을 따르게 하고, 좁은 헤더 안에 맞도록 알약을 줄인다. */
+  .pds-tags-group {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 8px;
+    gap: 8px;
+  }
+  /* 라벨을 자기 줄에 두고 알약을 그 아래에 또 쌓으면(기본 block 흐름)
+     "공식 태그" 두 줄 + "유저 인기 태그" 두 줄로 세로 공간을 너무 먹는다.
+     라벨과 알약을 한 줄에 나란히 놓고, 넘치면 그때만 다음 줄로 감싼다. */
+  .pds-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pds-tags-label {
+    margin: 0;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .pds-tag-pill {
+    padding: 6px 13px;
+    font-size: 14px;
   }
 
   .pds-right-panel {

@@ -122,12 +122,24 @@
 .sfp-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 6px 8px 10px;
   font-size: 14px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.6);
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
   margin-bottom: 6px;
+}
+
+/* 공식/유저 태그 토글 — .settings-mode-btn 스타일을 그대로 쓰되(색/테두리/
+   다크모드 전부 그쪽 정의를 상속), 좁은 필터 패널 헤더 안에 들어가야 해서
+   높이·패딩·글자만 살짝 줄인다. */
+.sfp-pool-toggle {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .sfp-options {

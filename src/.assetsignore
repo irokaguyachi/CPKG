@@ -1,6 +1,12 @@
 wrangler.toml
 _worker.js
 
+# wrangler dev의 로컬 D1/KV/R2 상태 캐시. 여기 없으면 자기 자신의 상태
+# 파일 변경(예: /tags/vote 한 번마다 D1 sqlite가 갱신됨)을 assets 워처가
+# 감지해 로컬 서버가 끝없이 리로드된다(요청이 그 사이에 응답 없이 멈춤).
+# 실제 배포에서도 이 폴더가 그대로 공개될 이유가 없다.
+.wrangler/
+
 # --- 아래는 브라우저가 한 번도 요청하지 않는 것들이다 ---
 # wrangler.toml 의 [assets] directory = "." 때문에 src/ 아래 전부가
 # 업로드·공개 서빙된다. Cloudflare Workers 정적 자산은 Pages 와 달리

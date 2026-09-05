@@ -164,6 +164,199 @@ const USER_SYNC_MAX_ATTEMPTS = 3;
 const RATE_LIMIT_USER_SIGNUP_PER_DAY = 5;
 const DAY_MS = 86400000;
 
+// ---- 유저 인기 태그 투표(/tags/*) ----
+// 스팀 상점 페이지의 "이 제품의 인기 태그"를 본뜬 기능. 공식 태그(AI 장르
+// 분류)를 대체하는 게 아니라 그 위에 얹는 별도 레이어다 — 신규·기존 글
+// 구분 없이 모든 개별 문학이 투표 대상이다. 자유 입력 없이
+// PageData/UserTagCatalog.json(빌드 산출물, 문학 정리/유저인기태그후보.md에서
+// 사람이 직접 정한 후보)에서만 투표할 수 있다. 어뷰징 방지는 계정당 1표
+// (D1 tag_votes의 PRIMARY KEY가 강제)와 레이트리밋만으로 충분하다 —
+// 태그명이 자유 문자열이 아니라서 표기 정규화나 신고 기능이 필요 없다.
+const TAG_MAX_VOTES_PER_POST = 5;
+
+function cleanTagPostId(raw) {
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw <= 0) return null;
+  return raw;
+}
+
+// UserTagCatalog.json은 다른 PageData/*.json과 똑같이 정상 배포되는 정적
+// 자산이다 — R2에 따로 복사하지 않고 같은 Worker의 ASSETS 바인딩으로 그대로
+// 읽는다(src/_worker.js가 짧은 주소를 실제 파일로 매핑할 때 쓰는 것과 같은
+// new URL + env.ASSETS.fetch 패턴).
+async function loadTagCatalog(request, env) {
+  var assetUrl = new URL(request.url);
+  assetUrl.pathname = '/data/PageData/UserTagCatalog.json';
+  var res = await env.ASSETS.fetch(new Request(assetUrl, { method: 'GET' }));
+  if (!res.ok) return [];
+  try {
+    var list = await res.json();
+    return Array.isArray(list) ? list.filter(function (t) { return typeof t === 'string'; }) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// 비로그인 방문자도 득표수는 볼 수 있어야 하므로 personalCode는 선택이다
+// (readUserBody는 필수라 여기서는 못 쓴다). 그래서 레이트리밋도 걸지 않는다 —
+// GET /library/<code>처럼 읽기 전용 조회는 이 프로젝트에서 원래 열려 있다.
+async function handleTagsGet(request, env) {
+  var body = await readJsonBody(request, USER_MAX_BODY_BYTES);
+  if (body.error) return body.error;
+
+  var postId = cleanTagPostId(body.value && body.value.postId);
+  if (postId === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+
+  var personalCode = null;
+  if (body.value && body.value.personalCode != null) {
+    personalCode = cleanPersonalCode(body.value.personalCode);
+    if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+
+  try {
+    var rows = await env.TAGS_DB.prepare(
+      'SELECT tag_name, COUNT(*) AS votes FROM tag_votes WHERE post_id = ? GROUP BY tag_name'
+    ).bind(postId).all();
+    var votes = {};
+    (rows.results || []).forEach(function (r) { votes[r.tag_name] = r.votes; });
+
+    var myTags = [];
+    if (personalCode) {
+      var voterHash = await sha256Hex('tagvote:' + personalCode);
+      var mine = await env.TAGS_DB.prepare(
+        'SELECT tag_name FROM tag_votes WHERE post_id = ? AND voter_hash = ?'
+      ).bind(postId, voterHash).all();
+      myTags = (mine.results || []).map(function (r) { return r.tag_name; });
+    }
+
+    return jsonResponse(request, { votes: votes, myTags: myTags });
+  } catch (e) {
+    // 스키마 미적용 등 DB 장애 — 태그는 부가 정보라 페이지를 막지 않도록
+    // 빈 결과로 조용히 넘어간다(gridPage.js의 스냅샷 병합과 같은 기조).
+    return jsonResponse(request, { votes: {}, myTags: [] });
+  }
+}
+
+// 투표 토글: 이미 투표했으면 취소, 아니면 추가. 로그인(personalCode) 필수라
+// readUserBody + env.RL_TAG_WRITE로 레이트리밋과 본문 검증을 한 번에 처리한다.
+async function handleTagsVote(request, env) {
+  var parsed = await readUserBody(request, env, env.RL_TAG_WRITE);
+  if (parsed.error) return parsed.error;
+
+  var raw = parsed.raw;
+  var postId = cleanTagPostId(raw && raw.postId);
+  var tagName = raw && typeof raw.tagName === 'string' ? raw.tagName : null;
+  if (postId === null || !tagName) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+
+  var catalog = await loadTagCatalog(request, env);
+  if (catalog.indexOf(tagName) === -1) {
+    return jsonResponse(request, { error: 'unknown tag' }, 400);
+  }
+
+  var voterHash = await sha256Hex('tagvote:' + parsed.personalCode);
+
+  try {
+    var existing = await env.TAGS_DB.prepare(
+      'SELECT 1 FROM tag_votes WHERE post_id = ? AND tag_name = ? AND voter_hash = ?'
+    ).bind(postId, tagName, voterHash).first();
+
+    if (existing) {
+      await env.TAGS_DB.prepare(
+        'DELETE FROM tag_votes WHERE post_id = ? AND tag_name = ? AND voter_hash = ?'
+      ).bind(postId, tagName, voterHash).run();
+      return jsonResponse(request, { ok: true, voted: false });
+    }
+
+    // 개수 확인과 삽입을 한 SQL 문으로 묶어 원자적으로 처리한다 — 따로 세고
+    // 나서 넣던 예전 방식은 거의 동시에 들어온 두 요청이 둘 다 통과해
+    // 5개 상한을 넘기게 둘 수 있었다.
+    var inserted = await env.TAGS_DB.prepare(
+      'INSERT INTO tag_votes (post_id, tag_name, voter_hash, created_at) ' +
+      'SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM tag_votes WHERE post_id = ? AND voter_hash = ?) < ?'
+    ).bind(postId, tagName, voterHash, Date.now(), postId, voterHash, TAG_MAX_VOTES_PER_POST).run();
+
+    if (!inserted.meta || inserted.meta.changes === 0) {
+      return jsonResponse(request, { error: 'too many tags on this post' }, 400);
+    }
+    return jsonResponse(request, { ok: true, voted: true });
+  } catch (e) {
+    // 거의 동시에 두 번 클릭(더블클릭/재시도)해 위 SELECT가 둘 다 "미투표"로
+    // 봤을 때만 PRIMARY KEY 위반이 난다 — 이미 목표한 상태(투표됨)이므로
+    // 성공으로 취급한다. 그 외 DB 오류는 성공으로 위장하지 않고 그대로
+    // 알려서, 클라이언트가 낙관적으로 반영한 투표를 되돌릴 수 있게 한다.
+    var isDuplicate = e && typeof e.message === 'string' && e.message.indexOf('UNIQUE constraint failed') !== -1;
+    if (isDuplicate) return jsonResponse(request, { ok: true, voted: true });
+    return jsonResponse(request, { error: 'vote failed, try again' }, 500);
+  }
+}
+
+// 목록/필터용 스냅샷 — src/_worker.js의 scheduled 핸들러가 5분마다 D1을
+// 집계해 R2(tags/snapshot.json)에 구워 두면, 이 라우트는 그걸 그대로
+// 내려주기만 한다. 공개 데이터라 개인 코드도, 레이트리밋도 필요 없다.
+async function handleTagsSnapshot(request, env) {
+  var object = await env.FAVORITES_BUCKET.get('tags/snapshot.json');
+  var headers = Object.assign(
+    { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
+    corsHeaders(request)
+  );
+  if (!object) return new Response(JSON.stringify({ generatedAt: 0, posts: {} }), { headers: headers });
+  return new Response(object.body, { headers: headers });
+}
+
+// ---- 생일 배너 팬케이크 카운터(/pancake) ----
+// 클라이언트(src/js/pancakeCounter.js)가 클릭할 때마다 서버로 보내지 않고,
+// 5초간 클릭이 멈추면 그동안 쌓인 개수를 한 번에 더한다 — 연타 한 번에
+// R2 쓰기 하나만 나가면 된다. 인증도, 이벤트 종료 후 되돌릴 방법도 필요
+// 없는 가벼운 카운터라 FAVORITES_BUCKET에 오브젝트 하나(count 필드)로 둔다.
+const PANCAKE_KEY = 'pancake/count.json';
+// 한 번의 배치 요청으로 더할 수 있는 최대치 — 5초 동안 사람이 실제로 누를
+// 수 있는 양보다 넉넉히 크게 잡아서, 직접 API를 호출하는 악의적 요청 한
+// 번의 피해만 제한한다.
+const PANCAKE_MAX_AMOUNT = 300;
+const PANCAKE_MAX_ATTEMPTS = 3;
+
+function pancakePutOptions() {
+  return { httpMetadata: { contentType: 'application/json' } };
+}
+
+async function readPancakeCount(env) {
+  var object = await env.FAVORITES_BUCKET.get(PANCAKE_KEY);
+  if (!object) return { count: 0, object: null };
+  var record = await object.json();
+  return { count: record.count || 0, object: object };
+}
+
+async function handlePancakeGet(request, env) {
+  var current = await readPancakeCount(env);
+  return jsonResponse(request, { count: current.count });
+}
+
+async function handlePancakeAdd(request, env) {
+  if (!(await checkLimit(env.RL_PANCAKE, clientIp(request)))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+
+  var body = await readJsonBody(request, 256);
+  if (body.error) return body.error;
+  var amount = body.value && body.value.amount;
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount > PANCAKE_MAX_AMOUNT) {
+    return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+
+  for (var attempt = 0; attempt < PANCAKE_MAX_ATTEMPTS; attempt++) {
+    var current = await readPancakeCount(env);
+    var next = { count: current.count + amount };
+    var putOptions = Object.assign(
+      { onlyIf: current.object ? { etagMatches: current.object.etag } : { etagDoesNotMatch: '*' } },
+      pancakePutOptions()
+    );
+    var written = await env.FAVORITES_BUCKET.put(PANCAKE_KEY, JSON.stringify(next), putOptions);
+    if (written) return jsonResponse(request, { ok: true, count: next.count });
+    // etag 가 어긋났다 = 방금 사이에 누가 썼다. 다시 읽어서 재시도.
+  }
+
+  return jsonResponse(request, { error: 'conflict, try again' }, 409);
+}
+
 // API 는 이제 정적 사이트와 같은 Worker(src/_worker.js)라 모든 정상 호출이
 // 동일 출처다(bookmarkLibrary.js/userData.js 의 WORKER_BASE = ''). 예전
 // workers.dev 시절의 '*' 는 아무 사이트나 자기 방문자의 브라우저로 이 API 를
@@ -1108,8 +1301,23 @@ async function route(request, env) {
   if (url.pathname === '/user/head' && request.method === 'POST') {
     return handleUserHead(request, env);
   }
+  if (url.pathname === '/tags/get' && request.method === 'POST') {
+    return handleTagsGet(request, env);
+  }
+  if (url.pathname === '/tags/vote' && request.method === 'POST') {
+    return handleTagsVote(request, env);
+  }
+  if (url.pathname === '/tags/snapshot' && request.method === 'GET') {
+    return handleTagsSnapshot(request, env);
+  }
   if (url.pathname === '/user/sync' && request.method === 'PUT') {
     return handleUserSync(request, env);
+  }
+  if (url.pathname === '/pancake' && request.method === 'GET') {
+    return handlePancakeGet(request, env);
+  }
+  if (url.pathname === '/pancake/add' && request.method === 'POST') {
+    return handlePancakeAdd(request, env);
   }
   if (url.pathname.indexOf('/library/') === 0) {
     var libRest = url.pathname.slice('/library/'.length);

@@ -65,7 +65,7 @@ def main():
     posts = data["posts"]
     series = data["series"]
 
-    in_series = {ch["i"] for s in series for ch in s.get("ch", [])}
+    in_series = {ch["id"] for s in series for ch in s.get("chapters", [])}
     ignore_ids = load_ignore_ids()
 
     page_dir = os.path.join(HERE, "..", "page")
@@ -87,18 +87,18 @@ def main():
 
     novels = []
     for p in posts:
-        pid = p["i"]
+        pid = p["id"]
         if pid in in_series or pid in ignore_ids:
             continue
         novels.append({
-            "name": p["t"],
+            "name": p["title"],
             "image": existing_image.get(pid) or images.get(pid),
-            "tags": list(p.get("g") or []),
-            "charCount": p.get("c"),
-            "author": p.get("a"),
+            "tags": list(p.get("tags") or []),
+            "charCount": p.get("chars"),
+            "author": p.get("author"),
             "posts": [{
                 "id": pid,
-                "title": p["t"],
+                "title": p["title"],
                 "episode": 1,
                 "link": POST_LINK_BASE + str(pid),
             }],

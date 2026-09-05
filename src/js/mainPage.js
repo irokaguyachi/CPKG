@@ -136,6 +136,9 @@
       PostDetailSeries.open({
         seriesName: item.name,
         imageUrl: item.image,
+        favType: favType,
+        postId: favId,
+        tags: item.tags,
         episodes: buildEpisodes(item)
       });
     });
@@ -357,6 +360,58 @@
     return section;
   }
 
+  // 야치요 생일 축하 배너 (Figma "Birthday Banner", node 2257:2) — 이벤트
+  // 기간에만 콘텐츠 맨 위에 붙인다. 종료 후엔 이 함수와 아래 호출부,
+  // birthday-banner.css, mainPage.html의 <link> 만 지우면 된다.
+  // 9월 2일 00:00(KST)이 지나면 자동으로 숨긴다 — 방문자의 로컬 시간대와
+  // 무관하게 항상 같은 실제 시각에 사라지도록 오프셋(+09:00)을 명시한다.
+  var BIRTHDAY_BANNER_END = new Date('2026-09-02T00:00:00+09:00').getTime();
+
+  function createBirthdayBanner() {
+    var banner = document.createElement('div');
+    banner.className = 'birthday-banner';
+
+    var text = document.createElement('div');
+    text.className = 'birthday-banner-text';
+
+    var title = document.createElement('p');
+    title.className = 'birthday-banner-title';
+    title.textContent = 'HAPPY BIRTHDAY YACHIYO!';
+    text.appendChild(title);
+
+    var desc = document.createElement('p');
+    desc.className = 'birthday-banner-desc';
+    desc.textContent = '8월 32일은 야치요의 생일입니다 모두 야치요의 생일을 축하해줍시다!';
+    text.appendChild(desc);
+
+    // 팬케이크 주기 버튼 + 카운트 — 실제 클릭 처리는 src/js/pancakeCounter.js
+    var ctaRow = document.createElement('div');
+    ctaRow.className = 'birthday-banner-cta-row';
+
+    var ctaBtn = document.createElement('button');
+    ctaBtn.type = 'button';
+    ctaBtn.id = 'birthday-pancake-btn';
+    ctaBtn.className = 'birthday-banner-cta';
+    ctaBtn.textContent = '🥞 생일 기념 팬케이크 주기!';
+    ctaRow.appendChild(ctaBtn);
+
+    var countEl = document.createElement('span');
+    countEl.id = 'birthday-pancake-count';
+    countEl.className = 'birthday-banner-pancake-count';
+    ctaRow.appendChild(countEl);
+
+    text.appendChild(ctaRow);
+
+    banner.appendChild(text);
+
+    var art = document.createElement('div');
+    art.className = 'birthday-banner-art';
+    art.setAttribute('aria-hidden', 'true');
+    banner.appendChild(art);
+
+    return banner;
+  }
+
   // 오디오 노벨 홍보 카드 — #content의 첫 자식으로 붙는다. Recent.json 쪽
   // fetch가 응답하면 contentEl.innerHTML = '' 로 #content를 통째로 비우고
   // 다시 채우는데, 이 배너가 그보다 먼저 붙어있었다면 함께 지워진다. 그래서
@@ -412,6 +467,15 @@
 
       contentEl.innerHTML = '';
       placeAudioPromo(); // Official.json이 먼저 응답해 이미 붙어있던 배너를 방금 지웠다면 되살림
+
+      // 0. 야치요 생일 축하 배너 — pancakeCounter.js가 버튼에 클릭을 걸
+      // 시점을 알 수 있도록, 배너가 실제로 DOM에 붙은 뒤 이벤트를 쏜다
+      // (이 배너는 Recent.json 응답이 와야 그려지므로 DOMContentLoaded보다
+      // 한참 늦다 — pancakeCounter.js가 그 시점에 맞춰 기다린다).
+      if (Date.now() < BIRTHDAY_BANNER_END) {
+        contentEl.appendChild(createBirthdayBanner());
+        window.dispatchEvent(new CustomEvent('chokaguya:birthday-banner-ready'));
+      }
 
       // 1. 최신 등록 문학
       if (novels.length) {
