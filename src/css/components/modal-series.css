@@ -560,12 +560,16 @@
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* 오디오 노벨이 연결된 화 — 은은한 강조 배경/테두리로 카드 자체를 눈에
-   띄게 한다. 색은 audio-novel-player.css/시리즈 카드 리본과 같은
-   var(--mint) 계열로 통일. */
+/* 오디오 노벨이 연결된 화 — 강조 배경/테두리로 카드 자체를 눈에 띄게 한다.
+   흰 모달 위에서 옅은 그라데이션만으로는 거의 안 보였다(메인 페이지의
+   오디오 노벨 배너와 같은 문제) — daily-gift.css의 처리와 맞춰, 옅은 민트
+   지면 + 또렷한 그린 테두리로 바꾼다. 다크 모드는 theme.css가 따로
+   덮으므로 이 값은 라이트 전용이다. */
 .pds-episode-item.is-audio-novel {
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.16), rgba(0, 255, 204, 0.02));
-  border-color: rgba(0, 179, 133, 0.5);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.22), rgba(0, 255, 204, 0.05)),
+    #ecfdf7;
+  border-color: rgba(0, 179, 133, 0.6);
 }
 
 .pds-episode-audio-badge {

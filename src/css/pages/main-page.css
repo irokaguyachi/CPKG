@@ -52,27 +52,31 @@ body.is-top .header-logo {
 
 /* 오디오 노벨 기능 홍보 카드 — #content(위 .content, flex column)의 첫
    자식으로 mainPage.js가 붙인다. 부모가 이미 max-width/가운데 정렬을
-   맡고 있어 여기선 그냥 flex 자식으로만 둔다. 배경 그라데이션/보더는
-   series-card.css의 .series-card.is-audio-novel과 같은 값을 써서
-   사이트 전체의 "오디오 노벨" 톤을 통일했다. */
+   맡고 있어 여기선 그냥 flex 자식으로만 둔다.
+   라이트 모드에서 거의 흰색이던 배경이 흰 페이지에 묻혀 잘 안 보였다 —
+   daily-gift.css의 .daily-gift-reveal과 같은 처리로, 옅은 민트 지면 +
+   또렷한 민트/그린 테두리 + 민트빛 그림자를 줘서 "특별한 칸"으로
+   읽히게 한다(그래서 series-card.css의 .series-card.is-audio-novel과는
+   이제 배경/보더 값이 일부러 다르다 — 그쪽은 흰 여백 위가 아니라
+   그리드 카드 맥락이라 이 대비 문제가 없다). */
 .audio-novel-promo {
   position: relative;
   display: flex;
   align-items: stretch;
   margin-bottom: 24px;
   background:
-    linear-gradient(135deg, rgba(0, 255, 204, 0.16), rgba(0, 255, 204, 0)),
-    #ffffff;
-  border: 0.5px solid rgba(0, 179, 133, 0.5);
+    linear-gradient(135deg, rgba(0, 255, 204, 0.22), rgba(0, 255, 204, 0.05)),
+    #ecfdf7;
+  border: 1px solid rgba(0, 179, 133, 0.6);
   border-radius: 15px;
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 22px rgba(0, 179, 133, 0.20);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease, opacity 0.2s ease;
 }
 .audio-novel-promo:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 14px 26px rgba(0, 179, 133, 0.30);
 }
 .audio-novel-promo.is-dismissing {
   opacity: 0;

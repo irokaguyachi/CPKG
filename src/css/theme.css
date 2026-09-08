@@ -272,12 +272,18 @@ html.theme-transitioning *:after {
 }
 
 /* main-page.css의 .audio-novel-promo 배경과 같은 이유로 다크 배경을
-   여기서 덮어써야 한다 — .series-card.is-audio-novel과 완전히 같은 레시피. */
+   여기서 덮어써야 한다. 라이트 모드에서 민트빛 그림자를 준 base 규칙이
+   다크에서도 새 나오지 않도록, .post-row/.daily-gift-reveal 다크와 같은
+   불투명 그림자로 되돌린다. */
 [data-theme="dark"] .audio-novel-promo {
   background:
     linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(0, 255, 204, 0)),
     var(--dark-surface);
   border-color: rgba(0, 255, 204, 0.4);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .audio-novel-promo:hover {
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
 }
 [data-theme="dark"] .audio-novel-promo-desc {
   color: var(--dark-text);
