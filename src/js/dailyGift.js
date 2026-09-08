@@ -3,9 +3,12 @@
 
   // 오늘의 랜덤 문학 — 메인 페이지 최상단의 선물상자.
   //
-  // - 그날의 글은 KST 날짜 문자열(YYYY-MM-DD)을 해시해 후보 목록의 인덱스로
-  //   쓰는 결정론적 방식으로 고른다. 그래서 모든 방문자가 같은 날 같은 글을
-  //   보고, 서버 없이도 KST 자정에 저절로 다음 글로 넘어간다.
+  // - 그날의 글은 "KST 날짜 문자열(YYYY-MM-DD) + 이 브라우저 고정 시드"를
+  //   해시해 후보 목록의 인덱스로 쓴다. 시드는 첫 방문 때 한 번 만들어
+  //   localStorage에 저장하므로, 방문자마다 다른 글이 나오면서도 하루 동안은
+  //   같은 글이 유지되고 KST 자정에 저절로 다음 글로 넘어간다. 서버는 필요
+  //   없다. 시드를 저장 못 하는 환경(사생활 보호 모드 등)에서는 매 로드마다
+  //   임시 시드를 써서 새로고침 때 글이 바뀔 수 있다.
   // - 상자를 한 번 열면 그날 동안은 열린 상태를 localStorage에 기억한다.
   //   날짜가 바뀌면 키가 어긋나 다시 닫힌 상자로 시작한다.
   // - 카운트다운이 0에 닿으면(자정 통과) 페이지를 한 번 새로고침해 새 글을
@@ -16,6 +19,7 @@
   // 이 파일은 상자/애니메이션/카운트다운/그날의 뽑기만 책임진다.
 
   var OPENED_KEY = 'chokaguya_dailyGiftOpened';
+  var SEED_KEY = 'chokaguya_dailyGiftSeed';
   var KST_OFFSET_MS = 9 * 60 * 60 * 1000;
   var DAY_MS = 24 * 60 * 60 * 1000;
   var OPEN_ANIM_MS = 520;
@@ -55,15 +59,35 @@
     return item && item.posts && item.posts[0] && item.posts[0].id;
   }
 
-  // 후보 목록을 게시글 ID 오름차순으로 고정한 뒤 그날의 인덱스를 뽑는다.
-  // 원본 배열 순서가 재빌드로 흔들려도 같은 날 안에서는 같은 글이 유지된다.
+  // 후보 목록을 게시글 ID 오름차순으로 고정한 뒤 "날짜 + 브라우저 시드"로
+  // 그날의 인덱스를 뽑는다. 원본 배열 순서가 재빌드로 흔들려도 같은 날
+  // 안에서는 같은 글이 유지되고, 시드가 방문자마다 달라 글도 갈린다.
   function pickDailyItem(items) {
     var pool = items.slice().sort(function (a, b) {
       return (firstPostId(a) || 0) - (firstPostId(b) || 0);
     });
     if (!pool.length) return null;
-    var idx = hashString(kstDateString()) % pool.length;
+    var idx = hashString(kstDateString() + ':' + getUserSeed()) % pool.length;
     return pool[idx];
+  }
+
+  // 이 브라우저만의 고정 시드(16진수 16자). 첫 호출 때 만들어 저장하고
+  // 이후로는 그대로 재사용한다 — 이게 있어야 그날의 글이 방문자마다 갈린다.
+  // presence.js의 세션 ID 생성과 같은 관용구.
+  function getUserSeed() {
+    try {
+      var saved = localStorage.getItem(SEED_KEY);
+      if (saved && /^[a-f0-9]{16}$/.test(saved)) return saved;
+      var buf = new Uint8Array(8);
+      crypto.getRandomValues(buf);
+      var hex = '';
+      for (var i = 0; i < buf.length; i++) hex += buf[i].toString(16).padStart(2, '0');
+      localStorage.setItem(SEED_KEY, hex);
+      return hex;
+    } catch (e) {
+      // localStorage나 crypto를 못 쓰는 환경 — 이번 로드에서만 쓰는 임시 시드.
+      return String(Math.random()).slice(2) + String(Math.random()).slice(2);
+    }
   }
 
   function readOpenedDate() {
