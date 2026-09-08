@@ -18,8 +18,15 @@
  *   자동으로 전체 재난독화된다. .build-cache/도 산출물이라 git에 커밋하지 않는다.
  *
  * 사용법:
- *   npm run build   # dist/ 생성
- *   npm run deploy  # 빌드 후 dist/에서 wrangler deploy
+ *   npm run build             # dist/ 생성. 난독화 안 된 JS가 남으면 빌드 실패(exit 1).
+ *   npm run build -- --loose  # 위 안전장치를 끄고(경고만) 산출물만 확인.
+ *   npm run deploy            # 빌드 후 wrangler deploy --config dist/wrangler.toml
+ *
+ * Cloudflare Workers Builds(깃 푸시 자동 배포)도 이 스크립트를 거치게 하려면
+ * 대시보드의 Build 명령을 `npm run build`, Deploy 명령을
+ * `npx wrangler deploy --config dist/wrangler.toml`(dev 워커는 뒤에 `--env dev`)
+ * 로 두고 Root directory 를 저장소 루트로 맞춘다. 그러면 배포되는 자산은 항상
+ * 난독화된 dist/ 가 되고, 난독화가 깨지면 빌드가 실패해 원본이 새어 나가지 않는다.
  */
 const fs = require('fs');
 const path = require('path');
@@ -30,6 +37,13 @@ const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
 const DIST = path.join(ROOT, 'dist');
 const CACHE_DIR = path.join(ROOT, '.build-cache', 'js');
+
+// 이 스크립트의 존재 이유는 "원본 JS가 그대로 배포되면 안 된다" 하나다. 그래서
+// 기본 동작을 fail-closed 로 둔다: 난독화에 실패했거나 결과가 원본과 똑같은
+// 파일이 하나라도 있으면 빌드를 exit 1 로 끝낸다(Cloudflare Workers Builds 도
+// 그 시점에 배포를 멈춘다). 로컬에서 산출물만 눈으로 확인하고 싶을 때는
+// `node build.js --loose` 로 경고만 남기고 계속 진행한다.
+const LOOSE = process.argv.includes('--loose');
 
 // 변수/함수명을 완전히 꼬아서 읽기 어렵게 만드는 게 목적.
 // selfDefending / deadCodeInjection은 일부러 껐다 — 이 두 옵션은 실행 중
@@ -86,6 +100,8 @@ function obfuscateJsDir(dir) {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   let hits = 0;
   let misses = 0;
+  const skipped = [];
+  const processed = [];
 
   function walk(d) {
     for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
@@ -98,6 +114,7 @@ function obfuscateJsDir(dir) {
 
       const original = fs.readFileSync(full, 'utf8');
       const relPath = path.relative(DIST, full);
+      processed.push(relPath);
       const cachePath = cachePathFor(original);
 
       if (fs.existsSync(cachePath)) {
@@ -114,8 +131,9 @@ function obfuscateJsDir(dir) {
         misses++;
         console.log(`  [ok] ${relPath}`);
       } catch (err) {
-        // 난독화가 실패한 파일은 원본 그대로 둔다(사이트가 깨지는 것보다
-        // 그 파일 하나가 안 꼬이는 게 낫다) — 대신 눈에 띄게 경고한다.
+        // 난독화에 실패한 파일. LOOSE 모드에서는 원본을 그대로 두고 경고만
+        // 남기지만, 기본 빌드에서는 아래 최종 검사에서 빌드를 중단시킨다.
+        skipped.push(relPath);
         console.warn(`  [skip] ${relPath}: ${err.message}`);
       }
     }
@@ -123,6 +141,32 @@ function obfuscateJsDir(dir) {
 
   walk(dir);
   console.log(`[build] 난독화 캐시 적중 ${hits}개 / 신규 ${misses}개`);
+
+  // 최종 검사: dist/js 의 각 파일이 정말로 원본(src/js)과 달라졌는가.
+  // 난독화가 조용히 실패했거나(skipped), 캐시가 손상돼 원본이 그대로 남은
+  // 경우를 여기서 한 번 더 걸러 낸다.
+  const unchanged = processed.filter((relPath) => {
+    const srcFile = path.join(SRC, relPath);
+    if (!fs.existsSync(srcFile)) return false;
+    return fs.readFileSync(path.join(DIST, relPath), 'utf8') === fs.readFileSync(srcFile, 'utf8');
+  });
+
+  const leaked = [...new Set([...skipped, ...unchanged])];
+  if (leaked.length === 0) return;
+
+  console.error(`\n[build] 난독화되지 않은 JS ${leaked.length}개가 dist/ 에 남아 있습니다:`);
+  for (const relPath of leaked) console.error(`  - ${relPath}`);
+
+  if (LOOSE) {
+    console.error('[build] --loose 모드이므로 계속 진행합니다. 이 산출물은 배포하지 마십시오.');
+    return;
+  }
+  console.error(
+    '[build] 원본 JS가 그대로 배포되는 것을 막기 위해 빌드를 중단합니다.\n' +
+      '        해당 파일의 문법 오류를 고치거나, 원인을 파악하기 전까지는\n' +
+      '        `node build.js --loose` 로만 빌드하십시오.'
+  );
+  process.exit(1);
 }
 
 console.log('[build] src/ -> dist/ 복사 중...');
@@ -131,4 +175,4 @@ copySrcToDist();
 console.log('[build] dist/js 난독화 중...');
 obfuscateJsDir(path.join(DIST, 'js'));
 
-console.log('[build] 완료 -> dist/ (배포는 dist/에서: cd dist && npx wrangler deploy)');
+console.log('[build] 완료 -> dist/ (배포: npx wrangler deploy --config dist/wrangler.toml)');
