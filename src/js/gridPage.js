@@ -101,6 +101,14 @@
 
     var countLine = config.countLine || global.SeriesUtil.countLine;
 
+    // config.userTags 는 공식/유저 태그 토글을 다는 페이지(문학)가,
+    // config.userTagsOnly 는 유저 태그만 쓰는 페이지(번역 — 공식 AI 태그를
+    // 지원하지 않는다)가 켠다. 스냅샷·후보 목록을 받아야 하는지, 유저 태그
+    // 관련 코드 경로를 태울지는 둘 중 하나라도 켜져 있으면 되므로 여기서
+    // 하나로 묶는다. userTagsOnly 는 추가로 activePool 을 처음부터 'user' 로
+    // 고정하고 공식/유저 토글 버튼을 아예 만들지 않는다.
+    var wantUserTags = !!(config.userTags || config.userTagsOnly);
+
     var rawItems = [];
     var allItems = [];
     var activeTags = {};
@@ -126,7 +134,8 @@
       .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })
       .catch(function () {});
 
-    // 유저 태그 투표 스냅샷 병합(config.userTags — 지금은 novelPage.js만 켠다).
+    // 유저 태그 투표 스냅샷 병합(wantUserTags 인 페이지만 — 문학은 config.userTags,
+    // 번역은 config.userTagsOnly 로 켠다).
     // Cron이 5분마다 D1을 집계해 구워 두는 정적 스냅샷이라 페이지당 한 번만
     // 받으면 되고, 실패해도 정적 태그만으로 화면이 그려져야 하므로 조용히
     // 넘어간다(태그는 부가 정보라 페이지를 막지 않는다).
@@ -176,13 +185,13 @@
     // 도착했을 때 합친다 — 태그 스냅샷이 끝나야 목록 요청을 시작하던 예전
     // 방식은 왕복 하나만큼 첫 렌더를 늦추고 있었다.
     var itemsPromise = fetch(DATA(config.dataUrl)).then(function (r) { return r.json(); });
-    var snapshotPromise = config.userTags
+    var snapshotPromise = wantUserTags
       ? fetch('/tags/snapshot').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       : Promise.resolve(null);
     // 유저 태그 후보 목록은 postDetailSeries.js의 투표 모달이 읽는 것과 같은
     // 정적 자산이다. 실패해도 스냅샷 득표 태그만으로 필터가 그려지도록
     // 조용히 빈 배열로 넘어간다.
-    var catalogPromise = config.userTags
+    var catalogPromise = wantUserTags
       ? fetchJson('../data/PageData/UserTagCatalog.json')
           .then(function (list) { return Array.isArray(list) ? list : []; })
           .catch(function () { return []; })
@@ -191,7 +200,7 @@
     Promise.all([itemsPromise, snapshotPromise, catalogPromise])
       .then(function (results) {
         rawItems = Array.isArray(results[0]) ? results[0] : [];
-        if (config.userTags) {
+        if (wantUserTags) {
           mergeUserTagSnapshot(results[1]);
           userTagCatalog = results[2].filter(function (t) { return typeof t === 'string'; });
         }
@@ -294,7 +303,9 @@
     // (createGridCard/createListCard가 tagsField(s, activePool)을 그대로 씀) —
     // "공식 태그로 볼지 유저 태그로 볼지" 페이지 전체의 보기 모드를 바꾸는
     // 토글이지, 필터 후보 목록만 왔다갔다 하는 게 아니다.
-    var activePool = 'official';
+    // config.userTagsOnly(번역)는 공식 태그 자체가 없으므로 처음부터 'user'로
+    // 고정하고, 아래 setupPoolToggle 은 토글 버튼을 만들지 않는다.
+    var activePool = config.userTagsOnly ? 'user' : 'official';
 
     function tagsField(s, pool) {
       return ((pool || activePool) === 'user' ? s.popularUserTags : s.tags) || [];
@@ -323,7 +334,8 @@
     // 만들어 두고 클릭 때마다 라벨만 다시 칠한다.
     var poolToggleBtn = null;
     function setupPoolToggle() {
-      if (!config.userTags || poolToggleBtn) return;
+      // userTagsOnly 페이지(번역)는 전환할 공식 풀이 없으므로 토글을 달지 않는다.
+      if (config.userTagsOnly || !config.userTags || poolToggleBtn) return;
       var header = filterPanel && filterPanel.querySelector('.sfp-header');
       if (!header) return;
 

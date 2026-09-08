@@ -33,3 +33,10 @@ README.md
 # 저장소 전체에서 참조 0건인 고아 이미지.
 # CLAUDE.md 이미지 보존 수칙에 따라 파일은 지우지 않고 배포에서만 뺀다.
 offline_src/ForEvent/57b96602-3787-47c3-93cb-650d5ece21b6.png
+
+# 아직 공개하지 않은 번역 탭. 이 두 줄이 있는 동안에는 직접 주소
+# (/page/translationPage.html)로도 열리지 않고, 페이지 스크립트도 배포되지
+# 않는다(_worker.js 에도 translation 라우트가 없다). 탭을 공개할 때 두 줄을
+# 모두 지운다 — 전체 절차는 src/js/translationPage.js 상단 주석 참고.
+page/translationPage.html
+js/translationPage.js
