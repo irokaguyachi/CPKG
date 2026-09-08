@@ -1,97 +1,97 @@
 {
   "totals": {
-    "novel": 1310,
-    "series": 97
+    "novel": 1324,
+    "series": 100
   },
   "novels": [
     {
-      "name": "녹아버릴 것 같아!",
-      "image": "../assets/Image/크롤링사진/문학/2026-09-01/302028_1.jpg",
+      "name": "초! 대작전! 이로하 몰래 라면먹기",
+      "image": null,
       "tags": [
-        "로맨스",
+        "코미디",
         "일상"
       ],
-      "charCount": "2,577자",
-      "author": "라스콜(lascol)",
+      "charCount": "3,195자",
+      "author": "이세빈(relieve7174)",
       "posts": [
         {
-          "id": 302028,
-          "title": "녹아버릴 것 같아!",
+          "id": 306144,
+          "title": "초! 대작전! 이로하 몰래 라면먹기",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=302028"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=306144"
         }
       ]
     },
     {
-      "name": "이로하의 우당탕탕 고백 대작전!",
+      "name": "What if 얏쵸가 존재하지 않았다면? (1)",
       "image": null,
       "tags": [
-        "로맨스",
-        "코미디"
+        "피폐",
+        "슬픔"
       ],
-      "charCount": "2,872자",
-      "author": "카구얏쵸(secret2128)",
+      "charCount": "1,725자",
+      "author": "이로얏호~(protect2148)",
       "posts": [
         {
-          "id": 302025,
-          "title": "이로하의 우당탕탕 고백 대작전!",
+          "id": 306140,
+          "title": "What if 얏쵸가 존재하지 않았다면? (1)",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=302025"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=306140"
         }
       ]
     },
     {
-      "name": "야치요의 생일 - 오지 않는 날",
+      "name": "《 카구야에게 – 이로하가 》",
       "image": null,
       "tags": [
-        "짧문",
         "슬픔",
         "감동"
       ],
-      "charCount": "630자",
-      "author": "카구얏쵸(secret2128)",
-      "posts": [
-        {
-          "id": 301967,
-          "title": "야치요의 생일 - 오지 않는 날",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=301967"
-        }
-      ]
-    },
-    {
-      "name": "《 나 버리지 마 》",
-      "image": null,
-      "tags": [
-        "피폐"
-      ],
-      "charCount": "1,643자",
+      "charCount": "2,004자",
       "author": "별바다를불태우리(flock4442)",
       "posts": [
         {
-          "id": 301746,
-          "title": "《 나 버리지 마 》",
+          "id": 306059,
+          "title": "《 카구야에게 – 이로하가 》",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=301746"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=306059"
         }
       ]
     },
     {
-      "name": "《 놀이공원 》",
-      "image": null,
+      "name": "엇갈림",
+      "image": "../assets/Image/크롤링사진/문학/2026-09-07/305918_1.jpg",
       "tags": [
-        "소설",
+        "짧문",
+        "슬픔",
+        "피폐"
+      ],
+      "charCount": "362자",
+      "author": "ㅇㅇ(rokimi)",
+      "posts": [
+        {
+          "id": 305918,
+          "title": "엇갈림",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=305918"
+        }
+      ]
+    },
+    {
+      "name": "사랑에 빠진 이로하",
+      "image": "../assets/Image/크롤링사진/문학/2026-09-07/305833_1.jpg",
+      "tags": [
         "로맨스",
         "일상"
       ],
-      "charCount": "5,164자",
-      "author": "별바다를불태우리(flock4442)",
+      "charCount": "2,723자",
+      "author": "키라키랏란(politely2726)",
       "posts": [
         {
-          "id": 301500,
-          "title": "《 놀이공원 》",
+          "id": 305833,
+          "title": "사랑에 빠진 이로하",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=301500"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=305833"
         }
       ]
     }
