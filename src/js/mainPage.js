@@ -433,6 +433,28 @@
     }
   }
 
+  // 오늘의 랜덤 문학 선물상자 — #content 최상단에 둔다. Recent.json 응답이
+  // contentEl을 통째로 비우므로, audio promo와 같은 방식으로 요소를 쥐고
+  // 있다가 다시 끼운다. placeAudioPromo()보다 나중에 불러 항상 맨 위
+  // (첫 자식)에 오게 한다. 카드 마크업과 성인 태그 필터는 이 파일이 맡고,
+  // 상자/애니메이션/카운트다운/그날의 뽑기는 dailyGift.js가 맡는다.
+  var dailyGiftEl = null;
+  function placeDailyGift() {
+    if (dailyGiftEl && dailyGiftEl.parentNode !== contentEl) {
+      contentEl.insertBefore(dailyGiftEl, contentEl.firstChild);
+    }
+  }
+
+  if (global.DailyGift) {
+    dailyGiftEl = global.DailyGift.create({
+      dataUrl: '../data/PageData/Novel.json',
+      favType: 'novel',
+      filterItems: filterMature,
+      renderCard: function (item) { return createCard(item, 'novel'); }
+    });
+    placeDailyGift();
+  }
+
   var audioPromoDismissed = false;
   try { audioPromoDismissed = !!localStorage.getItem(AUDIO_PROMO_DISMISS_KEY); } catch (e) {}
 
@@ -475,6 +497,7 @@
 
       contentEl.innerHTML = '';
       placeAudioPromo(); // Official.json이 먼저 응답해 이미 붙어있던 배너를 방금 지웠다면 되살림
+      placeDailyGift();  // audio promo 뒤에 불러 항상 #content 맨 위에 오게 한다
 
       // 0. 야치요 생일 축하 배너 — pancakeCounter.js가 버튼에 클릭을 걸
       // 시점을 알 수 있도록, 배너가 실제로 DOM에 붙은 뒤 이벤트를 쏜다
