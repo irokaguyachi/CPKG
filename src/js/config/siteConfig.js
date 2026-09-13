@@ -1,5 +1,5 @@
 /**
- * ChoKaguya Site Config (src/data/SiteConfig.json)
+ * ChoKaguya Site Config (src/data/config/SiteConfig.json)
  * - 문의 메일, PWA 이름처럼 자주 바뀔 수 있는 값을 코드에 박아두지 않고
  *   이 JSON 하나에서 읽어와 적용한다. 값을 바꾸고 싶으면 그 JSON만 고치면
  *   되고, 배포 후 캐시까지 갱신하려면 10_update_data_version.py를 한 번
@@ -13,7 +13,7 @@
  *   이 로딩 프라미스를 window.SiteConfig.ready로 공유한다.
  */
 (function (global) {
-  var CONFIG_URL = '../data/SiteConfig.json';
+  var CONFIG_URL = '../data/config/SiteConfig.json';
 
   var ready = fetch(global.dataUrl ? global.dataUrl(CONFIG_URL) : CONFIG_URL)
     .then(function (r) { return r.json(); })

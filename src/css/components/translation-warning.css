@@ -1,0 +1,73 @@
+/* 번역 목록을 보여주기 전에 내용을 안내하는 공통 주의 배너 */
+.translation-warning {
+  position: relative;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto 24px;
+  padding: 18px 24px 19px 28px;
+  overflow: hidden;
+  border: 1px solid rgba(187, 30, 45, 0.34);
+  border-radius: 15px;
+  background: linear-gradient(112deg, #fff1f1 0%, #ffe1e2 49%, #fff8f8 100%);
+  box-shadow: 0 8px 22px rgba(166, 28, 44, 0.14);
+}
+
+.translation-warning::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  content: '';
+  background: linear-gradient(180deg, #ff5a63 0%, #ba1529 48%, #7f0d1d 100%);
+}
+
+.translation-warning-title,
+.translation-warning-text {
+  margin: 0;
+}
+
+.translation-warning-title {
+  color: #a7101f;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.translation-warning-text {
+  margin-top: 5px;
+  color: #6d2028;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+[data-theme="dark"] .translation-warning {
+  border-color: rgba(255, 105, 115, 0.38);
+  background: linear-gradient(112deg, rgba(106, 17, 31, 0.52) 0%, rgba(145, 27, 43, 0.38) 50%, rgba(70, 14, 27, 0.56) 100%);
+  box-shadow: 0 8px 24px rgba(74, 5, 18, 0.32);
+}
+
+[data-theme="dark"] .translation-warning-title {
+  color: #ffd2d4;
+}
+
+[data-theme="dark"] .translation-warning-text {
+  color: rgba(255, 232, 233, 0.84);
+}
+
+@media (max-width: 768px) {
+  .translation-warning {
+    margin-bottom: 18px;
+    padding: 15px 16px 16px 21px;
+    border-radius: 13px;
+  }
+
+  .translation-warning-title {
+    font-size: 15px;
+  }
+
+  .translation-warning-text {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+}

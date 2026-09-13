@@ -1,3 +1,4 @@
+import { readJsonLimited } from '../worker/requestBody.js';
 /**
  * statsApi — 방문자 통계용 API. src/_worker.js가 아래 경로를 이 모듈로 넘긴다.
  *
@@ -66,30 +67,39 @@ function presenceStub(env) {
   return env.PRESENCE.get(id);
 }
 
-async function handlePresenceBeat(request, env) {
-  var stub = presenceStub(env);
-  var res = await stub.fetch('https://do/beat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: await request.text()
-  });
-  return new Response(await res.text(), {
-    status: res.status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
-  });
-}
-
-async function handlePresenceLeave(request, env) {
-  var stub = presenceStub(env);
-  var res = await stub.fetch('https://do/leave', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: await request.text()
-  });
-  return new Response(await res.text(), {
-    status: res.status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
-  });
+async function handlePresenceRequest(request, env, action) {
+  // Browser calls are same-origin; reject cross-site beacons before touching DO.
+  var origin = request.headers.get('Origin');
+  if ((origin && origin !== new URL(request.url).origin) ||
+      request.headers.get('Sec-Fetch-Site') === 'cross-site') {
+    return json({ error: 'forbidden origin' }, 403);
+  }
+  var parsed = await readJsonLimited(request, 256);
+  if (parsed.error) return json({ error: parsed.error }, parsed.status);
+  var sid = parsed.value && parsed.value.sid;
+  if (typeof sid !== 'string' || !/^[a-f0-9]{16}$/.test(sid)) {
+    return json({ error: 'invalid sid' }, 400);
+  }
+  // The Worker supplies the client identity; a caller cannot choose another
+  // IP's quota or remove another client's session by guessing its sid.
+  var ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  var day = Math.floor(Date.now() / 86400000);
+  var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(day + '|' + ip));
+  var client = Array.from(new Uint8Array(digest)).slice(0, 16)
+    .map(function (byte) { return byte.toString(16).padStart(2, '0'); }).join('');
+  try {
+    var res = await presenceStub(env).fetch('https://do/' + action, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Presence-Client': client },
+      body: JSON.stringify({ sid: sid })
+    });
+    return new Response(res.body, {
+      status: res.status,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+    });
+  } catch (error) {
+    return json({ error: 'presence temporarily unavailable' }, 503);
+  }
 }
 
 async function handlePresenceStats(request, env) {
@@ -255,10 +265,10 @@ export default {
     var p = url.pathname;
 
     if (p === '/api/presence/beat' && request.method === 'POST') {
-      return handlePresenceBeat(request, env);
+      return handlePresenceRequest(request, env, 'beat');
     }
     if (p === '/api/presence/leave' && request.method === 'POST') {
-      return handlePresenceLeave(request, env);
+      return handlePresenceRequest(request, env, 'leave');
     }
     if (p === '/api/presence/stats' && request.method === 'GET') {
       return handlePresenceStats(request, env);

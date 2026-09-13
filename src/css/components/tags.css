@@ -1,0 +1,118 @@
+/* 태그 색상의 단일 소스. JS는 data-tag만 지정한다. */
+.series-card-tag, .sfp-label, .pds-tag-pill {
+  background-color: var(--tag-bg, #efefef);
+}
+
+[data-tag="일상"] { --tag-bg: #e2f4f2; }
+[data-tag="소설"] { --tag-bg: #f3ebe4; }
+[data-tag="장편"] { --tag-bg: #e6f4df; }
+[data-tag="로맨스"] { --tag-bg: #fae4ec; }
+[data-tag="슬픔"] { --tag-bg: #e8ecf8; }
+[data-tag="코미디"] { --tag-bg: #faf1d2; }
+[data-tag="피폐"] { --tag-bg: #fae4e4; }
+[data-tag="후방주의"] { --tag-bg: #fae4e4; }
+[data-tag="짧문"] { --tag-bg: #f5e4f2; }
+[data-tag="단편"] { --tag-bg: #eee4fb; }
+[data-tag="감동"] { --tag-bg: #fbf0df; }
+[data-tag="명예관"] { --tag-bg: #faeed4; }
+[data-tag="대회"] { --tag-bg: #e4eefb; }
+[data-tag="로카"] { --tag-bg: #fde2e4; }
+[data-tag="글카스"] { --tag-bg: #ebecee; }
+
+[data-theme="dark"] [data-tag] {
+  --tag-bg: rgba(255, 255, 255, 0.08);
+  --tag-text: #e2e8f0;
+  --tag-border: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .series-card-tag,
+[data-theme="dark"] .sfp-label,
+[data-theme="dark"] .pds-tag-pill {
+  background-color: var(--tag-bg, rgba(255, 255, 255, 0.08));
+  color: var(--tag-text, #e2e8f0);
+  border: 0.5px solid var(--tag-border, rgba(255, 255, 255, 0.12));
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme="dark"] [data-tag="소설"] {
+  --tag-bg: rgba(180, 125, 85, 0.22);
+  --tag-text: #f2caa7;
+  --tag-border: rgba(215, 150, 105, 0.35);
+}
+
+[data-theme="dark"] [data-tag="명예관"] {
+  --tag-bg: rgba(195, 145, 45, 0.22);
+  --tag-text: #ffd97d;
+  --tag-border: rgba(235, 180, 60, 0.35);
+}
+
+[data-theme="dark"] [data-tag="피폐"] {
+  --tag-bg: rgba(175, 60, 70, 0.22);
+  --tag-text: #fca5ac;
+  --tag-border: rgba(215, 85, 95, 0.35);
+}
+
+[data-theme="dark"] [data-tag="로맨스"] {
+  --tag-bg: rgba(195, 75, 115, 0.22);
+  --tag-text: #ffaec8;
+  --tag-border: rgba(235, 105, 145, 0.35);
+}
+
+[data-theme="dark"] [data-tag="슬픔"] {
+  --tag-bg: rgba(75, 105, 185, 0.22);
+  --tag-text: #b2c8fb;
+  --tag-border: rgba(105, 140, 225, 0.35);
+}
+
+[data-theme="dark"] [data-tag="일상"] {
+  --tag-bg: rgba(45, 145, 135, 0.22);
+  --tag-text: #86ece3;
+  --tag-border: rgba(70, 185, 175, 0.35);
+}
+
+[data-theme="dark"] [data-tag="코미디"] {
+  --tag-bg: rgba(180, 145, 35, 0.22);
+  --tag-text: #ffe67d;
+  --tag-border: rgba(220, 180, 50, 0.35);
+}
+
+[data-theme="dark"] [data-tag="후방주의"] {
+  --tag-bg: rgba(195, 60, 60, 0.22);
+  --tag-text: #ff9999;
+  --tag-border: rgba(235, 80, 80, 0.35);
+}
+
+[data-theme="dark"] [data-tag="짧문"] {
+  --tag-bg: rgba(175, 75, 160, 0.22);
+  --tag-text: #f7b2ee;
+  --tag-border: rgba(215, 100, 200, 0.35);
+}
+
+[data-theme="dark"] [data-tag="장편"] {
+  --tag-bg: rgba(75, 155, 65, 0.22);
+  --tag-text: #a9f79e;
+  --tag-border: rgba(105, 195, 90, 0.35);
+}
+
+[data-theme="dark"] [data-tag="감동"] {
+  --tag-bg: rgba(185, 125, 55, 0.22);
+  --tag-text: #ffd294;
+  --tag-border: rgba(225, 160, 80, 0.35);
+}
+
+[data-theme="dark"] [data-tag="대회"] {
+  --tag-bg: rgba(60, 120, 195, 0.22);
+  --tag-text: #9ecaff;
+  --tag-border: rgba(90, 155, 235, 0.35);
+}
+
+[data-theme="dark"] [data-tag="단편"] {
+  --tag-bg: rgba(125, 85, 185, 0.22);
+  --tag-text: #dcb8ff;
+  --tag-border: rgba(160, 115, 225, 0.35);
+}
+
+[data-theme="dark"] [data-tag="글카스"] {
+  --tag-bg: rgba(110, 115, 125, 0.22);
+  --tag-text: #d2d7df;
+  --tag-border: rgba(145, 150, 160, 0.35);
+}

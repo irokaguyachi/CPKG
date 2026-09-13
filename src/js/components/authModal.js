@@ -1,10 +1,10 @@
 /**
  * ChoKaguya Auth Modal (로그인/회원가입)
- * - 개인 코드(src/js/bookmarkLibrary.js)를 "로그인" UX로 감싸는 모달.
+ * - 개인 코드(src/js/core/bookmarkLibrary.js)를 "로그인" UX로 감싸는 모달.
  *   회원가입은 순수 로컬 동작(코드를 만들어 저장할 뿐, 서버 호출 없음)이고,
  *   로그인은 서버(/owner/lookup)에서 그 코드에 연결된 목록을 받아와 로컬로
  *   복원한다.
- * - src/js/postDetailSeries.js 의 싱글턴 오버레이 패턴(document.body 에 한
+ * - src/js/components/postDetailSeries.js 의 싱글턴 오버레이 패턴(document.body 에 한
  *   번만 append, 바깥클릭/Escape 로 닫힘, .is-open 토글)을 그대로 본떴다.
  * - Figma "개인 공간" 파일의 SignInFrame/SignUpFrame(node #2222) 디자인을
  *   반영(CSS: src/css/components/auth.css 의 .auth-* 규칙).

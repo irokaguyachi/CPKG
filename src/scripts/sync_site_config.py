@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 사이트 설정 동기화 스크립트 (sync_site_config.py)
-- src/data/SiteConfig.json 의 appName/shortAppName 을
+- src/data/config/SiteConfig.json 의 appName/shortAppName 을
   src/manifest.webmanifest 의 name/short_name 에 반영합니다.
 - manifest.webmanifest 는 브라우저가 <link rel="manifest">로 직접 fetch하는
-  정적 파일이라, 페이지의 다른 JS(src/js/siteConfig.js)로는 런타임에 못
+  정적 파일이라, 페이지의 다른 JS(src/js/config/siteConfig.js)로는 런타임에 못
   바꿉니다 — SiteConfig.json 을 고친 뒤 이 스크립트를 실행해서 반영하세요.
 - 문의 메일(contactEmail)이나 apple-mobile-web-app-title 같은, 페이지 DOM에
   그대로 찍히는 값들은 siteConfig.js가 런타임에 알아서 반영하므로 이
@@ -17,7 +17,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(HERE, "..", "data", "SiteConfig.json")
+CONFIG_PATH = os.path.join(HERE, "..", "data", "config", "SiteConfig.json")
 MANIFEST_PATH = os.path.join(HERE, "..", "manifest.webmanifest")
 
 

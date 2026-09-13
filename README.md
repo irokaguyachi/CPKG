@@ -23,40 +23,57 @@
 
 ## 📂 프로젝트 구조
 
+```text
+문학/
+├── src/                         # 사이트 소스 (로컬 웹 서버의 루트)
+│   ├── page/                    # HTML 페이지
+│   ├── js/                      # 브라우저 JavaScript
+│   │   ├── config/              # CDN·사이트·태그·라이브러리 설정
+│   │   ├── core/                # 테마·저장·사용자 데이터 등 공통 기능
+│   │   ├── components/          # 모달·사이드바·플레이어 등 UI
+│   │   └── pages/               # 페이지별 실행 코드와 공통 목록 렌더러
+│   ├── css/                     # CSS (base / layout / components / pages)
+│   ├── data/
+│   │   ├── config/              # 공통 JSON 설정 (사이트·색상·로딩 아이콘·팁)
+│   │   ├── PageData/            # 페이지별 JSON 데이터
+│   │   ├── ForEvent/            # 이벤트 JSON 데이터
+│   │   ├── changelog/           # 변경 내역 Markdown 및 목록 JSON
+│   │   ├── notice/              # 공지 Markdown 및 목록 JSON
+│   │   ├── 문학 정리/           # 문학 원문·분류 자료
+│   │   ├── 번역 정리/           # 번역 원문
+│   │   └── MoonHakdata.json     # 빌드 전용 통합 데이터
+│   ├── scripts/                # Python 데이터 빌더·동기화 도구
+│   ├── assets/                 # 커스텀 이미지 및 CDN 에셋
+│   ├── offline_src/            # 사이트에서 직접 제공하는 로고·아이콘
+│   ├── AudioNovel/             # 오디오 노벨 원문·이미지·음원 묶음
+│   ├── fonts/                  # 폰트
+│   ├── index.html              # 메인 페이지 이동 진입점
+│   ├── _worker.js              # Cloudflare 요청 라우팅 진입점
+│   ├── sw.js                   # 루트 범위를 사용하는 서비스 워커
+│   └── wrangler.toml           # 배포 설정
+├── worker/                     # 서버 JavaScript 및 D1 스키마
+├── tests/                      # 보안·기능·파일 참조 회귀 검증
+├── build.js                    # 배포 산출물 생성·JS 난독화
+├── dist/                       # 자동 생성되는 배포 산출물
+├── scratch/                    # 기존 일회성 작업 스크립트
+├── .agent/                     # 작업 규칙 및 분류 가이드
+├── AGENTS.md                   # 프로젝트 작업 수칙
+└── README.md
 ```
-CPK_Literature_Site/
-├── .agent/                    # AI 에이전트 작업 지침 및 규칙
-│   ├── AGENT.md               # 에이전트 최우선 핵심 규칙
-│   ├── config.json            # 에이전트 환경 설정
-│   ├── rules/                 # 세부 작업 규칙 (태그 분류, 시리즈 식별, 크롤링)
-│   │   ├── tag.md             # 태그 분류 및 세분화 기준 가이드
-│   │   ├── SeriesRule.md      # 시리즈 문학 식별 및 회차 정리 규칙
-│   │   ├── crawling.md        # 본문 파싱 고립성 및 수집 수칙
-│   │   └── notepad-prep.md    # 1차 데이터 정리 규칙
-│   ├── tag_example/           # 장르별 벤치마킹 레퍼런스 예시글
-│   └── ignoreID.md            # 수집/통계 집계 제외 ID 목록
-├── src/                       # 웹사이트 소스 코드 및 데이터
-│   ├── index.html             # 메인 뷰어 HTML
-│   ├── main.css / main.js     # 메인 UI 스타일 및 상호작용 스크립트
-│   ├── theme.css / theme.js   # 다크/라이트 모드 테마 스크립트
-│   ├── page/                  # 서브 페이지 (시리즈 뷰어, 명예관 뷰어 등)
-│   ├── assets/                # 로고, 배너, 아이콘, 크롤링 사진 에셋
-│   ├── data/                  # 원본 문학 마크다운 및 빌드 JSON 데이터
-│   │   ├── MoonHakdata.json   # 통합 문학 데이터셋
-│   │   ├── PageData/          # 페이지별 분할 데이터 (Series.json, HOF.json 등)
-│   │   └── 문학 정리/         # 원본 마크다운 데이터 (시리즈, 명예관, 대회, 태그보정.md)
-│   └── scripts/               # 데이터 파싱 & 빌드 스크립트
-│       ├── 1_parse_crawl.py   # 크롤링 배치/명예관/대회 데이터 1차 파싱
-│       ├── 2_parse_series.py  # 시리즈 원본 마크다운 파싱
-│       ├── 3_build_data.py    # 통합 MoonHakdata.json 생성
-│       ├── 5_build_series_page_data.py # 시리즈 페이지용 Series.json 빌드
-│       ├── 7_build_novel_page_data.py  # 문학 페이지용 Novel.json 빌드
-│       ├── 8_build_recent_page_data.py # 메인 페이지용 Recent.json 빌드
-│       └── sync_to_r2.py      # Cloudflare R2 이미지 CDN 자동 동기화
-├── CLAUDE.md                  # 프로젝트 최우선 개발 가이드라인 (커스텀 에셋 보호 수칙)
-├── CurrentStats.md            # 크롤링 및 수집 통계 현황
-└── README.md                  # 본 문서
-```
+
+HTML에는 화면 구조를, JS에는 실행 코드를, CSS에는 스타일을 둡니다. JSON은
+`data/config`와 `data/PageData`에서 관리합니다. 데이터 빌더가 사용하는 원문,
+공지의 Markdown·목록 JSON, 오디오 노벨의 음원·메타데이터는 기능 단위로 함께
+보관합니다. 이미지와 CDN 경로는 유지합니다. `dist/`는 직접 수정하지 않습니다.
+
+자주 수정하는 파일:
+
+- 사이트 이름·버전: `src/data/config/SiteConfig.json`
+- 색상 설정: `src/data/config/ColorTheme.json`
+- 로딩 팁: `src/data/config/Tip.json`
+- 메인 화면: `src/page/mainPage.html`, `src/js/pages/mainPage.js`
+- 공통 모달: `src/js/components/`, `src/css/components/`
+- API: `worker/favoritesShareWorker.js`, `worker/statsApi.js`
 
 ---
 
@@ -98,7 +115,7 @@ python 7_build_novel_page_data.py
 python 8_build_recent_page_data.py
 ```
 
-> 데이터를 다시 빌드했으면 `src/js/cdnConfig.js` 의 `DATA_VERSION` 을 올려야
+> 데이터를 다시 빌드했으면 `src/js/config/cdnConfig.js` 의 `DATA_VERSION` 을 올려야
 > 브라우저가 새 JSON 을 받아 갑니다.
 
 ---
@@ -114,7 +131,7 @@ python src/scripts/sync_to_r2.py
 
 ## 🚨 개발 및 유지보수 핵심 수칙
 
-1. **커스텀 에셋 영구 보존 (`CLAUDE.md` 참조)**
+1. **커스텀 에셋 영구 보존 (`AGENTS.md` 참조)**
    - `src/assets/Image/` 내 사용자가 직접 제작하거나 배치한 커스텀 로고, 배너, 커버 이미지는 스크립트 실행이나 리팩토링 시 **절대 덮어쓰거나 기본 크롤링 이미지로 롤백하지 않습니다.**
 2. **본문 파싱 고립성 (`.agent/rules/crawling.md` 참조)**
    - 게시글 수집 시 오직 순수 본문 구획(`<div class="write_div">`)만 격리 추출하여 댓글/광고 등의 텍스트 혼입을 원천 차단합니다.

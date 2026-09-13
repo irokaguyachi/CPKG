@@ -1,0 +1,22 @@
+/* 공통 오버레이 동작. 크기·여백·쌓임 순서는 각 컴포넌트가 유지한다. */
+.auth-overlay,
+.settings-overlay,
+.changelog-detail-overlay,
+.pds-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.auth-overlay.is-open,
+.settings-overlay.is-open,
+.changelog-detail-overlay.is-open,
+.pds-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}

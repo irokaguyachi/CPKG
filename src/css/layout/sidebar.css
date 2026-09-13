@@ -2,15 +2,15 @@
  * - 2026-08-22, 예전 가로 헤더의 .header-nav(네비게이션·다크모드 토글·
  *   로그인 버튼)를 화면 오른쪽 세로 사이드바로 옮겼다. 로고는 그대로
  *   src/css/layout/header.css 의 .header/.header-logo 에 남아있다.
- * - .header-nav 라는 클래스명은 그대로 유지했다 — src/js/auth.js 의
- *   renderVersionTag(), src/js/loading.js 가 전부 `.header-nav` 를 클래스
+ * - .header-nav 라는 클래스명은 그대로 유지했다 — src/js/components/auth.js 의
+ *   renderVersionTag(), src/js/components/loading.js 가 전부 `.header-nav` 를 클래스
  *   셀렉터로 찾아 동작하므로, 컨테이너를 <header><nav> 에서 <aside><nav>
  *   로 옮겨도 클래스명만 유지하면 이 JS들은 무수정으로 그대로 동작한다.
  *   다크모드 토글/로그인 버튼은 이제 헤더에 없다 — 통합 설정창
- *   (src/js/settingsModal.js)으로 옮겨갔다.
+ *   (src/js/components/settingsModal.js)으로 옮겨갔다.
  * - 처음엔 항상 떠 있는 고정 사이드바로 만들었다가, 오른쪽 위 메뉴
  *   버튼(.sidebar-toggle-btn)을 눌러야 옆에서 슬라이드인 되는 오프캔버스
- *   방식으로 바꿨다(src/js/sidebar.js 가 열고 닫는 로직을 맡는다). 평소엔
+ *   방식으로 바꿨다(src/js/components/sidebar.js 가 열고 닫는 로직을 맡는다). 평소엔
  *   숨어 있으므로 본문에 여백을 미리 비워두지 않는다.
  * - 사이드바는 스크롤 위치(body.is-top)와 무관하게 항상 같은 모습이다 —
  *   예전엔 맨 위에서 네비 링크를 숨기는 연출이 있었지만(header.css 참고)
@@ -59,7 +59,7 @@
   }
 }
 
-/* 사이드바 뒤에 까는 딤 배경 — src/js/postDetailSeries.js 의 .pds-overlay
+/* 사이드바 뒤에 까는 딤 배경 — src/js/components/postDetailSeries.js 의 .pds-overlay
    패턴(진짜 화면 중앙 모달)과 같은 뼈대를 오프캔버스 사이드바에 맞게
    썼다: 바깥(오버레이 자체) 클릭이나 Escape 로 닫힌다(sidebar.js). */
 .sidebar-overlay {

@@ -10,7 +10,7 @@
  * - 탭 전환은 bookmarksPage.js 의 "내 북마크"/"북마크 라이브러리" 탭과 같은
  *   패턴 — ?tab=notice 쿼리로 상태를 담고, pushState + 다시 그리기로
  *   전환한다(진짜 페이지 이동이 아니라 로더가 다시 재생되지 않는다). 탭
- *   바 자체(움직이는 인디케이터 포함)는 src/js/tabsKit.js 가 만들고,
+ *   바 자체(움직이는 인디케이터 포함)는 src/js/components/tabsKit.js 가 만들고,
  *   이 페이지는 탭 두 개 말고는 내부에 다른 라우팅(상세를 URL에 담는 등)이
  *   없어서 tabsKit의 onActivate로 직접 라우팅한다(bookmarksPage.js는 전역
  *   링크 가로채기가 이미 있어서 onActivate 없이 setActive()만 부른다).
@@ -22,7 +22,7 @@
  *   진행 상태(진행중/예정/종료)가 있는 항목은 그 아래에 상태 뱃지를 더 단다
  *   — 이벤트류만 해당하고 일반 공지는 그 데이터 자체가 없어도 된다.
  * - 행을 누르면 뜨는 상세 모달은 시리즈 상세(postDetailSeries.js)와 달리
- *   사진이 없어 그 구조를 재사용할 수 없다 — src/js/authModal.js 의 싱글턴
+ *   사진이 없어 그 구조를 재사용할 수 없다 — src/js/components/authModal.js 의 싱글턴
  *   오버레이 패턴을 그대로 본떠 새로 만들되, 닫기 버튼은 사이트 전역에서
  *   재사용되는 .pds-close 를 그대로 쓴다.
  */
@@ -71,23 +71,25 @@
     return String(s)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function renderInline(text) {
-    var codeSlots = [];
-    text = text.replace(/`([^`]+)`/g, function (_, code) {
-      var idx = codeSlots.push('<code>' + code + '</code>') - 1;
-      return ' ' + idx + ' ';
-    });
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
-      var safeUrl = /^https?:\/\//i.test(url) ? url : '#';
-      return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
-    });
-    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
-    text = text.replace(/ (\d+) /g, function (_, idx) { return codeSlots[idx]; });
-    return text;
+    // One tokenization pass: generated HTML is never parsed again as Markdown.
+    // Inline code needs no numeric placeholders, so ordinary numbers survive.
+    return text.replace(/`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*\n]+)\*/g,
+      function (_, code, label, url, strong, emphasis) {
+        if (code !== undefined) return '<code>' + code + '</code>';
+        if (label !== undefined) {
+          // text already passed through escapeHtml, including both quotes.
+          var safeUrl = /^https?:\/\//i.test(url) && !/\s/.test(url) ? url : '#';
+          return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+        }
+        if (strong !== undefined) return '<strong>' + strong + '</strong>';
+        return '<em>' + emphasis + '</em>';
+      });
   }
 
   function renderMarkdown(raw) {
@@ -308,7 +310,7 @@
   }
 
   // ---- 탭 ----
-  // src/js/tabsKit.js 가 탭 바 DOM(+움직이는 인디케이터)을 한 번만 만들고
+  // src/js/components/tabsKit.js 가 탭 바 DOM(+움직이는 인디케이터)을 한 번만 만들고
   // setActive()로 상태만 갱신한다 — 매번 새로 그리면 인디케이터가 실제로
   // "움직이는" 걸 보여줄 수가 없다(항상 첫 렌더인 셈이라 순간이동한다).
   var tabsKitInstance = null;

@@ -74,6 +74,12 @@
   // 아무것도 안 보임), `+`를 누르면 전체 후보를 고를 수 있는 별도 모달이
   // 뜬다(스팀처럼 인라인으로 옆에 펼치지 않음).
   var TAG_TOP_VISIBLE = 3;
+  // 태그 UI 자체를 그리는 favType 목록. novel은 공식+유저 두 줄, translation은
+  // gridPage.js의 config.userTagsOnly와 짝을 맞춰 유저 인기 태그 줄만 그린다
+  // (공식 태그는 data.tags가 항상 빈 배열이라 renderOfficialTagsRow 호출 자체가
+  // 자연히 스킵된다 — 아래 open()의 tags.length 체크 참고). 시리즈/명예관/공식은
+  // 사용자가 직접 관리하는 영역이라 여전히 대상이 아니다.
+  var TAG_ENABLED_FAV_TYPES = { novel: true, translation: true };
   var tagCatalogPromise = null;
   // 태그 선택 모달은 상세 팝업(.pds-overlay) 위에 겹쳐 뜨는 별도 오버레이라,
   // Escape 키가 상세 팝업이 아니라 이 모달부터 닫도록 ensureOverlay의 전역
@@ -129,10 +135,7 @@
     var pillsWrap = document.createElement('div');
     pillsWrap.className = 'pds-tags-pills';
     section.appendChild(pillsWrap);
-
-    var TAG_COLORS = global.TagConfig.TAG_COLORS;
     var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
-    var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
     var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
     var sortTags = global.TagConfig.sortTags;
 
@@ -140,7 +143,6 @@
       var pill = document.createElement('span');
       pill.className = 'pds-tag-pill pds-tag-static';
       pill.dataset.tag = tag;
-      pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
       pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
       pillsWrap.appendChild(pill);
     });
@@ -172,10 +174,7 @@
       if (errorTimer) clearTimeout(errorTimer);
       errorTimer = setTimeout(function () { errorEl.hidden = true; }, 4000);
     }
-
-    var TAG_COLORS = global.TagConfig.TAG_COLORS;
     var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
-    var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
     var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
 
     var catalog = [];
@@ -221,7 +220,6 @@
       pill.type = 'button';
       pill.className = 'pds-tag-pill' + (myTags.indexOf(tag) !== -1 ? ' is-voted' : '');
       pill.dataset.tag = tag;
-      pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
       pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
       pill.title = (votes[tag] || 0) + '표';
       pill.addEventListener('click', function (e) {
@@ -460,12 +458,13 @@
   // data: { seriesName, views, likes, imageUrl, episodes: [{ title, id, link, episodeLabel }],
   //         favType?, postId?, tags? }
   // 화수는 따로 받지 않고 episodes 길이로 계산합니다 (시리즈 판별 기준과 동일).
-  // favType이 'novel'이고 postId가 있을 때만 "공식 태그"(data.tags를 그대로
-  // 정적 표시) + "유저 인기 태그"(투표 UI) 두 줄을 그립니다. 시리즈/명예관/
-  // 공식은 사용자가 직접 관리하는 영역이라 대상이 아닙니다
-  // (literature-data-scope-boundary). 공식 태그는 모든 개별 문학이 대상이고
-  // (AI 장르 분류는 계속 유지), 유저 인기 태그 투표도 신규·기존 글 구분 없이
-  // 전부 대상입니다.
+  // favType이 TAG_ENABLED_FAV_TYPES에 있고 postId가 있을 때만 태그 줄을
+  // 그립니다. novel은 "공식 태그"(data.tags를 그대로 정적 표시) + "유저 인기
+  // 태그"(투표 UI) 두 줄, translation은 공식 태그가 없어(data.tags가 항상 빈
+  // 배열) 유저 인기 태그 줄만 자연히 남습니다. 시리즈/명예관/공식은 사용자가
+  // 직접 관리하는 영역이라 여전히 대상이 아닙니다(literature-data-scope-
+  // boundary). 공식 태그는 novel의 모든 개별 문학이 대상이고(AI 장르 분류는
+  // 계속 유지), 유저 인기 태그 투표도 신규·기존 글 구분 없이 전부 대상입니다.
   function open(data) {
     data = data || {};
     if (global.ContentSettings && global.ContentSettings.isBlocked(data.tags)) {
@@ -532,7 +531,7 @@
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
 
-    if (data.favType === 'novel' && data.postId != null) {
+    if (TAG_ENABLED_FAV_TYPES[data.favType] && data.postId != null) {
       var tagsGroup = document.createElement('div');
       tagsGroup.className = 'pds-tags-group';
       if (data.tags && data.tags.length) {

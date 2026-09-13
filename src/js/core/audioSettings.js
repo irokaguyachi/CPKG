@@ -1,7 +1,7 @@
 /**
  * ChoKaguya Audio Novel Playback Settings
  * - 오디오 노벨 재생 관련 사용자 설정(자동재생 여부, 기본 볼륨)을
- *   localStorage에 저장한다. src/js/bookmarks.js와 같은 즉시실행 IIFE 패턴.
+ *   localStorage에 저장한다. src/js/core/bookmarks.js와 같은 즉시실행 IIFE 패턴.
  * - settingsModal.js의 "오디오 문학" 탭이 읽고 쓰며, audioNovelReader.js가
  *   재생 시점에 읽는다. 값이 바뀌면 'chokaguya:audio-settings-change'를
  *   발생시켜, 리더 페이지가 열려 있는 동안 설정을 바꿔도 즉시 반영되게 한다.

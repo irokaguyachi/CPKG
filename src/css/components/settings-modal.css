@@ -1,23 +1,10 @@
-/* 통합 설정창 (src/js/settingsModal.js) — auth-overlay/auth-card(auth.css)의
+/* 통합 설정창 (src/js/components/settingsModal.js) — auth-overlay/auth-card(auth.css)의
    수치·트랜지션 감각을 그대로 베끼되, 좌측 레일+우측 패널 2단 레이아웃에
    맞게 새 클래스로 둔다. 다크모드 대응은 이 파일이 아니라 theme.css 끝에
    몰아둔다(다른 컴포넌트 CSS와 같은 관례). */
 .settings-overlay {
-  position: fixed;
-  inset: 0;
   z-index: 555;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.settings-overlay.is-open {
-  opacity: 1;
-  visibility: visible;
 }
 
 .settings-card {

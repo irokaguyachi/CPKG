@@ -15,6 +15,7 @@
 
   var TYPE_LABELS = {
     novel: '문학',
+    translation: '번역',
     series: '시리즈',
     hof: '명예관',
     official: '공식'

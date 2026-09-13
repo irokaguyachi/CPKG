@@ -1,10 +1,10 @@
 /**
  * ChoKaguya Sidebar Toggle
  * - 오른쪽 위 메뉴 버튼(.sidebar-toggle-btn, 각 페이지 HTML에 정적으로
- *   있음)을 누르면 화면 오른쪽의 .sidebar(src/js/theme.js/auth.js 가
+ *   있음)을 누르면 화면 오른쪽의 .sidebar(src/js/core/theme.js/auth.js 가
  *   .header-nav 안에 다크모드 토글·로그인 버튼을 자동 주입하는 그 사이드바)
  *   가 슬라이드인 된다.
- * - 딤 배경(.sidebar-overlay)은 src/js/postDetailSeries.js/authModal.js
+ * - 딤 배경(.sidebar-overlay)은 src/js/components/postDetailSeries.js/authModal.js
  *   와 같은 싱글턴 오버레이 패턴 — document.body 에 한 번만 append,
  *   오버레이 자체 클릭이나 Escape 로 닫힌다.
  */

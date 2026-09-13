@@ -1,19 +1,6 @@
 /* Post_Detail_Series modal — Figma node #2160:2 */
 .pds-overlay {
-  position: fixed;
-  inset: 0;
   z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.pds-overlay.is-open {
-  opacity: 1;
-  visibility: visible;
 }
 
 .post-detail-series {

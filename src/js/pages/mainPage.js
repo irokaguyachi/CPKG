@@ -3,6 +3,12 @@
   if (!contentEl) return;
 
   var DATA = global.dataUrl || function (p) { return p; };
+  var fetchJson = global.fetchJsonCached || function (url) {
+    return fetch(DATA(url)).then(function (response) {
+      if (!response.ok) throw new Error('Data request failed: ' + response.status);
+      return response.json();
+    });
+  };
 
   // 오디오 노벨 홍보 카드를 한 번 닫으면 이 브라우저에서는 다시 안 뜨도록
   // 기억하는 키 — chokaguya_theme/chokaguya_tipVisited와 같은 네이밍 관례.
@@ -12,8 +18,6 @@
   // 예전엔 이 파일이 직접 들고 있었는데, gridPage.js가 쓰던 표와 이모지 9개가
   // 실제로 어긋나 있었다(같은 태그가 페이지마다 다르게 보임) — tagConfig.js의
   // 헤더 주석에 병합 기준을 적어뒀다.
-  var TAG_COLORS = global.TagConfig.TAG_COLORS;
-  var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
   var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
   var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
   var sortTags = global.TagConfig.sortTags;
@@ -71,18 +75,26 @@
     return ribbon;
   }
 
-  function createCard(item, favType) {
+  function createCard(item, favType, options) {
+    options = options || {};
     var card = document.createElement('article');
     card.className = 'post-row';
 
     var image = document.createElement('div');
     image.className = 'post-row-image';
+    var imageTarget = image;
+    if (options.blurPhoto) {
+      image.classList.add('is-photo-blurred');
+      imageTarget = document.createElement('div');
+      imageTarget.className = 'post-row-image-bg';
+      image.appendChild(imageTarget);
+    }
     if (item.image) {
       if (global.lazyLoadBackground) {
-        global.lazyLoadBackground(image, item.image);
+        global.lazyLoadBackground(imageTarget, item.image);
       } else {
         var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
-        image.style.backgroundImage = 'url("' + finalImg + '")';
+        imageTarget.style.backgroundImage = 'url("' + finalImg + '")';
       }
     }
     var favId = item.posts && item.posts[0] && item.posts[0].id;
@@ -122,7 +134,6 @@
       pill.className = 'series-card-tag';
       pill.dataset.tag = tag;
       pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-      pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
       tagsWrap.appendChild(pill);
     });
     info.appendChild(tagsWrap);
@@ -232,9 +243,30 @@
     return card;
   }
 
-  function createRecentSection(title, items, href, favType) {
+  function createTranslationWarning() {
+    var warning = document.createElement('aside');
+    warning.className = 'translation-warning';
+    warning.setAttribute('role', 'note');
+    warning.setAttribute('aria-label', '번역 페이지 주의사항');
+
+    var warningTitle = document.createElement('p');
+    warningTitle.className = 'translation-warning-title';
+    warningTitle.textContent = '⚠️ 주의';
+    warning.appendChild(warningTitle);
+
+    var warningText = document.createElement('p');
+    warningText.className = 'translation-warning-text';
+    warningText.textContent = '해당 페이지는 태그를 지원하지 않습니다. 일부 선정적인 페이지가 노출될 수 있으므로 주의해주세요';
+    warning.appendChild(warningText);
+
+    return warning;
+  }
+
+  function createRecentSection(title, items, href, favType, options) {
+    options = options || {};
     var section = document.createElement('div');
     section.className = 'recent';
+    if (options.className) section.classList.add(options.className);
 
     var heading = href ? document.createElement('a') : document.createElement('div');
     heading.className = 'content-heading';
@@ -251,11 +283,13 @@
 
     section.appendChild(heading);
 
+    if (options.warning) section.appendChild(createTranslationWarning());
+
     var list = document.createElement('div');
     list.className = 'post-list';
 
     (items || []).forEach(function (item) {
-      list.appendChild(createCard(item, favType));
+      list.appendChild(createCard(item, favType, options.cardOptions));
     });
 
     section.appendChild(list);
@@ -289,8 +323,7 @@
     list.className = 'post-list';
     section.appendChild(list);
 
-    fetch(DATA(dataUrl))
-      .then(function (r) { return r.json(); })
+    fetchJson(dataUrl)
       .then(function (items) {
         items = filterMature(Array.isArray(items) ? items : []);
         if (!items.length) {
@@ -392,7 +425,7 @@
     desc.textContent = '8월 32일은 야치요의 생일입니다 모두 야치요의 생일을 축하해줍시다!';
     text.appendChild(desc);
 
-    // 팬케이크 주기 버튼 + 카운트 — 실제 클릭 처리는 src/js/pancakeCounter.js
+    // 팬케이크 주기 버튼 + 카운트 — 실제 클릭 처리는 src/js/components/pancakeCounter.js
     var ctaRow = document.createElement('div');
     ctaRow.className = 'birthday-banner-cta-row';
 
@@ -433,7 +466,7 @@
     }
   }
 
-  // 오늘의 랜덤 문학 선물상자 — #content 최상단에 둔다. Recent.json 응답이
+  // 오늘의 랜덤 문학 / 번역 선물상자 — #content 최상단에 둔다. Recent.json 응답이
   // contentEl을 통째로 비우므로, audio promo와 같은 방식으로 요소를 쥐고
   // 있다가 다시 끼운다. placeAudioPromo()보다 나중에 불러 항상 맨 위
   // (첫 자식)에 오게 한다. 카드 마크업과 성인 태그 필터는 이 파일이 맡고,
@@ -449,8 +482,12 @@
     dailyGiftEl = global.DailyGift.create({
       dataUrl: '../data/PageData/Novel.json',
       favType: 'novel',
+      secondaryDataUrl: '../data/PageData/Translation.json',
+      secondaryFavType: 'translation',
+      primaryLabel: '오늘의 문학',
+      secondaryLabel: '오늘의 번역',
       filterItems: filterMature,
-      renderCard: function (item) { return createCard(item, 'novel'); }
+      renderCard: function (item, favType) { return createCard(item, favType); }
     });
     placeDailyGift();
   }
@@ -513,8 +550,38 @@
         contentEl.appendChild(createRecentSection('최신 등록 문학', novels, '/novel', 'novel'));
       }
 
+      // 번역 데이터는 랜덤 번역과 같은 요청을 공유한다. 응답이 늦어도
+      // 다른 섹션은 먼저 표시하고, 최신 번역의 위치는 여기로 고정한다.
+      var recentTranslationSlot = document.createElement('div');
+      recentTranslationSlot.hidden = true;
+      contentEl.appendChild(recentTranslationSlot);
+      fetchJson('../data/PageData/Translation.json')
+        .then(function (items) {
+          var translations = filterMature(Array.isArray(items) ? items : []);
+          if (!translations.length) {
+            recentTranslationSlot.remove();
+            return;
+          }
+          // Translation.json은 번역 빌더가 게시글 ID 내림차순으로 생성한다.
+          recentTranslationSlot.replaceWith(createRecentSection(
+            '최근 등록 번역',
+            translations.slice(0, 5),
+            '/translation',
+            'translation',
+            {
+              className: 'recent-translation',
+              warning: true,
+              cardOptions: { blurPhoto: true }
+            }
+          ));
+        })
+        .catch(function () { recentTranslationSlot.remove(); });
+
       // 2. 랜덤 문학 — 5초마다 다른 문학으로 자동 전환
       contentEl.appendChild(createRandomSection('랜덤 문학', '../data/PageData/Novel.json', '/novel', 'novel'));
+
+      // 랜덤 번역은 랜덤 문학과 랜덤 시리즈 사이에 배치한다.
+      contentEl.appendChild(createRandomSection('랜덤 번역', '../data/PageData/Translation.json', '/translation', 'translation'));
 
       // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
       contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/PageData/Series.json', '/series', 'series'));

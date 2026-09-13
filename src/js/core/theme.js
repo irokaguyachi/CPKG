@@ -3,7 +3,7 @@
  * - Persists theme preference in localStorage ('theme': 'dark' | 'light')
  * - Automatically detects system preference (prefers-color-scheme)
  * - Smooth transition and instant FOUC-free initialization
- * - 토글 UI 자체는 없음 — src/js/settingsModal.js의 "일반" 탭이
+ * - 토글 UI 자체는 없음 — src/js/components/settingsModal.js의 "일반" 탭이
  *   ThemeManager.getTheme()/setTheme()을 직접 불러 쓴다.
  */
 (function (global) {

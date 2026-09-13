@@ -1,6 +1,6 @@
 /* ==========================================================================
    Yachiyo click easter egg (local-only, src/offline_src/ForEvent/yachiyo.png)
-   Triggered from src/js/yachiyoEvent.js by clicking the locked "번역" nav
+   Triggered from src/js/components/yachiyoEvent.js by clicking the locked "번역" nav
    link — every 30/60/90th click, looping. Not part of the deployed asset
    pipeline.
    ========================================================================== */
@@ -56,7 +56,7 @@
   animation: yachiyo-talk-bounce 0.45s ease-in-out;
 }
 
-/* 그림 출처 뱃지 — 그림이 떠 있는 동안 항상 보인다(src/js/yachiyoEvent.js).
+/* 그림 출처 뱃지 — 그림이 떠 있는 동안 항상 보인다(src/js/components/yachiyoEvent.js).
    .yachiyo-event 전체는 pointer-events:none이라 클릭이 그냥 blocker로
    새는데, 이 링크만은 직접 클릭을 받아야 하므로 그 예외를 준다. */
 .yachiyo-event-credit {

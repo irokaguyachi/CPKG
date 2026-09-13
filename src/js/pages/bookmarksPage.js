@@ -78,7 +78,7 @@
   }
 
   // 목록 모드 상단의 "내 북마크 | 북마크 라이브러리" 알약 토글 —
-  // src/js/tabsKit.js 가 탭 바 DOM(+움직이는 인디케이터)을 한 번만 만들고
+  // src/js/components/tabsKit.js 가 탭 바 DOM(+움직이는 인디케이터)을 한 번만 만들고
   // setActive()로 상태만 갱신한다. 이 페이지는 이미 문서 전체에 링크
   // 가로채기(맨 아래 document.addEventListener('click', ...))가 있으므로
   // onActivate는 안 넘긴다 — 탭 클릭도 그 공통 경로(navigate)를 그대로 탄다.

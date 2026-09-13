@@ -1,22 +1,9 @@
-/* ---- 로그인/회원가입 (Figma SignInFrame/SignUpFrame, node #2222 — src/js/authModal.js) ---- */
+/* ---- 로그인/회원가입 (Figma SignInFrame/SignUpFrame, node #2222 — src/js/components/authModal.js) ---- */
 .auth-overlay {
-  position: fixed;
-  inset: 0;
   /* 설정창(settings-overlay, z-index:555)의 계정 탭에서 로그인을 열 수
      있으므로, 그 위에 겹쳐 보여야 한다 — settings-overlay보다 높게 잡는다. */
   z-index: 560;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.auth-overlay.is-open {
-  opacity: 1;
-  visibility: visible;
 }
 
 .auth-card {
@@ -105,7 +92,7 @@
 }
 
 /* 로그인 코드 입력창을 type=password 로 감싸서 브라우저 비밀번호 관리자가
-   저장 후보로 인식하게 만든 뒤(src/js/authModal.js), 정작 사용자가 지금
+   저장 후보로 인식하게 만든 뒤(src/js/components/authModal.js), 정작 사용자가 지금
    무엇을 입력했는지 못 보면 곤란하니 눈 아이콘으로 평문 전환을 허용한다. */
 .auth-input-wrap,
 .auth-code-wrap {
@@ -210,7 +197,7 @@
   color: #e03131;
 }
 
-/* 사이트 버전 표시 (src/js/auth.js) — 사이드바 맨 아래에 붙는다. 로그인/
+/* 사이트 버전 표시 (src/js/components/auth.js) — 사이드바 맨 아래에 붙는다. 로그인/
    계정 관리 UI는 통합 설정창(components/settings-modal.css)으로 옮겨갔다. */
 .auth-version-tag {
   display: inline-block;

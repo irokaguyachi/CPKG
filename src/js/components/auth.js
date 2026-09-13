@@ -1,6 +1,6 @@
 /**
  * ChoKaguya Auth (로그인/개인 코드 관리 — 통합 설정창의 "계정" 탭)
- * - 비로그인 상태: "로그인" 버튼 → src/js/authModal.js 의 로그인 모달(코드
+ * - 비로그인 상태: "로그인" 버튼 → src/js/components/authModal.js 의 로그인 모달(코드
  *   입력창). 거기서 "새로 발급받으세요!" 링크를 누르면 회원가입으로
  *   전환된다. 북마크처럼 로그인이 필요한 다른 기능들(bookmarkPicker.js,
  *   bookmarksPage.js)도 AuthModal.requireLogin() 을 통해 같은 로그인
@@ -10,14 +10,14 @@
  * - 로그인 상태: 개인 코드 보기·복사, 로그아웃, 클라우드 동기화(저장/
  *   불러오기)를 renderAccountSettings() 가 하나의 컨테이너에 인라인으로
  *   그린다 — 예전엔 헤더 버튼 + 앵커 팝오버(popoverKit.js)였지만, 이제
- *   src/js/settingsModal.js 의 "계정" 탭 안에 이미 자리가 있어서 팝오버가
+ *   src/js/components/settingsModal.js 의 "계정" 탭 안에 이미 자리가 있어서 팝오버가
  *   필요 없다.
  * - window 의 'chokaguya:auth-change'/'chokaguya:sync-state' 이벤트를 듣고
  *   있다가, 계정 탭이 지금 열려 있으면 다시 그린다.
  */
 (function (global) {
-  // 사이드바에 찍히는 사이트 버전 — src/js/siteConfig.js 가 이미 fetch해둔
-  // src/data/SiteConfig.json 을 그대로 재사용한다(같은 파일을 또 받지
+  // 사이드바에 찍히는 사이트 버전 — src/js/config/siteConfig.js 가 이미 fetch해둔
+  // src/data/config/SiteConfig.json 을 그대로 재사용한다(같은 파일을 또 받지
   // 않도록). 대표님이 이 값을 바꾸고 싶을 때 코드를 건드릴 필요 없이 그
   // JSON 파일의 "version" 값만 고치면 된다.
   var SITE_VERSION = 'v?'; // JSON을 아직 못 불러왔을 때만 아주 잠깐 보이는 기본값

@@ -24,7 +24,7 @@
    커스텀 에셋이 바뀌지 않습니다 (CLAUDE.md 최우선 규칙).
 ⚠️ 반드시 5_build_series_page_data.py / 7_build_novel_page_data.py 를
    먼저 돌린 뒤에 실행하세요. 그리고 결과를 배포에 반영하려면
-   src/js/cdnConfig.js 의 DATA_VERSION 을 올려야 브라우저 캐시가 깨집니다.
+   src/js/config/cdnConfig.js 의 DATA_VERSION 을 올려야 브라우저 캐시가 깨집니다.
 """
 import json
 import os
@@ -80,7 +80,7 @@ def main():
           % (len(novels), len(recent["novels"]), len(series)))
     print("  메인 페이지 전송량 %.1fKB → %.1fKB (%.1fKB 절감)"
           % (src_kb, out_kb, src_kb - out_kb))
-    print("  ※ 배포 반영하려면 src/js/cdnConfig.js 의 DATA_VERSION 을 올리세요.")
+    print("  ※ 배포 반영하려면 src/js/config/cdnConfig.js 의 DATA_VERSION 을 올리세요.")
 
 
 if __name__ == "__main__":

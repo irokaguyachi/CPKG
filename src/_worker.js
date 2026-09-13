@@ -30,8 +30,9 @@
  *   블록과 OLD_DOMAIN을 지우면 된다.
  */
 import backend from '../worker/favoritesShareWorker.js';
-import statsApi from './statsApi.js';
-import { PresenceDO } from './presenceDO.js';
+import statsApi from '../worker/statsApi.js';
+import { refreshLibraryIndex } from '../worker/libraryIndex.js';
+import { PresenceDO } from '../worker/presenceDO.js';
 
 // 방문자 통계용 Durable Object 클래스. wrangler가 배포 시 이 export를 보고
 // [[durable_objects.bindings]] / [[migrations]] 와 연결한다.
@@ -173,11 +174,12 @@ async function recordTagSnapshot(env) {
 
 // 짧은 주소 <-> 실제 파일(src/page/ 아래) 매핑. 사이드바 등 사이트 내부
 // 링크는 전부 이 짧은 주소를 쓰도록 이미 바꿔뒀다(src/page/*.html,
-// src/js/bookmarksPage.js, changelogPage.js, mainPage.js, loading.js 참고) —
+// src/js/pages/bookmarksPage.js, changelogPage.js, mainPage.js, loading.js 참고) —
 // 여기 슬러그를 바꾸면 그 파일들도 같이 바꿔야 한다.
 var PAGE_SLUGS = {
   main: 'mainPage.html',
   novel: 'novelPage.html',
+  translation: 'translationPage.html',
   series: 'seriesPage.html',
   hof: 'HOFPage.html',
   official: 'OfficialPage.html',
@@ -197,6 +199,9 @@ export default {
   // 1분 Cron(wrangler.toml [triggers]). 접속자 게이지를 Analytics Engine에 적재.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(recordPresenceSample(env));
+    ctx.waitUntil(refreshLibraryIndex(env).catch(function (error) {
+      console.error('library index refresh failed', error.message);
+    }));
     // 태그 집계는 매분 할 필요가 없어 5의 배수 분에만 돌려 D1 읽기를 아낀다.
     if (new Date(event.scheduledTime).getUTCMinutes() % 5 === 0) {
       ctx.waitUntil(recordTagSnapshot(env));

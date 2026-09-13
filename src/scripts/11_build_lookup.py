@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 북마크 조회 인덱스 생성 스크립트 (11_build_lookup.py)
-- Novel.json / Series.json / HOF.json / Official.json 을 합쳐 Lookup.json 을
-  만듭니다. bookmarksPage.js 는 북마크(내 북마크·라이브러리) 상세를 열 때마다
+- Novel.json / Series.json / HOF.json / Official.json / Translation.json 을
+  합쳐 Lookup.json 을 만듭니다. bookmarksPage.js 는 북마크(내 북마크·라이브러리) 상세를 열 때마다
   "이 id가 어느 항목이었는지"를 알아야 하는데, 예전엔 그것 하나 때문에
   4개 파일(약 778KB)을 통째로 fetch했습니다(TRAFFIC_SECURITY_AUDIT_2.md N-T6).
   카드가 실제로 쓰는 필드(name/image/posts/charCount/tags)만 남기고 author
@@ -32,12 +32,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PAGE_DATA_DIR = os.path.join(HERE, "..", "data", "PageData")
 OUT_PATH = os.path.join(PAGE_DATA_DIR, "Lookup.json")
 
-# bookmarksPage.js 의 기존 SECTIONS 와 동일한 (type, 파일명) 목록.
+# bookmarksPage.js 가 북마크·라이브러리 항목의 type 문자열로 그대로 쓰는
+# (type, 파일명) 목록 — worker/favoritesShareWorker.js 의 LIBRARY_ITEM_TYPES,
+# src/js/config/libraryConfig.js 의 TYPE_LABELS 와 항목이 일치해야 한다.
+# translation 은 공식 태그가 없는 유저 태그 전용 페이지라 tags 필드를 아예
+# 안 담지만(slim_entry 참고), 그 밖의 취급은 novel과 동일하다.
 SOURCES = [
     ("novel", "Novel.json"),
     ("series", "Series.json"),
     ("hof", "HOF.json"),
     ("official", "Official.json"),
+    ("translation", "Translation.json"),
 ]
 
 
@@ -70,8 +75,9 @@ def slim_entry(item, item_type):
         "image": item.get("image"),
         "posts": slim_posts,
     }
-    # postDetailSeries.js는 favType === 'novel'일 때만 태그 줄을 그린다 —
-    # series/hof/official에까지 넣으면 아무도 안 읽는 필드로 용량만 늘어난다.
+    # postDetailSeries.js는 공식 태그 줄을 novel에만 그린다(translation은
+    # 유저 태그 전용이라 tags가 애초에 항상 빈 배열) — series/hof/official/
+    # translation에까지 넣으면 아무도 안 읽는 필드로 용량만 늘어난다.
     if item_type == "novel" and item.get("tags"):
         entry["tags"] = item["tags"]
     if len(posts) <= 1 and item.get("charCount"):

@@ -13,7 +13,7 @@
  *   받아와 로컬로 복원함. 로그인 상태의 북마크는 자동으로 이 코드에
  *   연결되고, 다른 기기에서 같은 코드로 로그인하면 전부 되찾을 수 있음.
  *   editToken 과 마찬가지로 서버엔 원문이 저장되지 않고 SHA-256 해시로만
- *   남음. UI는 src/js/authModal.js(로그인/회원가입 모달), src/js/auth.js
+ *   남음. UI는 src/js/components/authModal.js(로그인/회원가입 모달), src/js/components/auth.js
  *   (헤더 로그인 버튼/상태 패널) 참고.
  * - 로그인 상태가 바뀌면(adoptPersonalCode/logout) window 에
  *   'chokaguya:auth-change' 커스텀 이벤트가 발생함 — 헤더 등 다른 UI가

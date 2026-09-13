@@ -2,12 +2,12 @@
  * ChoKaguya Settings Modal (통합 설정창)
  * - 사이드바에 흩어져 있던 다크모드 토글·로그인/계정 관리를 한 곳에
  *   모으고, 오디오 노벨 재생 설정(자동재생/음량)을 새로 추가한 통합 창.
- * - src/js/authModal.js 의 싱글턴 오버레이 패턴(document.body 에 한 번만
+ * - src/js/components/authModal.js 의 싱글턴 오버레이 패턴(document.body 에 한 번만
  *   append, 바깥클릭/Escape 로 닫힘, `.is-open` 토글)을 그대로 따르되,
  *   내부는 좌측 카테고리 레일 + 우측 상세 패널의 2단 레이아웃(Claude
  *   데스크톱 앱 설정창 참고)이라 auth-card 를 상속하지 않고 새 클래스를
  *   쓴다.
- * - 계정 탭 내용은 src/js/auth.js 의 AuthUI.renderAccountSettings() 에
+ * - 계정 탭 내용은 src/js/components/auth.js 의 AuthUI.renderAccountSettings() 에
  *   위임한다 — 로그인 상태 판정/동기화 버튼 로직을 여기서 중복하지 않는다.
  */
 (function (global) {

@@ -10,7 +10,7 @@
  *   이벤트류 공지에만 있는 선택 필드)가 있으면 함께 단다. 탭 자체는
  *   bookmarks.css 의 .bkm-tabs/.bkm-tab 을 그대로 재사용한다.
  * - 행을 누르면 뜨는 상세 모달은 이미지가 있던 시리즈 상세
- *   (.post-detail-series, src/js/postDetailSeries.js)와 달리 사진이 없어서
+ *   (.post-detail-series, src/js/components/postDetailSeries.js)와 달리 사진이 없어서
  *   그 구조를 그대로 재사용할 수 없다 — auth-card(로그인 모달)와 같은
  *   싱글턴 오버레이 패턴으로 새로 만들되, 닫기 버튼은 사이트 전역에서
  *   재사용되는 .pds-close 를 그대로 쓴다.
@@ -88,21 +88,8 @@
 
 /* ---- 상세 모달 ---- */
 .changelog-detail-overlay {
-  position: fixed;
-  inset: 0;
   z-index: 550;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.changelog-detail-overlay.is-open {
-  opacity: 1;
-  visibility: visible;
 }
 
 .changelog-detail-card {

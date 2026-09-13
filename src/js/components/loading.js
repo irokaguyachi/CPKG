@@ -6,7 +6,7 @@
   var fetchJson = window.fetchJsonCached || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
   if (tipEl) {
-    fetch(DATA('../data/Tip.json'))
+    fetch(DATA('../data/config/Tip.json'))
       .then(function (r) { return r.json(); })
       .then(function (tips) {
         if (!Array.isArray(tips) || !tips.length) return;
@@ -25,7 +25,7 @@
   }
 
   if (iconEl) {
-    fetchJson('../data/LoadingIcons.json')
+    fetchJson('../data/config/LoadingIcons.json')
       .then(function (files) {
         if (!Array.isArray(files) || !files.length) return;
         // shows one icon per loading occurrence (not a timed cycle); the

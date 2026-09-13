@@ -262,6 +262,23 @@
   background-repeat: no-repeat;
   overflow: hidden; /* 오디오 노벨 리본이 이미지 밖으로 새지 않도록 */
 }
+
+/* 최근 등록 번역 카드에서 사진만 흐리게 처리할 때 쓰는 별도 배경 레이어.
+   바깥 이미지 영역에는 북마크와 오디오 리본이 남아 있어 조작 요소가
+   흐려지지 않는다. */
+.post-row-image-bg {
+  position: absolute;
+  inset: 0;
+  background-color: inherit;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.post-row-image.is-photo-blurred .post-row-image-bg {
+  filter: blur(12px);
+  transform: scale(1.06);
+}
 .post-row-image::after {
   content: '';
   position: absolute;

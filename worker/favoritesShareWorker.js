@@ -1,3 +1,5 @@
+import { readJsonLimited } from './requestBody.js';
+import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -7,7 +9,7 @@
  *   파일 자체를 위한 wrangler.toml은 더 이상 없다 — R2/KV 바인딩 이름
  *   (FAVORITES_BUCKET, RATE_LIMIT_KV)은 그대로라 코드는 안 바뀐다.
  * - The only piece of this project that can write to R2: the public
- *   pub-*.r2.dev bucket (src/js/cdnConfig.js) is read-only from the browser,
+ *   pub-*.r2.dev bucket (src/js/config/cdnConfig.js) is read-only from the browser,
  *   and the only existing write path (src/scripts/sync_to_r2.py) holds a
  *   full-access secret key that must never reach client JS. This Worker
  *   holds an R2 binding instead (no secret key needed) and exposes narrow
@@ -20,10 +22,9 @@
  *     saved, because this whole bucket is public-read via pub-*.r2.dev, so
  *     anything written to the object body is effectively public.
  * - GET  /library?sort=&q=&offset=&limit=  -> listing (name/itemCount only,
- *     backed by R2 list() + customMetadata so no per-item GET is needed).
+ *     backed by a prebuilt R2 metadata index).
  *     sort: new (default, newest published) | updated | name. q filters on
- *     name. Offset paging, not cursor: the whole prefix is scanned and sorted
- *     first, because R2 only lists in key order (see LIBRARY_SCAN_MAX).
+ *     name. Offset paging over the complete metadata snapshot.
  * - GET  /library/<code>           -> full { code, name, items, ... }
  *     (editTokenHash is stripped before responding).
  * - PUT  /library/<code>           body: { editToken?, personalCode?, name?, items? } -> update.
@@ -41,7 +42,7 @@
  * A real login (email/password, OAuth) was considered and rejected — this
  * project has no account/session/email infrastructure at all, and it would
  * be a lot of new surface for a hobby archive. Instead each browser keeps one
- * random "personal code" (src/js/bookmarkLibrary.js), sent as `personalCode`
+ * random "personal code" (src/js/core/bookmarkLibrary.js), sent as `personalCode`
  * on every publish/update/delete. Entering that one code on another device
  * recovers edit rights over *every* bookmark ever published from the
  * original browser, instead of juggling a code/editToken pair per bookmark.
@@ -88,10 +89,8 @@
  *   Rate Limiting 바인딩(RL_*, src/wrangler.toml)을 쓴다 — 원자적이고 KV
  *   할당량을 전혀 쓰지 않는다. 대신 period 가 10/60초로 제한돼 있어서
  *   창은 60초로 좁아졌다.
- * - 하루 단위 창이 꼭 필요한 회원가입만 KV 카운터로 남는다. 이쪽도 조회와
- *   증가를 분리해서, 실제로 계정이 만들어졌을 때만 KV 쓰기가 일어난다.
- * - KV 경로는 전부 fail open 한다(peekRateLimit/bumpRateLimit). 레이트리밋
- *   때문에 사이트가 죽는 일은 없어야 한다.
+ * - 회원가입 일일 상한은 R2 CAS 예약으로 강제한다. 제한 저장소 장애 시
+ *   신규 가입만 503으로 차단하며, 로그인과 동기화는 계속 동작한다.
  */
 
 const CODE_RE = /^[A-Za-z0-9_-]{1,32}$/;
@@ -99,22 +98,16 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 const CODE_LENGTH = 8;
 const EDIT_TOKEN_LENGTH = 24;
 
-// 클라이언트 쪽 src/js/libraryConfig.js의 TYPE_LABELS 키 목록/
+// 클라이언트 쪽 src/js/config/libraryConfig.js의 TYPE_LABELS 키 목록/
 // MAX_NAME_LENGTH와 맞물린 값이다 — 브라우저와 이 Worker는 런타임이 달라
 // import로 공유할 수 없으니, 한쪽을 바꾸면 반드시 다른 쪽도 같이 볼 것.
-const LIBRARY_ITEM_TYPES = ['novel', 'series', 'hof', 'official'];
+const LIBRARY_ITEM_TYPES = ['novel', 'translation', 'series', 'hof', 'official'];
 const LIBRARY_MAX_NAME = 20;
 const LIBRARY_MAX_ITEMS = 300;
 const LIBRARY_MAX_BODY_BYTES = 20480;
 const LIBRARY_LIST_DEFAULT_LIMIT = 20;
 const LIBRARY_LIST_MAX_LIMIT = 50;
-// R2 list() only ever returns key (= random code) order, so newest-first and
-// name search can't be done with a cursor page. The listing instead scans the
-// whole prefix, sorts, then slices. Capped so a runaway bucket can't turn one
-// request into unbounded list() calls; past the cap the ordering is partial
-// and `truncated` says so.
-const LIBRARY_SCAN_PAGE = 1000;
-const LIBRARY_SCAN_MAX = 4000;
+// The listing reads a prebuilt R2 metadata index; cron scans are resumable.
 const LIBRARY_MAX_QUERY = 40;
 
 // 클라이언트가 생성하는 개인 코드는 20자 커스텀 알파벳(chokaguya_personal_code)을
@@ -148,19 +141,14 @@ const USER_MAX_BOOKMARKS = 100;
 const USER_MAX_ITEMS_PER_BOOKMARK = 300;
 const USER_MAX_TOMBSTONES = 500;
 const USER_MAX_NAME = 200;
-// 클라이언트 로컬 스토어(src/js/bookmarks.js)의 version 과 맞물린 값 —
+// 클라이언트 로컬 스토어(src/js/core/bookmarks.js)의 version 과 맞물린 값 —
 // 한쪽만 올리면 동기화가 조용히 어긋나므로 반드시 같이 올려야 한다.
 const USER_DATA_VERSION = 2;
 // etag CAS 가 어긋났을 때 다시 읽고 시도하는 횟수. 넘기면 409로 넘겨서
 // 클라이언트가 병합하게 한다(서버는 병합 로직을 갖지 않는다 — 아래 주석 참고).
 const USER_SYNC_MAX_ATTEMPTS = 3;
 
-// 회원가입만 하루 단위 창을 쓰기 때문에 유일하게 KV 카운터가 남아 있는
-// 경로다(네이티브 바인딩은 최대 60초 창까지밖에 못 만든다). 한국은 통신사·
-// 학교·PC방이 전부 CGNAT 이라 수백 명이 공인 IP 하나를 공유한다 — 1회/일은
-// 같은 망의 두 번째 사람을 그날 통째로 막아버려서 5회/일로 넓혔다. 그리고
-// 이 카운터는 handleUserSignup 이 실제로 새 계정을 만들었을 때만 오른다
-// (가입 화면을 열기만 해도 하루치가 소진되던 문제 — bumpRateLimit 참고).
+// 신규 가입은 IP별 하루 5개. R2 CAS 예약으로 동시 요청에도 상한을 지킨다.
 const RATE_LIMIT_USER_SIGNUP_PER_DAY = 5;
 const DAY_MS = 86400000;
 
@@ -242,6 +230,10 @@ async function handleTagsVote(request, env) {
   var parsed = await readUserBody(request, env, env.RL_TAG_WRITE);
   if (parsed.error) return parsed.error;
 
+  if (!(await env.FAVORITES_BUCKET.head(await userStoreKey(parsed.personalCode)))) {
+    return jsonResponse(request, { error: 'account not found' }, 401);
+  }
+
   var raw = parsed.raw;
   var postId = cleanTagPostId(raw && raw.postId);
   var tagName = raw && typeof raw.tagName === 'string' ? raw.tagName : null;
@@ -251,6 +243,29 @@ async function handleTagsVote(request, env) {
   if (catalog.indexOf(tagName) === -1) {
     return jsonResponse(request, { error: 'unknown tag' }, 400);
   }
+
+  // 유저 태그 투표는 novel(공식+유저 태그 병행)과 translation(유저 태그
+  // 전용) 두 페이지가 대상이다(gridPage.js의 config.userTags/userTagsOnly와
+  // 짝을 맞춘다) — 위조된 postId로 아무 글에나 표가 쌓이는 걸 막기 위해,
+  // 둘 중 하나의 실제 게시물 목록에 있는지 반드시 확인한다. 시리즈/명예관/
+  // 공식은 원래부터 사용자가 직접 관리하는 영역이라 투표 대상이 아니다
+  // (literature-data-scope-boundary).
+  var TAG_VOTE_CATALOG_PATHS = ['/data/PageData/Novel.json', '/data/PageData/Translation.json'];
+  var catalogResponses = await Promise.all(
+    TAG_VOTE_CATALOG_PATHS.map(function (path) {
+      return env.ASSETS.fetch(new Request(new URL(path, request.url)));
+    })
+  );
+  if (catalogResponses.some(function (r) { return !r.ok; })) {
+    return jsonResponse(request, { error: 'post catalog unavailable' }, 503);
+  }
+  var catalogLists = await Promise.all(catalogResponses.map(function (r) { return r.json(); }));
+  var exists = catalogLists.some(function (posts) {
+    return Array.isArray(posts) && posts.some(function (entry) {
+      return Array.isArray(entry.posts) && entry.posts.some(function (post) { return post.id === postId; });
+    });
+  });
+  if (!exists) return jsonResponse(request, { error: 'unknown post' }, 400);
 
   var voterHash = await sha256Hex('tagvote:' + parsed.personalCode);
 
@@ -303,7 +318,7 @@ async function handleTagsSnapshot(request, env) {
 }
 
 // ---- 생일 배너 팬케이크 카운터(/pancake) ----
-// 클라이언트(src/js/pancakeCounter.js)가 클릭할 때마다 서버로 보내지 않고,
+// 클라이언트(src/js/components/pancakeCounter.js)가 클릭할 때마다 서버로 보내지 않고,
 // 5초간 클릭이 멈추면 그동안 쌓인 개수를 한 번에 더한다 — 연타 한 번에
 // R2 쓰기 하나만 나가면 된다. 인증도, 이벤트 종료 후 되돌릴 방법도 필요
 // 없는 가벼운 카운터라 FAVORITES_BUCKET에 오브젝트 하나(count 필드)로 둔다.
@@ -520,42 +535,34 @@ async function checkLimit(limiter, ip) {
   }
 }
 
-// ---- KV 고정 윈도우 카운터 (이제 회원가입 일당 창 전용) ----
-// 네이티브 바인딩의 period 는 10/60초만 허용돼서 "하루 N회"를 표현할 수 없다.
-// 그래서 이 경로만 KV 로 남는다. 다만 예전과 달리 조회(peek)와 증가(bump)를
-// 나눠서, 실제로 계정이 만들어졌을 때만 쓰기가 일어난다.
-//
-// 🔴 이 두 함수의 try/catch 가 없어서 예전엔 KV 일일 쓰기 한도(무료 1,000회)를
-// 넘기는 순간 예외가 그대로 전파돼 로그인·가입·동기화·라이브러리가 한꺼번에
-// 500 이 됐다. KV 가 죽어도 사이트는 살아 있어야 하므로 전부 fail open 한다.
-function rateLimitKey(ip, bucket, windowMs) {
-  return 'rl:' + bucket + ':' + ip + ':' + Math.floor(Date.now() / windowMs);
-}
-
-// "한도를 넘겼는가"만 본다 — 쓰기를 하지 않으므로 KV 쓰기 할당량을 안 쓴다.
-async function peekRateLimit(env, ip, bucket, limit, windowMs) {
-  if (!env.RATE_LIMIT_KV) return true;
-  try {
-    var current = await env.RATE_LIMIT_KV.get(rateLimitKey(ip, bucket, windowMs));
-    var count = current ? parseInt(current, 10) : 0;
-    return count < limit;
-  } catch (e) {
-    return true;
+// R2 conditional writes serialize reservations for one IP. The fixed key is
+// reused across days, so a returning IP does not create a new object every day.
+// Store neither raw IPs nor personal codes. Failed creations conservatively keep
+// their reservation; retrying the same personal code does not consume another.
+async function reserveSignup(env, ip, personalCode) {
+  var day = Math.floor(Date.now() / DAY_MS);
+  var key = 'limits/signup/' + await sha256Hex('signup-ip:' + ip) + '.json';
+  var reservation = await sha256Hex('signup-reservation:' + personalCode);
+  for (var attempt = 0; attempt < 8; attempt++) {
+    var object = await env.FAVORITES_BUCKET.get(key);
+    var record = object ? await object.json() : null;
+    if (!record || record.day !== day) {
+      // Preserve the current day's pre-upgrade quota. KV failure must not reset
+      // a quota to zero; the signup handler returns 503 in that case.
+      var legacy = env.RATE_LIMIT_KV
+        ? Number(await env.RATE_LIMIT_KV.get('rl:user-signup:' + ip + ':' + day)) || 0 : 0;
+      record = { day: day, legacyCount: legacy, reservations: [] };
+    }
+    if (record.reservations.indexOf(reservation) !== -1) return true;
+    if (record.legacyCount + record.reservations.length >= RATE_LIMIT_USER_SIGNUP_PER_DAY) return false;
+    record.reservations.push(reservation);
+    var written = await env.FAVORITES_BUCKET.put(key, JSON.stringify(record), {
+      onlyIf: object ? { etagMatches: object.etag } : { etagDoesNotMatch: '*' },
+      httpMetadata: { contentType: 'application/json' }
+    });
+    if (written) return true;
   }
-}
-
-// 실제로 셀 만한 일이 벌어졌을 때만 호출한다. 실패는 삼킨다 — 카운터 하나
-// 못 올린 것 때문에 이미 성공한 요청을 500 으로 되돌릴 이유가 없다.
-async function bumpRateLimit(env, ip, bucket, windowMs) {
-  if (!env.RATE_LIMIT_KV) return;
-  try {
-    var key = rateLimitKey(ip, bucket, windowMs);
-    var current = await env.RATE_LIMIT_KV.get(key);
-    var count = current ? parseInt(current, 10) : 0;
-    await env.RATE_LIMIT_KV.put(key, String(count + 1), { expirationTtl: Math.ceil(windowMs / 1000) });
-  } catch (e) {
-    // KV 한도 초과/장애 — 무시한다(위 주석 참고)
-  }
+  throw new Error('signup quota contention');
 }
 
 // ---- Legacy 1:1 favorites share ----
@@ -616,13 +623,9 @@ function validateLibraryUpdate(raw) {
 }
 
 async function readJsonBody(request, maxBytes) {
-  var text = await request.text();
-  if (text.length > maxBytes) return { error: jsonResponse(request, { error: 'payload too large' }, 413) };
-  try {
-    return { value: JSON.parse(text) };
-  } catch (e) {
-    return { error: jsonResponse(request, { error: 'invalid json' }, 400) };
-  }
+  var result = await readJsonLimited(request, maxBytes);
+  if (result.error) return { error: jsonResponse(request, { error: result.error }, result.status) };
+  return result;
 }
 
 function libraryPublicView(code, record) {
@@ -652,6 +655,9 @@ async function handleLibraryCreate(request, env) {
   // owner-index에 안 걸리므로 owner-lookup의 순차 R2 호출 문제와 무관해
   // 여기서 막지 않는다.
   if (clean.personalCode) {
+    if (!(await env.FAVORITES_BUCKET.head(await userStoreKey(clean.personalCode)))) {
+      return jsonResponse(request, { error: 'account not found' }, 401);
+    }
     var existingCodes = await getOwnerCodes(env, clean.personalCode);
     if (existingCodes.length >= OWNER_MAX_PUBLISHED) {
       return jsonResponse(request, {
@@ -696,39 +702,8 @@ async function handleLibraryCreate(request, env) {
     await addToOwnerIndex(env, clean.personalCode, code);
   }
 
+  await updateLibraryIndex(env, code, record);
   return jsonResponse(request, { code: code, editToken: editToken }, 201);
-}
-
-async function scanLibrary(env) {
-  var all = [];
-  var cursor = undefined;
-  var truncated = false;
-  while (true) {
-    var page = await env.FAVORITES_BUCKET.list({
-      prefix: 'library/',
-      cursor: cursor,
-      limit: LIBRARY_SCAN_PAGE,
-      include: ['customMetadata']
-    });
-    for (var i = 0; i < page.objects.length; i++) {
-      var obj = page.objects[i];
-      var meta = obj.customMetadata || {};
-      var updatedAt = parseInt(meta.updatedAt || '0', 10) || 0;
-      all.push({
-        code: obj.key.slice('library/'.length, obj.key.length - '.json'.length),
-        name: meta.name || '',
-        itemCount: parseInt(meta.itemCount || '0', 10) || 0,
-        // objects published before createdAt was recorded fall back to
-        // updatedAt so they still sort sensibly instead of sinking to 0
-        createdAt: parseInt(meta.createdAt || meta.updatedAt || '0', 10) || 0,
-        updatedAt: updatedAt
-      });
-    }
-    if (!page.truncated) break;
-    if (all.length >= LIBRARY_SCAN_MAX) { truncated = true; break; }
-    cursor = page.cursor;
-  }
-  return { all: all, truncated: truncated };
 }
 
 async function handleLibraryList(url, request, env) {
@@ -747,8 +722,10 @@ async function handleLibraryList(url, request, env) {
 
   var q = (url.searchParams.get('q') || '').trim().slice(0, LIBRARY_MAX_QUERY).toLowerCase();
 
-  var scanned = await scanLibrary(env);
-  var rows = scanned.all;
+  var rows = await readLibraryIndex(env);
+  if (!Array.isArray(rows)) {
+    return jsonResponse(request, { error: 'library index is preparing, try again shortly' }, 503);
+  }
 
   if (q) {
     rows = rows.filter(function (r) { return r.name.toLowerCase().indexOf(q) !== -1; });
@@ -774,7 +751,7 @@ async function handleLibraryList(url, request, env) {
     hasMore: offset + items.length < total,
     sort: sort,
     q: q,
-    truncated: scanned.truncated
+    truncated: false
   });
 }
 
@@ -824,6 +801,7 @@ async function handleLibraryUpdate(code, request, env) {
     }
   });
 
+  await updateLibraryIndex(env, code, record);
   return jsonResponse(request, libraryPublicView(code, record));
 }
 
@@ -849,6 +827,7 @@ async function handleLibraryDelete(code, request, env) {
   }
 
   await env.FAVORITES_BUCKET.delete('library/' + code + '.json');
+  await updateLibraryIndex(env, code, null);
   // 인덱스에서 이 code를 빼는 건 베스트 에포트로만 한다: 인증이 editToken을
   // 통해 이뤄졌다면 서버는 personalCode 평문을 모르므로 인덱스 키(해시)를
   // 계산할 수 없다 — 이런 잔여 항목은 owner/lookup 조회 시 head()가 404를
@@ -890,6 +869,9 @@ async function handleLibraryClaimOwner(code, request, env) {
   }
   var personalCode = cleanPersonalCode(body.value.personalCode);
   if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  if (!(await env.FAVORITES_BUCKET.head(await userStoreKey(personalCode)))) {
+    return jsonResponse(request, { error: 'account not found' }, 401);
+  }
 
   var providedHash = await sha256Hex(body.value.editToken);
   if (providedHash !== record.editTokenHash) {
@@ -1057,7 +1039,7 @@ function cleanUserData(raw) {
       publishedCode: publishedCode,
       // publishedCode 전용 타임스탬프 — 공용 updatedAt에 얹으면 이름 변경 같은
       // 무관한 수정이 "더 최신"으로 잡혀서 공개 취소가 되살아나는 병합 버그가
-      // 생긴다(src/js/userData.js의 mergePublishedCode 참고).
+      // 생긴다(src/js/core/userData.js의 mergePublishedCode 참고).
       publishedCodeUpdatedAt: typeof b.publishedCodeUpdatedAt === 'number' ? b.publishedCodeUpdatedAt : 0
     });
   }
@@ -1081,11 +1063,7 @@ function userStorePutOptions(record) {
   };
 }
 
-// limiter 는 네이티브 Rate Limiting 바인딩(env.RL_*) 또는 null 이다. null 이면
-// 레이트리밋을 건너뛴다 — /user/head 와 /user/signup 이 그 경로다. head 는
-// 원래부터 의도적으로 열어둔 쪽이고(R2 head() 조회뿐이라 남용돼도 부담이 가볍다),
-// signup 은 하루 단위 창이라 네이티브 바인딩으로 표현할 수 없어서 자기 핸들러
-// 안에서 KV 카운터를 직접 다룬다(handleUserSignup 참고).
+// 공통 본문 검증. 계정 존재 검증은 각 핸들러가 별도로 수행한다.
 async function readUserBody(request, env, limiter) {
   if (limiter) {
     var ip = clientIp(request);
@@ -1101,14 +1079,10 @@ async function readUserBody(request, env, limiter) {
 }
 
 async function handleUserSignup(request, env) {
-  // 회원가입만 하루 단위 창을 쓴다 — 같은 IP에서 계정을 계속 새로 찍어내는 걸
-  // 막는 게 목적이라 60초 창(네이티브 바인딩의 최대치)으로는 의미가 없다.
-  // 그래서 이 핸들러만 KV 카운터를 직접 다루는데, 예전처럼 "먼저 올리고 본다"가
-  // 아니라 여기선 조회만 한다. 실제 증가는 아래에서 계정이 정말 만들어졌을
-  // 때만 일어난다 — authModal.js 의 renderSignUp() 이 가입 화면을 여는 즉시
-  // signup 을 쏘기 때문에, 예전 코드는 화면을 열기만 해도 하루치가 소진됐다.
   var ip = clientIp(request);
-  if (!(await peekRateLimit(env, ip, 'user-signup', RATE_LIMIT_USER_SIGNUP_PER_DAY, DAY_MS))) {
+  // Reuse the auth burst limiter. Daily reservations below are independent of
+  // the approximate edge limit and remain enforced even when it is unavailable.
+  if (!(await checkLimit(env.RL_USER_AUTH, ip))) {
     return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
 
@@ -1122,6 +1096,14 @@ async function handleUserSignup(request, env) {
     return jsonResponse(request, { ok: true, existed: true, syncVersion: parseInt(meta.syncVersion || '1', 10) || 1 });
   }
 
+  try {
+    if (!(await reserveSignup(env, ip, parsed.personalCode))) {
+      return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+    }
+  } catch (error) {
+    return jsonResponse(request, { error: 'signup temporarily unavailable' }, 503);
+  }
+
   var now = Date.now();
   var record = { v: 1, createdAt: now, updatedAt: now, syncVersion: 1, data: emptyUserData() };
   // etagDoesNotMatch:'*' = "없을 때만 만들어라". 두 기기가 같은 코드로 동시에
@@ -1132,8 +1114,6 @@ async function handleUserSignup(request, env) {
   );
   if (!written) return jsonResponse(request, { ok: true, existed: true, syncVersion: 1 });
 
-  // 여기까지 왔다 = 새 오브젝트가 실제로 만들어졌다. 이때만 하루치를 센다.
-  await bumpRateLimit(env, ip, 'user-signup', DAY_MS);
 
   return jsonResponse(request, { ok: true, createdAt: now, syncVersion: 1 }, 201);
 }

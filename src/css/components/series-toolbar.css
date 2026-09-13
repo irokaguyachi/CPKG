@@ -189,6 +189,9 @@
 }
 
 .sfp-label {
+  color: #000000;
+  padding: 0.1042vw 0.4167vw;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
 }

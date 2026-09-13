@@ -1,5 +1,5 @@
 /**
- * 생일 배너 "팬케이크 주기" 카운터 (src/js/mainPage.js가 그리는
+ * 생일 배너 "팬케이크 주기" 카운터 (src/js/pages/mainPage.js가 그리는
  * #birthday-pancake-btn / #birthday-pancake-count 를 대상으로 동작한다)
  * - 클릭할 때마다 서버로 보내지 않는다. 로컬에서 즉시(낙관적) 숫자를
  *   올려 보여주고, 5초간 클릭이 없으면 그동안 쌓인 개수를 한 번에

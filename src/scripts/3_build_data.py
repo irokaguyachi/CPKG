@@ -91,7 +91,7 @@ with open(catalog_out, "w", encoding="utf-8", newline="\n") as f:
 icon_dir = os.path.join(HERE, "..", "offline_src", "LoadingLogo")
 icon_exts = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 icons = sorted(f for f in os.listdir(icon_dir) if f.lower().endswith(icon_exts)) if os.path.isdir(icon_dir) else []
-icons_out = os.path.join(HERE, "..", "data", "LoadingIcons.json")
+icons_out = os.path.join(HERE, "..", "data", "config", "LoadingIcons.json")
 with open(icons_out, "w", encoding="utf-8") as f:
     json.dump(icons, f, ensure_ascii=False, indent=2)
 print("loading icons:", len(icons))

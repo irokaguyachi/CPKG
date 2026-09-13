@@ -1,0 +1,20 @@
+/* 민감한 번역 목록은 첫 화면에서 경고문 아래를 흐리게 보여준다.
+   사용자가 실제로 아래로 이동하면 translationPage.js가 클래스를 제거해
+   검색·카드·푸터를 한 번에 공개한다. 레이아웃 높이는 유지해 스크롤 위치가
+   갑자기 변하지 않도록 한다. */
+.translation-page.is-content-gated .series-toolbar,
+.translation-page.is-content-gated .series-grid,
+.translation-page.is-content-gated .site-footer {
+  filter: blur(12px);
+  pointer-events: none;
+  user-select: none;
+  transition: filter 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .translation-page.is-content-gated .series-toolbar,
+  .translation-page.is-content-gated .series-grid,
+  .translation-page.is-content-gated .site-footer {
+    transition: none;
+  }
+}

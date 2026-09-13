@@ -1,14 +1,13 @@
 (function (global) {
   'use strict';
 
-  // 오늘의 랜덤 문학 — 메인 페이지 최상단의 선물상자.
+  // 오늘의 랜덤 문학 / 번역 — 메인 페이지 최상단의 선물상자.
   //
-  // - 그날의 글은 "KST 날짜 문자열(YYYY-MM-DD) + 이 브라우저 고정 시드"를
-  //   해시해 후보 목록의 인덱스로 쓴다. 시드는 첫 방문 때 한 번 만들어
-  //   localStorage에 저장하므로, 방문자마다 다른 글이 나오면서도 하루 동안은
-  //   같은 글이 유지되고 KST 자정에 저절로 다음 글로 넘어간다. 서버는 필요
-  //   없다. 시드를 저장 못 하는 환경(사생활 보호 모드 등)에서는 매 로드마다
-  //   임시 시드를 써서 새로고침 때 글이 바뀔 수 있다.
+  // - 그날의 문학과 번역은 "KST 날짜 문자열(YYYY-MM-DD) + 이 브라우저 고정
+  //   시드"를 해시해 각 후보 목록의 인덱스로 뽑는다. 시드는 첫 방문 때 한 번
+  //   만들어 localStorage에 저장하므로, 방문자마다 다른 글이 나오면서도 하루
+  //   동안은 같은 글이 유지되고 KST 자정에 저절로 다음 글로 넘어간다. 서버는
+  //   필요 없다. 시드를 저장 못 하는 환경에서는 매 로드마다 임시 시드를 쓴다.
   // - 상자를 한 번 열면 그날 동안은 열린 상태를 localStorage에 기억한다.
   //   날짜가 바뀌면 키가 어긋나 다시 닫힌 상자로 시작한다.
   // - 카운트다운이 0에 닿으면(자정 통과) 페이지를 한 번 새로고침해 새 글을
@@ -102,32 +101,40 @@
     wrap.className = 'daily-gift';
     wrap.setAttribute('data-state', 'closed');
     wrap.innerHTML =
-      '<button type="button" class="daily-gift-box" aria-label="오늘의 랜덤 문학 열기">' +
+      '<button type="button" class="daily-gift-box" aria-label="오늘의 랜덤 문학 / 번역 열기">' +
         '<span class="daily-gift-lid" aria-hidden="true"></span>' +
         '<span class="daily-gift-ribbon-v" aria-hidden="true"></span>' +
         '<span class="daily-gift-ribbon-h" aria-hidden="true"></span>' +
         '<span class="daily-gift-bow" aria-hidden="true">🎀</span>' +
-        '<span class="daily-gift-box-label">오늘의 랜덤 문학</span>' +
+        '<span class="daily-gift-box-label">오늘의 랜덤 문학 / 번역</span>' +
         '<span class="daily-gift-box-cta">탭하여 오픈</span>' +
       '</button>' +
       '<div class="daily-gift-reveal" hidden>' +
         '<div class="daily-gift-header">' +
-          '<p class="daily-gift-title">🎁 오늘의 랜덤 문학!</p>' +
-          '<p class="daily-gift-countdown">다음 문학까지<time class="daily-gift-countdown-time">00:00:00</time></p>' +
+          '<p class="daily-gift-title">🎁 오늘의 랜덤 문학 / 번역!</p>' +
+          '<p class="daily-gift-countdown">다음 문학 / 번역까지<time class="daily-gift-countdown-time">00:00:00</time></p>' +
         '</div>' +
         '<div class="daily-gift-card-slot"></div>' +
       '</div>';
     return wrap;
   }
 
-  // DailyGift.create({ dataUrl, favType, filterItems, renderCard })
+  // DailyGift.create({ dataUrl, favType, secondaryDataUrl, secondaryFavType,
+  //                    filterItems, renderCard })
   // - dataUrl: 후보 전체가 담긴 JSON 경로(예: '../data/PageData/Novel.json')
   // - filterItems(items): 성인 태그 등 방문자 설정에 따른 거르기(mainPage 제공)
-  // - renderCard(item): 그 글의 카드 DOM을 만들어 돌려주는 함수(mainPage 제공)
-  // 후보를 못 받거나 비어 있으면 만든 요소를 스스로 제거한다.
+  // - secondaryDataUrl/secondaryFavType: 두 번째 후보(현재는 번역) 설정.
+  // - renderCard(item, favType): 글의 카드 DOM을 만들어 돌려준다(mainPage 제공).
+  // 두 후보를 모두 못 받거나 비어 있으면 만든 요소를 스스로 제거한다.
   function create(opts) {
     opts = opts || {};
     var DATA = global.dataUrl || function (p) { return p; };
+    var fetchJson = global.fetchJsonCached || function (url) {
+      return fetch(DATA(url)).then(function (r) {
+        if (!r.ok) throw new Error('Daily gift data request failed: ' + r.status);
+        return r.json();
+      });
+    };
 
     var wrap = buildShell();
     var box = wrap.querySelector('.daily-gift-box');
@@ -187,17 +194,42 @@
 
     box.addEventListener('click', openWithAnimation);
 
-    fetch(DATA(opts.dataUrl))
-      .then(function (r) { return r.json(); })
-      .then(function (items) {
-        items = Array.isArray(items) ? items : [];
-        if (typeof opts.filterItems === 'function') items = opts.filterItems(items);
-        var item = pickDailyItem(items);
-        if (!item) { wrap.remove(); return; }
+    function loadItems(url) {
+      if (!url) return Promise.resolve([]);
+      return fetchJson(url)
+        .then(function (items) { return Array.isArray(items) ? items : []; })
+        .catch(function () { return []; });
+    }
 
-        var card = opts.renderCard ? opts.renderCard(item) : null;
-        if (!card) { wrap.remove(); return; }
-        slot.appendChild(card);
+    function appendCard(item, favType, labelText) {
+      if (!item || !opts.renderCard) return false;
+      var card = opts.renderCard(item, favType);
+      if (!card) return false;
+      var label = document.createElement('p');
+      label.className = 'daily-gift-card-label';
+      label.textContent = labelText;
+      slot.appendChild(label);
+      slot.appendChild(card);
+      return true;
+    }
+
+    Promise.all([loadItems(opts.dataUrl), loadItems(opts.secondaryDataUrl)])
+      .then(function (results) {
+        var items = results[0];
+        var secondaryItems = results[1];
+        if (typeof opts.filterItems === 'function') items = opts.filterItems(items);
+        if (typeof opts.secondaryFilterItems === 'function') {
+          secondaryItems = opts.secondaryFilterItems(secondaryItems);
+        } else if (typeof opts.filterItems === 'function') {
+          secondaryItems = opts.filterItems(secondaryItems);
+        }
+
+        var item = pickDailyItem(items);
+        var secondaryItem = pickDailyItem(secondaryItems);
+        var rendered = 0;
+        rendered += appendCard(item, opts.favType, opts.primaryLabel || '오늘의 문학') ? 1 : 0;
+        rendered += appendCard(secondaryItem, opts.secondaryFavType, opts.secondaryLabel || '오늘의 번역') ? 1 : 0;
+        if (!rendered) { wrap.remove(); return; }
 
         // 오늘 이미 열어 본 방문자는 애니메이션 없이 곧장 열린 상태로.
         // (응답을 기다리는 사이 사용자가 먼저 상자를 눌렀다면 건드리지 않는다.)

@@ -4,14 +4,17 @@
 =====================================================
 - 대상 말머리: search_head=60 (💬번역)
 - 태그 체계: [이미지] (첫 번째 사진 첨부 시) / [글자] (텍스트 전용)
-- 사진 저장: 각 게시글의 맨 첫 번째 사진을 '번역 사진/{차수}/{게시글ID}_1.{확장자}'로 다운로드
+- 사진 저장: 각 게시글의 맨 첫 번째 사진을 '번역 사진/{차수 또는 날짜}/{게시글ID}_1.{확장자}'로 다운로드
 - 본문 링크: 본문 내 외부 출처, 트위터/X, 픽시브, 유튜브, 관련 링크 추출 및 메타데이터 기록 (한글/불필요 문자 정제)
-- 마크다운 정리: '번역 정리/크롤링 파일/1.md' ~ '29.md' (10,000 단위 ID 분할 수록)
+- 마크다운 정리:
+  · 숫자 배치: '번역 정리/크롤링 파일/1.md' ~ '29.md' (10,000 단위 ID 분할, 최초 전수 수집)
+  · 날짜 수집: '번역 정리/크롤링 파일/YYYY-MM-DD.md' (29.md 이후 신규분, .agent/rules/crawling.md)
 
 사용법:
-  python crawl_translations.py                  # 전체 번역 글(1~29차) 자동 수집 및 정리
-  python crawl_translations.py --batches 1 2 3   # 특정 배치만 지정 수집
-  python crawl_translations.py --index          # 목록 인덱싱 및 배치별 분포만 확인
+  python crawl_translations.py --daily            # 아직 수집 안 된 신규 글만 오늘 날짜 파일로 저장 (권장)
+  python crawl_translations.py --daily --index    # 신규 글이 몇 건인지만 확인 (다운로드 안 함)
+  python crawl_translations.py --batches 1 2 3    # 특정 숫자 배치만 다시 수집
+  python crawl_translations.py --index            # 배치별 분포만 확인
 """
 
 import os
@@ -20,6 +23,7 @@ import re
 import time
 import json
 import argparse
+import datetime
 import requests
 from bs4 import BeautifulSoup
 
@@ -189,40 +193,58 @@ def get_batch_number(post_id):
     """게시글 ID에 따른 배치 파일 번호 (1.md ~ 29.md)"""
     return ((post_id - 1) // 10000) + 1
 
-def parse_and_save_batch(batch_num, batch_posts):
-    """특정 배치의 게시글 본문 파싱, 대표 사진 다운로드, 본문 링크 추출 및 마크다운 저장"""
-    min_id = (batch_num - 1) * 10000 + 1
-    max_id = batch_num * 10000
-    
-    os.makedirs(CRAWL_DIR, exist_ok=True)
-    photo_dir = os.path.join(PHOTO_ROOT, str(batch_num))
+def load_known_ids():
+    """이미 수집된 크롤링 파일(*.md)의 '### [id]' 헤더에서 게시글 ID를 모읍니다.
+
+    날짜 수집(--daily)이 '아직 수집 안 된 글'만 새로 받도록, 숫자 배치 파일과
+    날짜 파일을 가리지 않고 전부 훑습니다.
+    """
+    known = set()
+    if not os.path.isdir(CRAWL_DIR):
+        return known
+    for fn in os.listdir(CRAWL_DIR):
+        if not fn.endswith(".md"):
+            continue
+        try:
+            text = open(os.path.join(CRAWL_DIR, fn), encoding="utf-8").read()
+        except OSError:
+            continue
+        for m in re.finditer(r"^###\s*\[(\d+)\]", text, re.M):
+            known.add(int(m.group(1)))
+    return known
+
+
+def _collect_entries(posts, photo_folder):
+    """게시글 목록을 하나씩 열어 본문·글자 수·대표 사진·본문 링크를 수집합니다.
+
+    photo_folder: '번역 사진/<이 값>/<게시글ID>_1.<ext>' 로 사진을 저장하고
+      같은 이름의 하위 폴더를 PHOTO_ROOT 아래에 만듭니다. 숫자 배치면 "30",
+      날짜 수집이면 "2026-09-11" 처럼 들어옵니다.
+    반환: 최신순(ID 역순)으로 정렬된 항목 dict 리스트.
+    """
+    photo_dir = os.path.join(PHOTO_ROOT, str(photo_folder))
     os.makedirs(photo_dir, exist_ok=True)
-    
-    out_file = os.path.join(CRAWL_DIR, f"{batch_num}.md")
-    print(f"\n==================================================")
-    print(f"=== [2단계] 배치 {batch_num}.md 수집 시작 ({min_id:,} ~ {max_id:,}번 / 총 {len(batch_posts)}건) ===")
-    print(f"==================================================")
-    
+
     parsed_entries = []
-    
-    for idx, p in enumerate(batch_posts, 1):
+
+    for idx, p in enumerate(posts, 1):
         post_id = p['id']
         desktop_link = f"https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no={post_id}"
         mobile_url = f"https://m.dcinside.com/board/chokaguyahime/{post_id}"
-        print(f"[{idx:3d}/{len(batch_posts):3d}] [{post_id}] {p['title'][:35]}...")
-        
+        print(f"[{idx:3d}/{len(posts):3d}] [{post_id}] {p['title'][:35]}...")
+
         try:
             html = fetch_html(mobile_url)
             soup = BeautifulSoup(html, 'html.parser')
-            
+
             # 본문 추출 (div.thum-txt 또는 div.writing_view_box)
             body_el = soup.select_one('div.thum-txt') or soup.select_one('div.writing_view_box')
             body_text = body_el.get_text(strip=True) if body_el else ""
             char_count = len(body_text)
-            
+
             # 본문 내부 링크 추출 (출처, 트위터, 유튜브 등)
             body_links = extract_body_links(body_el)
-            
+
             # 본문 첫 번째 이미지 추출 (data-original or src)
             first_img_url = None
             first_img_ext = "jpg"
@@ -237,16 +259,16 @@ def parse_and_save_batch(batch_num, batch_posts):
                         if e in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
                             first_img_ext = e
                     break
-            
+
             photo_path_str = "없음"
             tag = "글자"
-            
+
             if first_img_url:
                 tag = "이미지"
                 save_filename = f"{post_id}_1.{first_img_ext}"
                 save_path = os.path.join(photo_dir, save_filename)
-                rel_path = f"번역 사진/{batch_num}/{save_filename}"
-                
+                rel_path = f"번역 사진/{photo_folder}/{save_filename}"
+
                 if not os.path.exists(save_path) or os.path.getsize(save_path) == 0:
                     sz = download_image(first_img_url, mobile_url, save_path)
                     if sz > 0:
@@ -257,10 +279,10 @@ def parse_and_save_batch(batch_num, batch_posts):
                 else:
                     photo_path_str = rel_path
                     print(f"   📸 기존 사진 확인: {rel_path}")
-            
+
             if body_links:
                 print(f"   🔗 본문 링크 {len(body_links)}개: {', '.join(body_links[:2])}")
-                
+
             parsed_entries.append({
                 'id': post_id,
                 'title': p['title'],
@@ -271,7 +293,7 @@ def parse_and_save_batch(batch_num, batch_posts):
                 'photo': photo_path_str,
                 'body_links': body_links
             })
-            
+
         except Exception as e:
             print(f"   [!] 파싱 실패 [{post_id}]: {e}")
             parsed_entries.append({
@@ -284,14 +306,17 @@ def parse_and_save_batch(batch_num, batch_posts):
                 'photo': "없음",
                 'body_links': []
             })
-            
+
         time.sleep(1.2)
-        
+
     # 최신순(ID 역순) 정렬
     parsed_entries.sort(key=lambda x: x['id'], reverse=True)
-    
-    # 마크다운 포맷 생성
-    md_lines = [f"# 💬 번역 {batch_num}차 수집 목록 ({min_id:,} ~ {max_id:,}번)", ""]
+    return parsed_entries
+
+
+def _render_md(header_line, parsed_entries):
+    """수집한 항목들을 기존 크롤링 파일과 동일한 마크다운 포맷 문자열로 만듭니다."""
+    md_lines = [header_line, ""]
     for entry in parsed_entries:
         md_lines.append(f"### [{entry['id']}] {entry['title']}")
         md_lines.append(f"- **게시물 링크**: {entry['url']}")
@@ -299,35 +324,77 @@ def parse_and_save_batch(batch_num, batch_posts):
         md_lines.append(f"- **태그**: [{entry['tag']}]")
         md_lines.append(f"- **글자 수**: {entry['char_count']:,}자")
         md_lines.append(f"- **첨부 사진**: {entry['photo']}")
-        
+
         # 본문 링크가 있는 경우 추가 기록
         if entry['body_links']:
             links_str = ", ".join(entry['body_links'])
             md_lines.append(f"- **본문 링크**: {links_str}")
-            
+
         md_lines.append("")
         md_lines.append("---")
         md_lines.append("")
-        
+    return "\n".join(md_lines)
+
+
+def parse_and_save_batch(batch_num, batch_posts):
+    """특정 10,000단위 배치를 수집해 '{batch_num}.md' 로 저장 (숫자 배치 방식)."""
+    min_id = (batch_num - 1) * 10000 + 1
+    max_id = batch_num * 10000
+
+    os.makedirs(CRAWL_DIR, exist_ok=True)
+    out_file = os.path.join(CRAWL_DIR, f"{batch_num}.md")
+    print(f"\n==================================================")
+    print(f"=== [2단계] 배치 {batch_num}.md 수집 시작 ({min_id:,} ~ {max_id:,}번 / 총 {len(batch_posts)}건) ===")
+    print(f"==================================================")
+
+    parsed_entries = _collect_entries(batch_posts, batch_num)
+    md = _render_md(f"# 💬 번역 {batch_num}차 수집 목록 ({min_id:,} ~ {max_id:,}번)", parsed_entries)
     with open(out_file, 'w', encoding='utf-8') as f:
-        f.write("\n".join(md_lines))
-        
+        f.write(md)
+
+    print(f"[+] ✨ 마크다운 생성 완료: {out_file} (총 {len(parsed_entries)}건 기록)")
+
+
+def parse_and_save_daily(new_posts, date_str):
+    """아직 수집되지 않은 게시글을 오늘 날짜 파일('{date_str}.md') 하나로 저장.
+
+    .agent/rules/crawling.md 의 '29.md 이후는 숫자 배치를 만들지 않고 날짜별
+    수집으로 전환한다' 규칙을 따릅니다. 사진은 '번역 사진/{date_str}/' 아래에
+    모읍니다(기존 2026-08-23 수집이 쓴 것과 같은 방식).
+    """
+    os.makedirs(CRAWL_DIR, exist_ok=True)
+    out_file = os.path.join(CRAWL_DIR, f"{date_str}.md")
+    print(f"\n==================================================")
+    print(f"=== [2단계] 날짜 수집 시작 {date_str}.md (신규 {len(new_posts)}건) ===")
+    print(f"==================================================")
+
+    parsed_entries = _collect_entries(new_posts, date_str)
+    md = _render_md(f"# 💬 번역 {date_str} 수집 목록", parsed_entries)
+    with open(out_file, 'w', encoding='utf-8') as f:
+        f.write(md)
+
     print(f"[+] ✨ 마크다운 생성 완료: {out_file} (총 {len(parsed_entries)}건 기록)")
 
 def main():
     parser = argparse.ArgumentParser(description="초카구야공주 갤러리 번역 탭 크롤러")
-    parser.add_argument("--batches", nargs="+", type=int, help="수집할 배치 번호들 (예: --batches 1 2 3)")
-    parser.add_argument("--index", action="store_true", help="목록 인덱싱 및 배치별 분포만 확인")
+    parser.add_argument("--batches", nargs="+", type=int,
+                        help="수집할 숫자 배치 번호들 (예: --batches 1 2 3). --daily 와 함께 쓰지 않습니다.")
+    parser.add_argument("--daily", action="store_true",
+                        help="아직 수집 안 된 신규 글만 오늘 날짜 파일(YYYY-MM-DD.md)로 저장 "
+                             "(29.md 이후 권장 방식, .agent/rules/crawling.md)")
+    parser.add_argument("--index", action="store_true", help="목록 인덱싱 및 분포만 확인하고 수집은 하지 않음")
     parser.add_argument("--refresh", action="store_true", help="인덱스 캐시를 새로고침")
     args = parser.parse_args()
 
-    all_posts = scan_all_translation_posts(max_pages=25, force_refresh=args.refresh)
-    
+    # 날짜 수집은 '새로 올라온 글'을 잡아야 하므로 목록을 항상 다시 스캔합니다.
+    force_refresh = args.refresh or args.daily
+    all_posts = scan_all_translation_posts(max_pages=25, force_refresh=force_refresh)
+
     batch_map = {}
     for p in all_posts:
         b = get_batch_number(p['id'])
         batch_map.setdefault(b, []).append(p)
-        
+
     print("\n📊 === [배치별 번역 글 분포 현황] ===")
     total_posts = 0
     for b in sorted(batch_map.keys()):
@@ -335,20 +402,42 @@ def main():
         total_posts += cnt
         min_id = (b - 1) * 10000 + 1
         max_id = b * 10000
-        print(f"  - 번역 {b:2d}.md ({min_id:>7,d} ~ {max_id:>7,d}번): {cnt:4d}건")
-    print(f"  👉 총 {len(batch_map)}개 배치 파일 / 전체 {total_posts:,d}건")
+        print(f"  - 번역 {b:2d} ({min_id:>7,d} ~ {max_id:>7,d}번): {cnt:4d}건")
+    print(f"  👉 스캔된 전체 {total_posts:,d}건")
+
+    if args.daily:
+        known = load_known_ids()
+        new_posts = sorted(
+            (p for p in all_posts if p['id'] not in known),
+            key=lambda p: p['id'],
+            reverse=True,
+        )
+        print(f"  이미 수집됨 {len(known):,d}건 / 신규 {len(new_posts):,d}건")
+        print("======================================\n")
+        if args.index:
+            return
+        if not new_posts:
+            print("✅ 새로 수집할 글이 없습니다. 파일을 만들지 않고 종료합니다.")
+            return
+        date_str = datetime.date.today().isoformat()
+        parse_and_save_daily(new_posts, date_str)
+        newest = new_posts[0]
+        print(f"\n🎉 날짜 수집 완료 → 크롤링 파일/{date_str}.md (신규 {len(new_posts)}건)")
+        print(f"   CurrentStats.md 갱신용: 마지막 수집 번역 게시글 ID {newest['id']:,} ({newest['title']})")
+        return
+
     print("======================================\n")
-    
+
     if args.index:
         return
-        
+
     batches_to_run = args.batches if args.batches else sorted(batch_map.keys())
     for b in batches_to_run:
         if b in batch_map:
             parse_and_save_batch(b, batch_map[b])
             time.sleep(1.5)
-            
-    print("\n🎉 모든 번역 크롤링 및 1~29.md 마크다운 정리가 완료되었습니다!")
+
+    print("\n🎉 번역 크롤링 및 마크다운 정리가 완료되었습니다!")
 
 if __name__ == "__main__":
     main()

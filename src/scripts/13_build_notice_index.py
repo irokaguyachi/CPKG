@@ -22,7 +22,7 @@
   .md 파일을 그때그때 fetch해서 읽습니다.
 - 정렬: 날짜 내림차순(최신이 먼저).
 - 새 .md 파일을 추가/수정한 뒤에는 이 스크립트를 다시 돌리고, 배포에 반영하려면
-  src/js/cdnConfig.js 의 DATA_VERSION 도 올리세요(10_update_data_version.py).
+  src/js/config/cdnConfig.js 의 DATA_VERSION 도 올리세요(10_update_data_version.py).
 """
 import json
 import os

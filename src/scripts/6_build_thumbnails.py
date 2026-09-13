@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 카드 썸네일 + 상세 모달용 중간 이미지 생성 스크립트 (6_build_thumbnails.py)
-- Series.json / HOF.json / Official.json / Novel.json 의 `image` 가 가리키는 원본을 읽어
+- Series.json / HOF.json / Official.json / Novel.json / Translation.json 의 `image` 가 가리키는 원본을 읽어
   두 가지를 만듭니다.
   1. 가로 600px WebP 썸네일 -> src/assets/Image/thumb/  (카드용, 기존과 동일)
   2. 가로 1200px WebP 중간 이미지 -> src/assets/Image/mid/  (상세 모달용, 신규)
@@ -14,7 +14,7 @@
     매 프레임 디코딩이 메인 스레드를 계속 점유하기 때문입니다.
   · mid/: 아예 만들지 않습니다. 상세 모달(postDetailSeries.js)은 지금 애니메이션
     GIF 커버를 실제로 움직이는 채로 보여주는데, 정지 WebP로 바꾸면 그 연출이
-    사라집니다. src/js/cdnConfig.js 의 revealBackgroundProgressive() 가 mid 파일이
+    사라집니다. src/js/config/cdnConfig.js 의 revealBackgroundProgressive() 가 mid 파일이
     없으면(404) 원본으로 대체하도록 이미 되어 있어서, 여기서 그냥 안 만들면
     애니메이션 있는 이미지는 지금처럼 원본 그대로 재생됩니다
     (TRAFFIC_SECURITY_AUDIT_2.md N-T2 — 애니메이션 없는 나머지 다수는 중간
@@ -39,7 +39,7 @@ THUMB_DIR = os.path.join(IMAGE_DIR, "thumb")
 MID_DIR = os.path.join(IMAGE_DIR, "mid")
 DATA_DIR = os.path.join(HERE, "..", "data", "PageData")
 
-SOURCES = ["Series.json", "HOF.json", "Official.json", "Novel.json"]
+SOURCES = ["Series.json", "HOF.json", "Official.json", "Novel.json", "Translation.json"]
 THUMB_WIDTH = 600
 THUMB_QUALITY = 80
 MID_WIDTH = 1200

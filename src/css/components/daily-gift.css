@@ -1,9 +1,9 @@
 /* ==========================================================================
    오늘의 랜덤 문학 (Daily Gift)
-   src/js/dailyGift.js 가 만들고, src/js/mainPage.js 가 #content 최상단에
-   끼워 넣는다. 닫힌 선물상자를 탭하면 리본이 풀리면서 그날의 랜덤 문학
-   한 편과 자정(KST)까지 남은 카운트다운이 나타난다. 하루 동안 같은 글이
-   유지되고, KST 자정이 지나면 상자가 다시 닫힌 채로 새 글이 뽑힌다.
+   src/js/components/dailyGift.js 가 만들고, src/js/pages/mainPage.js 가 #content 최상단에
+   끼워 넣는다. 닫힌 선물상자를 탭하면 리본이 풀리면서 그날의 랜덤 문학과
+   번역 한 편씩, 자정(KST)까지 남은 카운트다운이 나타난다. 하루 동안 같은
+   글이 유지되고, KST 자정이 지나면 상자가 다시 닫힌 채로 새 글이 뽑힌다.
    기능을 통째로 걷어낼 때는 이 파일, dailyGift.js, mainPage.html의 <link>/
    <script>, mainPage.js의 placeDailyGift() 호출부만 지우면 된다.
    ========================================================================== */
@@ -192,7 +192,18 @@
 /* 뽑힌 글 카드 자리 — .post-row 의 hover translateY 와 그림자가 잘리지
    않도록 위아래로 약간 여유를 준다(mainPage 의 .post-list 와 같은 취지). */
 .daily-gift-card-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   padding: 4px 2px 8px;
+}
+
+.daily-gift-card-label {
+  margin: 3px 2px 0;
+  color: rgba(0, 0, 0, 0.52);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
 }
 
 /* ---- 다크 모드 (이 컴포넌트만의 규칙을 여기 함께 둔다) ---- */
@@ -214,6 +225,9 @@
 }
 [data-theme="dark"] .daily-gift-countdown-time {
   color: var(--mint);
+}
+[data-theme="dark"] .daily-gift-card-label {
+  color: rgba(255, 255, 255, 0.58);
 }
 
 @media (max-width: 520px) {

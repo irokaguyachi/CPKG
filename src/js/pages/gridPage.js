@@ -30,9 +30,7 @@
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   // 태그 색상/이모지/정렬 — tagConfig.js(mainPage.js와 공유하는 단일 소스)로 옮김
-  var TAG_COLORS = global.TagConfig.TAG_COLORS;
   var TAG_EMOJI = global.TagConfig.TAG_EMOJI;
-  var DEFAULT_TAG_COLOR = global.TagConfig.DEFAULT_TAG_COLOR;
   var DEFAULT_EMOJI = global.TagConfig.DEFAULT_EMOJI;
   var sortTags = global.TagConfig.sortTags;
 
@@ -130,7 +128,7 @@
     // loader — pick a random one per sentinel instead of the counter-based
     // rotation loading.js uses for the intro screen
     var miniLoadingIcons = [];
-    fetchJson('../data/LoadingIcons.json')
+    fetchJson('../data/config/LoadingIcons.json')
       .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })
       .catch(function () {});
 
@@ -398,10 +396,6 @@
         label.className = 'sfp-label';
         label.dataset.tag = tag;
         label.textContent = tag;
-        label.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
-        label.style.color = '#000000';
-        label.style.padding = '0.1042vw 0.4167vw';
-        label.style.borderRadius = '999px';
         row.appendChild(label);
 
         row.addEventListener('click', function () {
@@ -663,7 +657,6 @@
         pill.className = 'series-card-tag';
         pill.dataset.tag = tag;
         pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-        pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
         tagsWrap.appendChild(pill);
       });
       info.appendChild(tagsWrap);
@@ -737,7 +730,6 @@
         pill.className = 'series-card-tag';
         pill.dataset.tag = tag;
         pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-        pill.style.background = TAG_COLORS[tag] || DEFAULT_TAG_COLOR;
         tagsWrap.appendChild(pill);
       });
       info.appendChild(tagsWrap);

@@ -3,7 +3,7 @@
 DATA_VERSION 자동 갱신 스크립트 (10_update_data_version.py)
 - src/data/ 아래에서 브라우저가 실제로 fetch하는 모든 .json 파일(PageData/,
   LoadingIcons.json, Tip.json, ForEvent/ 등)의 내용을 해시해서
-  src/js/cdnConfig.js 의 DATA_VERSION 상수를 자동으로 갱신합니다.
+  src/js/config/cdnConfig.js 의 DATA_VERSION 상수를 자동으로 갱신합니다.
   ColorTheme.json은 빌드 시점에만 쓰이고 브라우저가 직접 fetch하지 않으므로
   제외합니다(9_build_color_theme.py가 그 값을 CSS로 미리 구워냅니다).
 - 데이터를 바꾸는 다른 빌드 스크립트(3, 5, 6, 7, 8번)를 전부 돌린 뒤
@@ -22,7 +22,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "..", "data")
-CDN_CONFIG_PATH = os.path.join(HERE, "..", "js", "cdnConfig.js")
+CDN_CONFIG_PATH = os.path.join(HERE, "..", "js", "config", "cdnConfig.js")
 
 # 브라우저가 런타임에 fetch하지 않는 빌드 전용 JSON — 여기 넣지 않으면
 # 이 파일들이 바뀔 때마다(크롤링·재빌드) 실제로 배포되는 데이터는 그대로인데도

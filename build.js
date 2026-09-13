@@ -6,7 +6,7 @@
  * - dist/js/**\/*.js 만 javascript-obfuscator로 난독화해서 덮어쓴다.
  *   실제 사이트는 Cloudflare Workers Assets가 이 디렉터리를 그대로 서빙하므로,
  *   여기 있는 파일이 곧 방문자가 다운로드하는 파일이다.
- * - _worker.js / statsApi.js / presenceDO.js 등 서버(Workers) 쪽 코드는
+ * - src/_worker.js / worker/statsApi.js / worker/presenceDO.js 등 서버(Workers) 쪽 코드는
  *   난독화 대상이 아니다. Cloudflare 엣지에서만 실행되고 브라우저로는 절대
  *   내려가지 않으므로 애초에 노출 위험이 없고, 오히려 건드리면 Worker
  *   런타임 로직이 깨질 위험만 커진다.
@@ -32,6 +32,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const JavaScriptObfuscator = require('javascript-obfuscator');
+const { stripJsComments } = require('./scripts/strip-js-comments.cjs');
 
 const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
@@ -52,8 +53,7 @@ const LOOSE = process.argv.includes('--loose');
 // 동작할 위험"이 "코드 읽기 어려움 조금 더 얻는 이득"보다 크다고 판단.
 const OBFUSCATE_OPTIONS = {
   compact: true,
-  controlFlowFlattening: true,
-  controlFlowFlatteningThreshold: 0.5,
+  controlFlowFlattening: false,
   deadCodeInjection: false,
   identifierNamesGenerator: 'hexadecimal',
   // 파일마다 독립적으로 난독화한다. 이 프로젝트의 js 파일들은 <script defer>로
@@ -62,10 +62,10 @@ const OBFUSCATE_OPTIONS = {
   // false를 유지해 최상위 선언은 그대로 두고, 함수 내부 지역 변수만 꼬은다.
   renameGlobals: false,
   stringArray: true,
-  stringArrayEncoding: ['base64'],
-  stringArrayThreshold: 0.75,
+  stringArrayEncoding: [],
+  stringArrayThreshold: 0.5,
   splitStrings: false,
-  numbersToExpressions: true,
+  numbersToExpressions: false,
   simplify: true,
   selfDefending: false,
 };
@@ -88,6 +88,7 @@ function copySrcToDist() {
 const OPTIONS_FINGERPRINT = crypto
   .createHash('sha256')
   .update(JSON.stringify(OBFUSCATE_OPTIONS))
+  .update(fs.readFileSync(path.join(ROOT, 'scripts', 'strip-js-comments.cjs')))
   .digest('hex')
   .slice(0, 16);
 
@@ -125,7 +126,10 @@ function obfuscateJsDir(dir) {
       }
 
       try {
-        const obfuscated = JavaScriptObfuscator.obfuscate(original, OBFUSCATE_OPTIONS).getObfuscatedCode();
+        // 난독화 후 남는 주석도 제거한다. 원본 src/의 개발용 주석은 보존한다.
+        const obfuscated = stripJsComments(
+          JavaScriptObfuscator.obfuscate(original, OBFUSCATE_OPTIONS).getObfuscatedCode()
+        );
         fs.writeFileSync(full, obfuscated, 'utf8');
         fs.writeFileSync(cachePath, obfuscated, 'utf8');
         misses++;

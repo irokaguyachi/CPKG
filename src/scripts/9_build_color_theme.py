@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 브랜드 색상 CSS 변수 생성 스크립트 (9_build_color_theme.py)
-- src/data/ColorTheme.json 을 읽어 CSS 커스텀 프로퍼티 블록을 만들고
+- src/data/config/ColorTheme.json 을 읽어 CSS 커스텀 프로퍼티 블록을 만들고
   src/css/base/colorTheme.css 로 씁니다.
 - 브랜드 색을 바꾸고 싶으면 이 스크립트나 colorTheme.css 를 직접 고치지
-  말고, src/data/ColorTheme.json 값을 수정한 뒤 이 스크립트를 다시
+  말고, src/data/config/ColorTheme.json 값을 수정한 뒤 이 스크립트를 다시
   실행하세요(`python src/scripts/9_build_color_theme.py`).
 - accent(#2f6fed) 자체는 src/css/base/reset.css 의 :root 에 이미 커스텀
   프로퍼티(--accent)로 정의돼 있어 여기서는 다시 만들지 않습니다 — JSON에는
@@ -29,7 +29,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-json_path = os.path.join(HERE, "..", "data", "ColorTheme.json")
+json_path = os.path.join(HERE, "..", "data", "config", "ColorTheme.json")
 reset_css_path = os.path.join(HERE, "..", "css", "base", "reset.css")
 out_path = os.path.join(HERE, "..", "css", "base", "colorTheme.css")
 
@@ -69,7 +69,7 @@ def build_css(tokens):
     skip_keys = set(OWNED_ELSEWHERE.keys())
     parts = [
         "/* 이 파일은 src/scripts/9_build_color_theme.py 가",
-        "   src/data/ColorTheme.json 에서 자동 생성합니다.",
+        "   src/data/config/ColorTheme.json 에서 자동 생성합니다.",
         "   색을 바꾸려면 이 파일이 아니라 그 JSON을 고친 뒤 스크립트를 다시 실행하세요. */",
         "",
     ]
