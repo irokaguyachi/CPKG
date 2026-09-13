@@ -1,5 +1,6 @@
 # Secrets & Local Configurations
 .mcp.json
+.codex/
 .r2_config.json
 .env
 *.env
