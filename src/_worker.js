@@ -41,7 +41,7 @@ export { PresenceDO };
 var OLD_DOMAIN = 'ckpg.cloud';
 var NEW_DOMAIN = 'cpkg.cloud';
 
-var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/snapshot'];
+var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/snapshot', '/bump/get', '/bump/request'];
 
 function isApiPath(pathname) {
   if (API_EXACT_PATHS.indexOf(pathname) !== -1) return true;
@@ -172,6 +172,19 @@ async function recordTagSnapshot(env) {
   }
 }
 
+// 5분마다 끌올(bump) 큐의 오래된 행을 걷어낸다. 활성/대기 판정은 항상
+// end_at > now 로만 걸러 읽으므로 이 정리를 걸러도 기능 자체는 멀쩡하다 —
+// D1 용량이 무한정 쌓이지 않도록 하는 하우스키핑일 뿐이다.
+async function cleanupBumps(env) {
+  try {
+    if (!env.TAGS_DB) return;
+    var cutoff = Date.now() - 7 * 86400000; // 7일 지난 기록만 정리
+    await env.TAGS_DB.prepare('DELETE FROM bumps WHERE end_at < ?').bind(cutoff).run();
+  } catch (e) {
+    // 스키마 미적용 등 — 다음 5분 뒤에 다시 시도된다.
+  }
+}
+
 // 짧은 주소 <-> 실제 파일(src/page/ 아래) 매핑. 사이드바 등 사이트 내부
 // 링크는 전부 이 짧은 주소를 쓰도록 이미 바꿔뒀다(src/page/*.html,
 // src/js/pages/bookmarksPage.js, changelogPage.js, mainPage.js, loading.js 참고) —
@@ -205,6 +218,7 @@ export default {
     // 태그 집계는 매분 할 필요가 없어 5의 배수 분에만 돌려 D1 읽기를 아낀다.
     if (new Date(event.scheduledTime).getUTCMinutes() % 5 === 0) {
       ctx.waitUntil(recordTagSnapshot(env));
+      ctx.waitUntil(cleanupBumps(env));
     }
   },
 

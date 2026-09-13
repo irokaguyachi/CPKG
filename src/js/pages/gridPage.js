@@ -630,6 +630,9 @@
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      if (favId != null && global.BumpButton) {
+        image.appendChild(global.BumpButton.createButton(config.favType, favId, s.name));
+      }
       if (hasAudioNovel(s)) {
         image.appendChild(createAudioRibbon());
         card.classList.add('is-audio-novel');
@@ -706,6 +709,9 @@
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      if (favId != null && global.BumpButton) {
+        image.appendChild(global.BumpButton.createButton(config.favType, favId, s.name));
+      }
       if (hasAudioNovel(s)) {
         image.appendChild(createAudioRibbon());
         card.classList.add('is-audio-novel');

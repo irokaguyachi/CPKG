@@ -304,6 +304,177 @@ async function handleTagsVote(request, env) {
   }
 }
 
+// ---- 끌올(부스트) 대기열(/bump/*) ----
+// 로그인한 계정이 문학/시리즈/명예관/번역/공식 중 하나를 사이트 최상단에
+// 노출시키는 기능. 한 번에 하나만 활성화되는 진짜 줄서기 큐다 — 신청이
+// 들어오면 큐의 맨 끝(현재 끝나지 않은 행들 중 가장 늦은 종료 시각, 없으면
+// 지금)에 이어붙고 그때부터 정확히 1시간짜리 활성 구간을 얻는다. 활성/대기
+// 여부는 전부 D1(bumps 테이블, start_at/end_at) 조회로 계산하고, "다음
+// 차례를 활성으로 승격"하는 별도 배치 작업은 없다 — 구간이 서로 겹치지
+// 않도록 미리 잘라두기 때문에 필요 없다. 스키마는 worker/bump_schema.sql.
+const BUMP_DURATION_MS = 3600000; // 끌올 1건당 노출 시간(1시간)
+const BUMP_COOLDOWN_MS = 600000;  // 계정(personalCode)당 재신청 대기(10분)
+// 큐 최대 깊이(활성 포함) — 계정당 10분 쿨다운이 있어도 서로 다른 계정이
+// 계속 신청하면 대기 시간이 무한정 늘어날 수 있어, 최악의 경우에도
+// "몇 시간 뒤" 수준으로 막아두는 안전판이다(OWNER_MAX_PUBLISHED와 같은 취지).
+const BUMP_MAX_QUEUE_DEPTH = 12;
+const BUMP_ITEM_TYPES = LIBRARY_ITEM_TYPES; // novel/translation/series/hof/official 그대로 재사용
+
+function cleanBumpType(raw) {
+  return (typeof raw === 'string' && BUMP_ITEM_TYPES.indexOf(raw) !== -1) ? raw : null;
+}
+
+function cleanBumpId(raw) {
+  return (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) ? raw : null;
+}
+
+// handleTagsVote의 loadTagCatalog와 같은 이유(위조된 id로 신청하는 것을
+// 막기 위한 존재 검증)지만, 여기는 타입이 5개라 타입별 PageData를 따로 받는
+// 대신 이미 { type: { id: {...} } } 모양으로 합쳐 둔 경량 인덱스(Lookup.json,
+// bookmarksPage.js가 북마크 상세에 쓰는 것과 같은 파일 — src/scripts/
+// 11_build_lookup.py)를 재사용한다. 값을 못 얻으면(파일 없음/파싱 실패)
+// 존재하지 않는 것으로 취급해 신청을 막는다(허용 쪽으로 fail-open하지 않음).
+async function bumpItemExists(request, env, type, id) {
+  var assetUrl = new URL(request.url);
+  assetUrl.pathname = '/data/PageData/Lookup.json';
+  var res = await env.ASSETS.fetch(new Request(assetUrl, { method: 'GET' }));
+  if (!res.ok) return false;
+  try {
+    var lookup = await res.json();
+    return !!(lookup && lookup[type] && lookup[type][String(id)]);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function bumpRequesterHash(personalCode) {
+  return sha256Hex('bump:' + personalCode);
+}
+
+function bumpPublicRow(row) {
+  return row ? { type: row.item_type, id: row.item_id, startAt: row.start_at, endAt: row.end_at } : null;
+}
+
+// 조회는 공개 정보(지금 활성인 항목/대기열 길이)라 레이트리밋을 걸지 않는다
+// (GET /library/<code>, /tags/get과 같은 방침). personalCode를 함께 보내면
+// 그 계정의 남은 쿨다운도 같이 알려준다 — 신청 버튼을 눌러보기 전에
+// 미리 알 수 있게(handleTagsGet의 myTags와 같은 선택적 개인화).
+async function handleBumpGet(request, env) {
+  var body = await readJsonBody(request, 512);
+  if (body.error) return body.error;
+
+  var personalCode = null;
+  if (body.value && body.value.personalCode != null) {
+    personalCode = cleanPersonalCode(body.value.personalCode);
+    if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+
+  var now = Date.now();
+  try {
+    var active = await env.TAGS_DB.prepare(
+      'SELECT item_type, item_id, start_at, end_at FROM bumps WHERE start_at <= ? AND end_at > ? ORDER BY start_at DESC LIMIT 1'
+    ).bind(now, now).first();
+
+    var totalRow = await env.TAGS_DB.prepare(
+      'SELECT COUNT(*) AS n FROM bumps WHERE end_at > ?'
+    ).bind(now).first();
+    var total = (totalRow && totalRow.n) || 0;
+    var waitingCount = Math.max(0, total - (active ? 1 : 0));
+
+    var cooldownRemainingMs = 0;
+    if (personalCode) {
+      var hash = await bumpRequesterHash(personalCode);
+      var last = await env.TAGS_DB.prepare(
+        'SELECT requested_at FROM bumps WHERE requester_hash = ? ORDER BY requested_at DESC LIMIT 1'
+      ).bind(hash).first();
+      if (last) cooldownRemainingMs = Math.max(0, BUMP_COOLDOWN_MS - (now - last.requested_at));
+    }
+
+    return jsonResponse(request, {
+      active: bumpPublicRow(active),
+      waitingCount: waitingCount,
+      cooldownRemainingMs: cooldownRemainingMs
+    });
+  } catch (e) {
+    // 스키마 미적용 등 DB 장애 — 끌올은 부가 기능이라 페이지를 막지 않도록
+    // tags/get과 같은 기조로 빈 상태로 조용히 넘어간다.
+    return jsonResponse(request, { active: null, waitingCount: 0, cooldownRemainingMs: 0 });
+  }
+}
+
+// 신청: 로그인(personalCode) 필수 + 계정당 10분 쿨다운 + 같은 항목 중복 신청
+// 거부 + 큐 만석 거부. 쿨다운/중복/만석 세 조건과 큐 꼬리 계산을 전부
+// INSERT...SELECT...WHERE 한 문장 안에 넣는다 — handleTagsVote와 같은 이유로,
+// 따로 읽고 나서 쓰면 거의 동시에 들어온 두 요청이 같은 시작 시각을 계산해
+// 활성 구간이 겹치거나, 둘 다 사전 검사를 통과해 대기열 상한을 넘길 수 있다.
+async function handleBumpRequest(request, env) {
+  var parsed = await readUserBody(request, env, env.RL_BUMP_WRITE);
+  if (parsed.error) return parsed.error;
+
+  if (!(await env.FAVORITES_BUCKET.head(await userStoreKey(parsed.personalCode)))) {
+    return jsonResponse(request, { error: 'account not found' }, 401);
+  }
+
+  var raw = parsed.raw;
+  var type = cleanBumpType(raw && raw.type);
+  var id = cleanBumpId(raw && raw.id);
+  if (type === null || id === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+
+  if (!(await bumpItemExists(request, env, type, id))) {
+    return jsonResponse(request, { error: 'unknown post' }, 400);
+  }
+
+  var now = Date.now();
+  var hash = await bumpRequesterHash(parsed.personalCode);
+  var cooldownFloor = now - BUMP_COOLDOWN_MS;
+
+  try {
+    var inserted = await env.TAGS_DB.prepare(
+      'INSERT INTO bumps (item_type, item_id, requester_hash, requested_at, start_at, end_at) ' +
+      'SELECT ?, ?, ?, ?, ' +
+      '  COALESCE((SELECT MAX(end_at) FROM bumps WHERE end_at > ?), ?), ' +
+      '  COALESCE((SELECT MAX(end_at) FROM bumps WHERE end_at > ?), ?) + ? ' +
+      'WHERE NOT EXISTS (SELECT 1 FROM bumps WHERE requester_hash = ? AND requested_at > ?) ' +
+      '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND end_at > ?) ' +
+      '  AND (SELECT COUNT(*) FROM bumps WHERE end_at > ?) < ?'
+    ).bind(
+      type, id, hash, now,
+      now, now,
+      now, now,
+      BUMP_DURATION_MS,
+      hash, cooldownFloor,
+      type, id, now,
+      now, BUMP_MAX_QUEUE_DEPTH
+    ).run();
+
+    if (!inserted.meta || inserted.meta.changes === 0) {
+      // 삽입 자체가 실패했으니 아래 조회들은 경합에 안전하다(상태를 바꾸지
+      // 않는 읽기일 뿐) — 어떤 조건에 걸렸는지 확인해 구체적인 메시지를 준다.
+      var lastReq = await env.TAGS_DB.prepare(
+        'SELECT requested_at FROM bumps WHERE requester_hash = ? ORDER BY requested_at DESC LIMIT 1'
+      ).bind(hash).first();
+      if (lastReq && lastReq.requested_at > cooldownFloor) {
+        return jsonResponse(request, {
+          error: '끌올은 10분에 한 번만 신청할 수 있어요.',
+          cooldownRemainingMs: BUMP_COOLDOWN_MS - (now - lastReq.requested_at)
+        }, 429);
+      }
+      var dup = await env.TAGS_DB.prepare(
+        'SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND end_at > ? LIMIT 1'
+      ).bind(type, id, now).first();
+      if (dup) return jsonResponse(request, { error: '이미 끌올되어 있어요.' }, 409);
+      return jsonResponse(request, { error: '지금 대기열이 가득 찼어요. 잠시 후 다시 시도해주세요.' }, 409);
+    }
+
+    var row = await env.TAGS_DB.prepare(
+      'SELECT start_at, end_at FROM bumps WHERE id = ?'
+    ).bind(inserted.meta.last_row_id).first();
+    return jsonResponse(request, { ok: true, startAt: row.start_at, endAt: row.end_at }, 201);
+  } catch (e) {
+    return jsonResponse(request, { error: 'bump failed, try again' }, 500);
+  }
+}
+
 // 목록/필터용 스냅샷 — src/_worker.js의 scheduled 핸들러가 5분마다 D1을
 // 집계해 R2(tags/snapshot.json)에 구워 두면, 이 라우트는 그걸 그대로
 // 내려주기만 한다. 공개 데이터라 개인 코드도, 레이트리밋도 필요 없다.
@@ -1289,6 +1460,12 @@ async function route(request, env) {
   }
   if (url.pathname === '/tags/snapshot' && request.method === 'GET') {
     return handleTagsSnapshot(request, env);
+  }
+  if (url.pathname === '/bump/get' && request.method === 'POST') {
+    return handleBumpGet(request, env);
+  }
+  if (url.pathname === '/bump/request' && request.method === 'POST') {
+    return handleBumpRequest(request, env);
   }
   if (url.pathname === '/user/sync' && request.method === 'PUT') {
     return handleUserSync(request, env);

@@ -101,6 +101,9 @@
     if (favId != null && global.BookmarkPicker) {
       image.appendChild(global.BookmarkPicker.createButton(favType, favId));
     }
+    if (favId != null && global.BumpButton) {
+      image.appendChild(global.BumpButton.createButton(favType, favId, item.name));
+    }
     if (hasAudioNovel(item)) {
       image.appendChild(createAudioRibbon());
       card.classList.add('is-audio-novel');
@@ -478,6 +481,106 @@
     }
   }
 
+  // 끌올(부스트) 배너 — 로그인한 누군가 신청해 지금 활성 구간인 문학이
+  // 있으면 사이트 최상단(오늘의 문학보다도 위)에 보여준다. dailyGift와
+  // 같은 이유로 #content가 통째로 비워질 때마다(Recent.json 응답) 이 요소를
+  // 다시 끼워 넣어야 하고, placeDailyGift()보다 나중에 불러야 항상 맨 위에
+  // 온다. 상태 자체는 bumpButton.js가 20초마다 폴링해 'chokaguya:bump-change'
+  // 로 뿌려주는 걸 그대로 받아쓴다 — 이 배너가 따로 폴링을 돌리지 않는다.
+  var bumpBannerEl = null;
+  function placeBumpBanner() {
+    if (bumpBannerEl && bumpBannerEl.parentNode !== contentEl) {
+      contentEl.insertBefore(bumpBannerEl, contentEl.firstChild);
+    }
+  }
+
+  function createBumpBanner() {
+    var section = document.createElement('div');
+    section.className = 'recent bump-banner';
+    section.hidden = true;
+
+    var headingRow = document.createElement('div');
+    headingRow.className = 'bump-banner-heading-row';
+
+    var heading = document.createElement('div');
+    heading.className = 'content-heading';
+    var label = document.createElement('span');
+    label.textContent = '🔥 지금 끌올된 문학';
+    heading.appendChild(label);
+    headingRow.appendChild(heading);
+
+    var countdown = document.createElement('span');
+    countdown.className = 'bump-banner-countdown';
+    headingRow.appendChild(countdown);
+
+    section.appendChild(headingRow);
+
+    var list = document.createElement('div');
+    list.className = 'post-list';
+    section.appendChild(list);
+
+    var currentKey = null; // "type:id" — 같은 항목이면 카드를 다시 안 그리고 카운트다운만 갱신
+    var countdownTimer = null;
+
+    function stopCountdown() {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    }
+
+    function startCountdown(endAt) {
+      stopCountdown();
+      function tick() {
+        var remain = endAt - Date.now();
+        if (remain <= 0) { countdown.textContent = ''; stopCountdown(); return; }
+        var m = Math.floor(remain / 60000);
+        var s = Math.floor((remain % 60000) / 1000);
+        countdown.textContent = '종료까지 ' + m + ':' + (s < 10 ? '0' : '') + s;
+      }
+      tick();
+      countdownTimer = setInterval(tick, 1000);
+    }
+
+    function showActive(active) {
+      var key = active.type + ':' + active.id;
+      if (key === currentKey) {
+        startCountdown(active.endAt);
+        return;
+      }
+      currentKey = key;
+      // 카드에 필요한 필드(name/image/tags/posts)만 담긴 경량 조회 인덱스 —
+      // bookmarksPage.js가 북마크 상세에 쓰는 것과 같은 Lookup.json을
+      // 재사용한다(타입별 PageData 5개를 따로 받을 필요가 없다).
+      fetchJson('../data/PageData/Lookup.json').then(function (lookup) {
+        if (currentKey !== key) return; // 그 사이 활성 항목이 또 바뀜
+        var entry = lookup && lookup[active.type] && lookup[active.type][String(active.id)];
+        list.innerHTML = '';
+        if (!entry) { section.hidden = true; return; }
+        list.appendChild(createCard(entry, active.type));
+        section.hidden = false;
+        startCountdown(active.endAt);
+      }).catch(function () {
+        if (currentKey === key) section.hidden = true;
+      });
+    }
+
+    function applyStatus(status) {
+      if (status && status.active) {
+        showActive(status.active);
+      } else {
+        currentKey = null;
+        stopCountdown();
+        section.hidden = true;
+      }
+    }
+
+    if (global.BumpButton) {
+      applyStatus(global.BumpButton.getLastStatus());
+      global.addEventListener('chokaguya:bump-change', function (e) { applyStatus(e.detail); });
+      global.BumpButton.ensurePolling();
+    }
+
+    return section;
+  }
+
   if (global.DailyGift) {
     dailyGiftEl = global.DailyGift.create({
       dataUrl: '../data/PageData/Novel.json',
@@ -490,6 +593,12 @@
       renderCard: function (item, favType) { return createCard(item, favType); }
     });
     placeDailyGift();
+  }
+
+  // dailyGift보다 나중에 만들고 배치해야 항상 맨 위(첫 자식)에 온다.
+  if (global.BumpButton) {
+    bumpBannerEl = createBumpBanner();
+    placeBumpBanner();
   }
 
   var audioPromoDismissed = false;
@@ -535,6 +644,7 @@
       contentEl.innerHTML = '';
       placeAudioPromo(); // Official.json이 먼저 응답해 이미 붙어있던 배너를 방금 지웠다면 되살림
       placeDailyGift();  // audio promo 뒤에 불러 항상 #content 맨 위에 오게 한다
+      placeBumpBanner(); // dailyGift보다도 나중에 불러 항상 최상단에 오게 한다
 
       // 0. 야치요 생일 축하 배너 — pancakeCounter.js가 버튼에 클릭을 걸
       // 시점을 알 수 있도록, 배너가 실제로 DOM에 붙은 뒤 이벤트를 쏜다

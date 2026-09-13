@@ -113,6 +113,9 @@
     if (favId != null) {
       image.appendChild(global.BookmarkPicker.createButton(type, favId, opts));
     }
+    if (favId != null && global.BumpButton) {
+      image.appendChild(global.BumpButton.createButton(type, favId, s.name));
+    }
     card.appendChild(image);
 
     var info = document.createElement('div');

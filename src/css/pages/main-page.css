@@ -215,6 +215,21 @@ body.is-top .header-logo {
   transform: translateX(4px);
 }
 
+/* 끌올(부스트) 배너 제목 줄 — .content-heading이 inline-flex(내용만큼만
+   폭 차지)라 카운트다운을 오른쪽 끝에 붙이려면 별도 flex 줄로 감싸야 한다
+   (mainPage.js의 createBumpBanner 참고). */
+.bump-banner-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bump-banner-countdown {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+}
+
 /* Recent post list — mirrors Figma "MainPage_Content" (#2243:3): a wide
    horizontal row card, stacked vertically instead of scrolled sideways. */
 .post-list {

@@ -151,6 +151,41 @@
   fill: #ffd166;
 }
 
+/* 끌올(부스트) 버튼 — 북마크 버튼(.series-card-fav, 32px 폭 + 우측 10px) 바로
+   왼쪽에 10px 간격을 두고 나란히 둔다(src/js/components/bumpButton.js). 아이콘은
+   이 사이트가 다른 곳(태그 이모지, 🎧 오디오 리본 등)에서도 쓰는 관례대로
+   SVG 대신 이모지(🔥) 하나로 대신한다. */
+.series-card-bump {
+  position: absolute;
+  top: 10px;
+  right: 52px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.series-card-bump:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.65);
+}
+/* 지금 이 항목이 활성 구간(사이트 최상단에 노출 중)일 때 — 큐 상태를
+   폴링하는 bumpButton.js의 refreshButtons가 붙였다 뗀다. */
+.series-card-bump.is-bumped {
+  background: rgba(255, 90, 54, 0.9);
+}
+
 .series-card-info {
   display: flex;
   flex-direction: column;

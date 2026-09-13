@@ -629,6 +629,12 @@ html.theme-transitioning *:after {
   border-top-color: rgba(255, 255, 255, 0.12);
 }
 
+/* 끌올(부스트) 배너 카운트다운 — .bkm-share-note(라이트/다크 둘 다 이미 있음)와
+   같은 밝기 감으로 맞춘다. */
+[data-theme="dark"] .bump-banner-countdown {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* 공지사항 페이지(업데이트 로그 / 공지사항 두 탭) */
 [data-theme="dark"] .changelog-empty {
   color: rgba(255, 255, 255, 0.4);
