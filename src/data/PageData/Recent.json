@@ -1,97 +1,97 @@
 {
   "totals": {
-    "novel": 1324,
-    "series": 100
+    "novel": 1347,
+    "series": 101
   },
   "novels": [
     {
-      "name": "초! 대작전! 이로하 몰래 라면먹기",
+      "name": "[ 츠쿠요미 괴담 ] (치비치요)",
+      "image": "../assets/Image/크롤링사진/문학/2026-09-14/311288_1.jpg",
+      "tags": [
+        "코미디",
+        "일상"
+      ],
+      "charCount": "1,571자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 311288,
+          "title": "[ 츠쿠요미 괴담 ] (치비치요)",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311288"
+        }
+      ]
+    },
+    {
+      "name": "[ 중요 공지 ] 요즘 돌아다니는 「 츠쿠요미 이용 가이드 」에 대하여!",
       "image": null,
       "tags": [
         "코미디",
         "일상"
       ],
-      "charCount": "3,195자",
-      "author": "이세빈(relieve7174)",
-      "posts": [
-        {
-          "id": 306144,
-          "title": "초! 대작전! 이로하 몰래 라면먹기",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=306144"
-        }
-      ]
-    },
-    {
-      "name": "What if 얏쵸가 존재하지 않았다면? (1)",
-      "image": null,
-      "tags": [
-        "피폐",
-        "슬픔"
-      ],
-      "charCount": "1,725자",
-      "author": "이로얏호~(protect2148)",
-      "posts": [
-        {
-          "id": 306140,
-          "title": "What if 얏쵸가 존재하지 않았다면? (1)",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=306140"
-        }
-      ]
-    },
-    {
-      "name": "《 카구야에게 – 이로하가 》",
-      "image": null,
-      "tags": [
-        "슬픔",
-        "감동"
-      ],
-      "charCount": "2,004자",
+      "charCount": "1,185자",
       "author": "별바다를불태우리(flock4442)",
       "posts": [
         {
-          "id": 306059,
-          "title": "《 카구야에게 – 이로하가 》",
+          "id": 311244,
+          "title": "[ 중요 공지 ] 요즘 돌아다니는 「 츠쿠요미 이용 가이드 」에 대하여!",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=306059"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311244"
         }
       ]
     },
     {
-      "name": "엇갈림",
-      "image": "../assets/Image/크롤링사진/문학/2026-09-07/305918_1.jpg",
+      "name": "「 츠쿠요미 이용 가이드 」( 필독 )",
+      "image": null,
       "tags": [
-        "짧문",
+        "피폐",
+        "코미디"
+      ],
+      "charCount": "3,002자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 311235,
+          "title": "「 츠쿠요미 이용 가이드 」( 필독 )",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311235"
+        }
+      ]
+    },
+    {
+      "name": "《 이번 역은 달–, 달입니다. 》",
+      "image": null,
+      "tags": [
+        "소설",
         "슬픔",
-        "피폐"
+        "감동"
       ],
-      "charCount": "362자",
-      "author": "ㅇㅇ(rokimi)",
+      "charCount": "5,611자",
+      "author": "별바다를불태우리(flock4442)",
       "posts": [
         {
-          "id": 305918,
-          "title": "엇갈림",
+          "id": 311087,
+          "title": "《 이번 역은 달–, 달입니다. 》",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=305918"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311087"
         }
       ]
     },
     {
-      "name": "사랑에 빠진 이로하",
-      "image": "../assets/Image/크롤링사진/문학/2026-09-07/305833_1.jpg",
+      "name": "카구야의 중세 견문록",
+      "image": null,
       "tags": [
-        "로맨스",
-        "일상"
+        "일상",
+        "코미디"
       ],
-      "charCount": "2,723자",
-      "author": "키라키랏란(politely2726)",
+      "charCount": "2,568자",
+      "author": "작가스즈(noisy7520)",
       "posts": [
         {
-          "id": 305833,
-          "title": "사랑에 빠진 이로하",
+          "id": 310747,
+          "title": "카구야의 중세 견문록",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=305833"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=310747"
         }
       ]
     }
