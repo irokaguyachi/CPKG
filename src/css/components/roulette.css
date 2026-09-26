@@ -1,0 +1,376 @@
+/* 문학 룰렛 — 공통 틀(플로팅 버튼 묶음, 팝업, 결과 카드)은 picker-kit.css 에
+   있고, 여기에는 룰렛 고유의 아이콘·바퀴·포인터·전구 테두리·화면(릴)만 둔다.
+   src/js/components/rouletteModal.js 가 쓴다.
+   바퀴 칸 색은 tags.css 의 [data-tag] 변수(--tag-bg, --tag-text)를 그대로 받아
+   쓰므로 여기서 태그별 색을 따로 두지 않는다. 회전 자체는 rouletteModal.js 가
+   requestAnimationFrame 으로 직접 transform 을 갱신하므로 .rl-wheel 에
+   transition 을 걸면 안 된다. */
+
+/* ---------- 플로팅 버튼 아이콘 ---------- */
+
+.rl-fab-wheel {
+  width: 50px;
+  height: 50px;
+  animation: rl-fab-spin 7s linear infinite;
+}
+.rl-fab-wheel-rim {
+  fill: #16171b;
+}
+.rl-fab-wheel-lines path {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 0.6;
+}
+.rl-fab-wheel-hub {
+  fill: #16171b;
+  stroke: #ffffff;
+  stroke-width: 1.6;
+}
+@keyframes rl-fab-spin {
+  to { transform: rotate(360deg); }
+}
+@media (max-width: 768px) {
+  .rl-fab-wheel {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ---------- 바퀴 ---------- */
+
+.rl-stage {
+  position: relative;
+  /* 팝업 안에서 바퀴와 화면이 한눈에 들어오도록 화면 높이에도 맞춘다 */
+  width: min(400px, 100%, 50vh);
+  aspect-ratio: 1;
+}
+
+.rl-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #16171b;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.5),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* 전구: 무대 중심을 축으로 회전시킨 세로 막대 맨 위에 점을 찍는다
+   (회전각은 roulettePage.js 가 인라인 transform 으로 넣는다) */
+.rl-bulb {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 10px;
+  height: 50%;
+  margin-left: -5px;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+.rl-bulb::before {
+  content: "";
+  position: absolute;
+  top: 1.4%;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffe7a0;
+  box-shadow: 0 0 6px 1px rgba(255, 214, 102, 0.75);
+  animation: rl-bulb-blink 1.6s ease-in-out infinite;
+}
+.rl-bulb.is-odd::before {
+  animation-delay: -0.8s;
+}
+.rl-machine.is-spinning .rl-bulb::before {
+  animation-duration: 0.22s;
+  animation-timing-function: steps(1, end);
+}
+.rl-machine.is-spinning .rl-bulb.is-odd::before {
+  animation-delay: -0.11s;
+}
+
+@keyframes rl-bulb-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; box-shadow: none; }
+}
+
+.rl-wheel {
+  position: absolute;
+  inset: 6%;
+  width: 88%;
+  height: 88%;
+  border-radius: 50%;
+  overflow: visible;
+  will-change: transform;
+}
+
+.rl-wheel-base {
+  fill: #ffffff;
+}
+.rl-slice-fill {
+  fill: var(--tag-bg, #efefef);
+  stroke: rgba(0, 0, 0, 0.16);
+  stroke-width: 0.6;
+}
+.rl-slice {
+  transition: opacity 0.35s ease;
+}
+.rl-slice-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  fill: #2c2d30;
+  pointer-events: none;
+  user-select: none;
+}
+.rl-wheel-edge {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1;
+}
+
+.rl-wheel.has-winner .rl-slice:not(.is-winner) {
+  opacity: 0.32;
+}
+.rl-slice.is-winner .rl-slice-fill {
+  animation: rl-winner-pulse 0.9s ease-in-out 3;
+}
+@keyframes rl-winner-pulse {
+  50% { fill: #ffffff; }
+}
+
+/* 포인터는 12시 방향에서 바퀴 안쪽을 가리킨다. 칸 경계를 지날 때마다
+   .is-flick 이 붙어 살짝 튕긴다. */
+.rl-pointer {
+  position: absolute;
+  top: -1.5%;
+  left: 50%;
+  z-index: 3;
+  width: 34px;
+  margin-left: -17px;
+  transform-origin: 50% 25%;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+.rl-pointer svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.rl-pointer path {
+  fill: var(--accent);
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.rl-pointer circle {
+  fill: #ffffff;
+}
+.rl-pointer.is-flick {
+  animation: rl-flick 0.14s ease-out;
+}
+@keyframes rl-flick {
+  40% { transform: rotate(-16deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.rl-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 24%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  background: #111214;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: clamp(14px, 3.4vw, 19px);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  box-shadow: 0 0 0 3px #111214, 0 8px 18px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s var(--ease-out-site), background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.rl-hub-label {
+  /* letter-spacing 이 글자 오른쪽에만 붙어 살짝 왼쪽으로 쏠려 보이는 것 보정 */
+  margin-left: 0.12em;
+}
+.rl-hub:not(:disabled):hover {
+  transform: translate(-50%, -50%) scale(1.07);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent), 0 10px 22px rgba(47, 111, 237, 0.4);
+}
+.rl-hub:not(:disabled):active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+.rl-hub:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 5px;
+}
+.rl-hub:disabled {
+  cursor: default;
+}
+.rl-machine.is-spinning .rl-hub-label {
+  animation: rl-hub-pulse 0.8s ease-in-out infinite;
+}
+@keyframes rl-hub-pulse {
+  50% { opacity: 0.35; }
+}
+
+/* ---------- 화면(릴) ---------- */
+
+.rl-screen {
+  width: 100%;
+  padding: 14px 18px 16px;
+  border-radius: 16px;
+  background: #121316;
+  border: 3px solid #2a2b31;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.7);
+  color: #eef2f6;
+}
+.rl-screen-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rl-screen-step {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border: 1px solid rgba(0, 255, 204, 0.45);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--mint);
+}
+.rl-screen-tag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+.rl-screen-tag[data-tag] {
+  color: #ffffff;
+}
+
+.rl-reel {
+  position: relative;
+  height: 40px;
+  margin-top: 10px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+.rl-reel-text {
+  margin: 0;
+  line-height: 40px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.rl-reel-text.is-roll {
+  animation: rl-reel-roll 0.09s linear;
+  color: rgba(255, 255, 255, 0.8);
+}
+.rl-reel-text.is-final {
+  animation: rl-reel-final 0.45s var(--ease-out-site);
+  color: var(--mint);
+  text-shadow: 0 0 12px rgba(0, 255, 204, 0.45);
+}
+@keyframes rl-reel-roll {
+  from { transform: translateY(70%); opacity: 0.2; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes rl-reel-final {
+  0% { transform: translateY(60%); opacity: 0; }
+  60% { transform: translateY(-6%); opacity: 1; }
+  100% { transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .rl-bulb {
+    width: 8px;
+    margin-left: -4px;
+  }
+  .rl-bulb::before {
+    width: 8px;
+    height: 8px;
+  }
+  .rl-reel-text {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rl-bulb::before,
+  .rl-machine.is-spinning .rl-bulb::before,
+  .rl-machine.is-spinning .rl-hub-label,
+  .rl-slice.is-winner .rl-slice-fill,
+  .rl-fab-wheel {
+    animation: none;
+  }
+}
+
+/* ---------- 다크 모드 ---------- */
+
+[data-theme="dark"] .rl-rim {
+  background: #0b0c0e;
+}
+[data-theme="dark"] .rl-wheel-base {
+  fill: #1c1d22;
+}
+[data-theme="dark"] .rl-slice-fill {
+  stroke: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .rl-slice-label {
+  fill: var(--tag-text, #e2e8f0);
+}
+[data-theme="dark"] .rl-wheel-edge {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+[data-theme="dark"] .rl-slice.is-winner .rl-slice-fill {
+  animation-name: rl-winner-pulse-dark;
+}
+@keyframes rl-winner-pulse-dark {
+  50% { fill: rgba(255, 255, 255, 0.35); }
+}
+[data-theme="dark"] .rl-pointer path {
+  stroke: #1c1d22;
+}
+[data-theme="dark"] .rl-hub {
+  background: var(--dark-text);
+  color: #121316;
+  border-color: #1c1d22;
+  box-shadow: 0 0 0 3px var(--dark-text), 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .rl-hub:not(:disabled):hover {
+  background: #5c9aff;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px #5c9aff, 0 10px 22px rgba(92, 154, 255, 0.35);
+}
+[data-theme="dark"] .rl-screen {
+  background: #0b0c0e;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .rl-fab-wheel-rim,
+[data-theme="dark"] .rl-fab-wheel-hub {
+  fill: #0b0c0e;
+}
+[data-theme="dark"] .rl-fab-wheel-hub {
+  stroke: var(--dark-text);
+}

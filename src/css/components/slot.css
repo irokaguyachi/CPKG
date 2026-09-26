@@ -1,0 +1,458 @@
+/* 번역 슬롯 — 공통 틀(플로팅 버튼 묶음, 팝업, 결과 카드)은 picker-kit.css 에
+   있고, 여기에는 슬롯 고유의 아이콘·캐비닛·릴 창·레버만 둔다.
+   src/js/components/slotModal.js 가 쓴다. 릴(.sl-strip) 이동은 slotModal.js 가
+   requestAnimationFrame 으로 직접 transform 을 갱신하므로 transition 을 걸면
+   안 된다. */
+
+/* ---------- 플로팅 버튼 아이콘 ---------- */
+
+/* 작은 슬롯머신: 어두운 몸체 + 글자 릴이 보이는 창 + 오른쪽 레버 */
+.sl-fab-machine {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 34px;
+  margin-right: 6px;
+  border-radius: 8px;
+  background: #16171b;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.08);
+}
+/* 모바일 아이콘 원(picker-kit.css, 54px)은 데스크톱(62px)보다 작아서 그대로
+   두면 레버 손잡이가 원 테두리에 잘린다 */
+@media (max-width: 768px) {
+  .sl-fab-machine {
+    transform: scale(0.86);
+  }
+}
+.sl-fab-window {
+  display: block;
+  width: 26px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #fffdf6;
+  box-shadow: inset 0 3px 4px -2px rgba(0, 0, 0, 0.45), inset 0 -3px 4px -2px rgba(0, 0, 0, 0.45);
+}
+.sl-fab-strip {
+  display: flex;
+  flex-direction: column;
+  animation: sl-fab-roll 3.2s ease-in-out infinite;
+}
+.sl-fab-strip span {
+  display: block;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #16171b;
+}
+/* 한 칸씩 끊어서 넘어가고 잠깐 멈춘다. 마지막 칸은 첫 칸과 같은 글자라
+   처음으로 돌아갈 때 튀지 않는다. */
+@keyframes sl-fab-roll {
+  0%, 18% { transform: translateY(0); }
+  25%, 43% { transform: translateY(-20px); }
+  50%, 68% { transform: translateY(-40px); }
+  75%, 93% { transform: translateY(-60px); }
+  100% { transform: translateY(-80px); }
+}
+/* 레버: 축(pivot)은 몸체 위에서 20px. 팔은 축에서 위로 17px 뻗어 있고,
+   마우스를 올리면 팔이 축을 기준으로 아래로 뒤집히면서(scaleY 음수) 손잡이가
+   축 아래 10px 까지 내려간다. 내려갈 때는 빠르게, 돌아올 때는 살짝 튕기며
+   올라온다(팝업 안 큰 레버 .sl-lever 와 같은 구조). */
+.sl-fab-arm {
+  position: absolute;
+  top: 3px;
+  right: -6px;
+  width: 3px;
+  height: 17px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #8b9099, #d4d8de 50%, #8b9099);
+  transform-origin: 50% 100%;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sl-fab-pivot {
+  position: absolute;
+  top: 17px;
+  right: -7.5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6b7078;
+}
+.sl-fab-knob {
+  position: absolute;
+  top: -1px;
+  right: -8.5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4b5f;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pk-fab:hover .sl-fab-arm,
+.pk-fab:focus-visible .sl-fab-arm {
+  transform: scaleY(-0.6);
+  transition: transform 0.22s cubic-bezier(0.55, 0, 1, 0.45);
+}
+.pk-fab:hover .sl-fab-knob,
+.pk-fab:focus-visible .sl-fab-knob {
+  transform: translateY(27px);
+  transition: transform 0.22s cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+/* ---------- 캐비닛 ---------- */
+
+.sl-cabinet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 12px 16px 16px;
+  border-radius: 22px;
+  background: #16171b;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.5),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+}
+.sl-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sl-lights {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+.sl-light {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ffe7a0;
+  box-shadow: 0 0 6px 1px rgba(255, 214, 102, 0.75);
+  animation: sl-light-blink 1.8s ease-in-out infinite;
+}
+@keyframes sl-light-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; box-shadow: none; }
+}
+.sl-machine.is-spinning .sl-light {
+  animation-duration: 0.36s;
+  animation-timing-function: steps(1, end);
+}
+.sl-cabinet.is-win .sl-light {
+  background: var(--mint);
+  box-shadow: 0 0 8px 1px rgba(0, 255, 204, 0.7);
+  animation: sl-light-win 0.3s steps(1, end) 5;
+}
+@keyframes sl-light-win {
+  50% { opacity: 0.2; }
+}
+
+/* ---------- 릴 창 ---------- */
+
+.sl-window {
+  --sl-cell: 92px;
+  --sl-peek: 22px;
+  position: relative;
+  height: calc(var(--sl-cell) + var(--sl-peek) * 2);
+  overflow: hidden;
+  border-radius: 14px;
+  border: 3px solid #2a2b31;
+  /* 둥근 드럼처럼 위아래가 어둡게 말려 들어가 보이게 */
+  background: linear-gradient(#d8d3c6, #fffdf6 28%, #fffdf6 72%, #d8d3c6);
+  box-shadow:
+    inset 0 12px 14px -8px rgba(0, 0, 0, 0.45),
+    inset 0 -12px 14px -8px rgba(0, 0, 0, 0.45);
+  transition: box-shadow 0.3s ease;
+}
+.sl-cabinet.is-win .sl-window {
+  box-shadow:
+    0 0 0 2px var(--mint),
+    0 0 18px rgba(0, 255, 204, 0.45),
+    inset 0 12px 14px -8px rgba(0, 0, 0, 0.45),
+    inset 0 -12px 14px -8px rgba(0, 0, 0, 0.45);
+}
+.sl-strip {
+  position: absolute;
+  top: var(--sl-peek);
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+.sl-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: var(--sl-cell);
+  padding: 0 34px;
+  text-align: center;
+}
+.sl-cell-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #16171b;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.sl-cell-author {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+.sl-cell.is-guide .sl-cell-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+}
+.sl-cell.is-win {
+  animation: sl-win-pop 0.5s var(--ease-out-site);
+}
+@keyframes sl-win-pop {
+  0% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* 당첨선: 창 가운데 칸을 좌우에서 가리키는 삼각형 */
+.sl-payline {
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin-top: -9px;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+.sl-payline-left {
+  left: 6px;
+  border-left: 12px solid var(--accent);
+}
+.sl-payline-right {
+  right: 6px;
+  border-right: 12px solid var(--accent);
+}
+
+.sl-status {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--mint);
+}
+
+/* ---------- 레버 ---------- */
+
+/* 축(pivot)은 위에서 110px. 팔은 축에서 위로 80px 뻗어 있고, 당기면 아래로
+   뒤집히면서(scaleY 음수) 손잡이가 축 아래 50px 까지 내려갔다 돌아온다. */
+.sl-lever {
+  --sl-lever-ms: 0.42s;
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 190px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 돌아가는 동안에도 레버는 흐리게 하지 않는다(당기는 동작이 그대로 보여야
+   한다). 대신 PULL 안내와 손잡이 흔들림만 멈춘다. */
+.sl-lever:disabled {
+  cursor: default;
+}
+.sl-lever:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+.sl-lever-slot {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  width: 10px;
+  height: 140px;
+  margin-left: -5px;
+  border-radius: 5px;
+  background: #0b0c0e;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.sl-lever-arm {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  width: 6px;
+  height: 80px;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8b9099, #e3e6eb 45%, #8b9099);
+  transform-origin: 50% 100%;
+}
+.sl-lever-pivot {
+  position: absolute;
+  top: 101px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e3e6eb, #6b7078);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.sl-lever-knob {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff9aa6, #ef4b5f 45%, #b3182f);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+  transition: filter 0.2s ease;
+}
+.sl-lever:not(:disabled) .sl-lever-knob {
+  animation: sl-knob-bob 2.4s ease-in-out infinite;
+}
+.sl-lever:not(:disabled):hover .sl-lever-knob {
+  filter: brightness(1.12);
+}
+@keyframes sl-knob-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+.sl-lever.is-pulled .sl-lever-arm {
+  animation: sl-arm-pull var(--sl-lever-ms) ease-in-out;
+}
+.sl-lever.is-pulled .sl-lever-knob {
+  animation: sl-knob-pull var(--sl-lever-ms) ease-in-out;
+}
+@keyframes sl-arm-pull {
+  45% { transform: scaleY(-0.625); }
+}
+@keyframes sl-knob-pull {
+  45% { transform: translateY(130px); }
+}
+.sl-lever-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--mint);
+}
+.sl-lever:disabled .sl-lever-hint {
+  visibility: hidden;
+}
+
+.sl-note {
+  margin: -6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.5);
+  word-break: keep-all;
+}
+
+/* SVG 필터 정의만 담는 요소 — 화면에 자리를 차지하지 않게 */
+.sl-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .sl-cabinet {
+    gap: 8px;
+    padding: 12px 8px 12px 12px;
+  }
+  .sl-window {
+    --sl-cell: 86px;
+    --sl-peek: 18px;
+  }
+  .sl-cell {
+    padding: 0 26px;
+  }
+  .sl-cell-title {
+    font-size: 16px;
+  }
+  .sl-light {
+    width: 7px;
+    height: 7px;
+  }
+  .sl-lever {
+    width: 38px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-fab-strip,
+  .sl-light,
+  .sl-machine.is-spinning .sl-light,
+  .sl-cabinet.is-win .sl-light,
+  .sl-lever:not(:disabled) .sl-lever-knob,
+  .sl-cell.is-win {
+    animation: none;
+  }
+  .sl-fab-arm,
+  .sl-fab-knob,
+  .pk-fab:hover .sl-fab-arm,
+  .pk-fab:hover .sl-fab-knob {
+    transition: none;
+  }
+}
+
+/* ---------- 다크 모드 ---------- */
+
+[data-theme="dark"] .sl-fab-machine,
+[data-theme="dark"] .sl-cabinet {
+  background: #0b0c0e;
+}
+[data-theme="dark"] .sl-window {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(#0f1013, #24262c 28%, #24262c 72%, #0f1013);
+}
+[data-theme="dark"] .sl-cell-title {
+  color: var(--dark-emphasis);
+}
+[data-theme="dark"] .sl-cell-author {
+  color: rgba(255, 255, 255, 0.55);
+}
+[data-theme="dark"] .sl-cell.is-guide .sl-cell-title {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .sl-payline-left {
+  border-left-color: #5c9aff;
+}
+[data-theme="dark"] .sl-payline-right {
+  border-right-color: #5c9aff;
+}
+[data-theme="dark"] .sl-note {
+  color: rgba(255, 255, 255, 0.55);
+}
