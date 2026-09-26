@@ -705,10 +705,18 @@
     z-index: 10;
   }
 
+  /* 기본(데스크톱) 규칙이 .pds-image에 height:1064px, .pds-gradient/
+     .pds-series-info에 height:100%를 박아 둔다 — 여기서 height를 auto로
+     명시적으로 덮어쓰지 않으면 그 값이 그대로 새어 들어와 grid 1행이
+     1064px로 고정돼버린다(실제로 겪은 회귀: 팝업 전체가 빈 화면처럼 보임).
+     height:auto + 기본 align-self:stretch 조합이라야 세 요소가 행이
+     정해진 최종 높이(아래 min-height 바닥 또는 텍스트 콘텐츠 중 큰 쪽)를
+     그대로 따라간다. */
   .pds-image {
     grid-row: 1;
     grid-column: 1;
     width: 100%;
+    height: auto;
     min-height: 170px;
     border-radius: 24px 24px 0 0;
   }
@@ -718,6 +726,7 @@
     grid-row: 1;
     grid-column: 1;
     width: 100%;
+    height: auto;
     border-radius: 24px 24px 0 0;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.75) 100%);
   }
@@ -730,6 +739,7 @@
     grid-row: 1;
     grid-column: 1;
     width: 100%;
+    height: auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
