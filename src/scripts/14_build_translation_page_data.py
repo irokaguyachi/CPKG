@@ -42,6 +42,15 @@ PHOTO_ROOT = os.path.join(ASSETS_DIR, "Image", "크롤링사진", "번역 사진
 
 POST_LINK_BASE = "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no="
 
+# 크롤링 배치에는 남아 있지만 번역 탭에는 올리지 않는 게시글.
+# Translation.json 을 손으로 지우면 이 스크립트를 다시 돌릴 때 되살아나므로
+# (v0.4 에서 지운 두 건이 2026-09-26 재빌드 때 다시 들어온 적이 있다),
+# 번역 탭에서 빼야 하는 글은 여기에 적는다.
+EXCLUDED_IDS = {
+    309152: "초 카구야 밥 1화 번역 — 공식 탭 '초 카구야 밥!' 시리즈 1화로 이전(v0.4)",
+    309124: "초밥 1화 임시 번역 (AI) — 공식 번역이 올라와 중복 임시본 제거(v0.4)",
+}
+
 # "### [123456] 제목" 한 줄로 항목이 시작됩니다. 제목 안에 대괄호나 괄호가
 # 들어가도 맨 앞의 [숫자]만 ID 로 떼어내면 되므로 이 정규식으로 충분합니다.
 ENTRY_HEAD_RE = re.compile(r"^###\s*\[(\d+)\]\s*(.*)$")
@@ -167,8 +176,12 @@ def main():
 
     by_id = {}
     dup = 0
+    excluded = 0
     for fn in md_files:
         for entry in parse_batch_file(os.path.join(CRAWL_DIR, fn)):
+            if entry["id"] in EXCLUDED_IDS:
+                excluded += 1
+                continue
             if entry["id"] in by_id:
                 dup += 1
                 continue
@@ -202,7 +215,8 @@ def main():
     with_photo = sum(1 for e in out if e["image"])
     kept = sum(1 for e in out if e["posts"][0]["id"] in existing_image)
     print("wrote", os.path.normpath(OUT_PATH))
-    print("  배치 파일 %d개에서 항목 %d건 (ID 중복 %d건 제외)" % (len(md_files), len(out), dup))
+    print("  배치 파일 %d개에서 항목 %d건 (ID 중복 %d건, EXCLUDED_IDS %d건 제외)"
+          % (len(md_files), len(out), dup, excluded))
     print("  [이미지] %d건 / [글자] %d건" % (image_kind, len(out) - image_kind))
     print("  대표 이미지 매칭 %d건 (%.1f%%), 그중 기존 수동 매핑 %d건"
           % (with_photo, with_photo / len(out) * 100 if out else 0, kept))
