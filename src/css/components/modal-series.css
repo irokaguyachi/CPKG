@@ -654,8 +654,17 @@
     justify-content: center;
   }
 
+  /* 헤더(이미지+텍스트 오버레이)와 화 목록을 grid의 두 행으로 분리한다.
+     이전엔 flex 컬럼 + 헤더 고정 170px + 텍스트 오버레이를 absolute로
+     겹쳤는데, 공식 태그·유저 인기 태그가 둘 다 뜨면 제목+배지+태그 두 줄이
+     170px를 넘겨서 카드 위쪽(overflow:hidden)으로 잘려 나갔다(제목이 위로
+     밀려 올라가 보이는 문제). grid 1행(auto)이 오버레이 내용 높이만큼
+     늘어나고 .pds-image/.pds-gradient가 같은 셀에서 그 높이를 그대로
+     따라가므로, 태그가 많아도 잘리지 않고 헤더 자체가 커진다. */
   .post-detail-series {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
     width: 100%;
     max-width: 540px;
     min-height: 65vh;
@@ -697,27 +706,30 @@
   }
 
   .pds-image {
+    grid-row: 1;
+    grid-column: 1;
     width: 100%;
-    height: 170px;
     min-height: 170px;
-    flex-shrink: 0;
     border-radius: 24px 24px 0 0;
   }
 
   .pds-gradient {
-    top: 0;
-    left: 0;
+    position: static;
+    grid-row: 1;
+    grid-column: 1;
     width: 100%;
-    height: 170px;
     border-radius: 24px 24px 0 0;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.75) 100%);
   }
 
+  /* absolute+height:170px 고정이었던 걸 grid 겹침 배치로 바꿔서, 내용이
+     170px보다 길어지면(태그 두 줄 등) .pds-image/.pds-gradient가 같은
+     행에서 그 높이를 따라 함께 늘어난다(위 .post-detail-series 주석 참고). */
   .pds-series-info {
-    position: absolute;
-    inset: 0;
+    position: static;
+    grid-row: 1;
+    grid-column: 1;
     width: 100%;
-    height: 170px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -779,11 +791,11 @@
   }
 
   .pds-right-panel {
-    flex: 1;
+    grid-row: 2;
+    grid-column: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
     background: #ffffff;
     border-radius: 0 0 24px 24px;
   }
