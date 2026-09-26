@@ -116,16 +116,17 @@ body.is-top .header-logo {
   height: 18px;
   flex-shrink: 0;
 }
-/* "메인"+"업데이트 로그"는 .header-nav-primary 로 한 묶음에 들어 있어 더 이상
+/* "메인"+"공지사항"은 .header-nav-primary 로 한 묶음에 들어 있어 더 이상
    .header-nav 의 직계 <a> 가 아니다 — nth-child 대신 클래스로 지정한다.
-   업데이트 로그는 페이지 네비 특유의 무지개 hover색 없이 기본 스타일만. */
-.header-nav-main:hover { color: #ff6a63; }
-.header-nav a:nth-child(2):hover { color: #ffc1a3; }
-.header-nav a:nth-child(3):hover { color: #ffe58d; }
-.header-nav a:nth-child(4):hover { color: #a6e674; }
-.header-nav a:nth-child(5):hover { color: #00bfc2; }
-.header-nav a:nth-child(6):hover { color: #6cb2ff; }
-.header-nav a:nth-child(7):hover { color: #c88bff; }
+   메인부터 북마크까지 8개 항목에 무지개 hover색을 위에서부터 차례로 준다. */
+.header-nav-main:hover { color: #FC4845; }
+.header-nav-changelog:hover { color: #FC937C; }
+.header-nav a:nth-child(2):hover { color: #FED571; }
+.header-nav a:nth-child(3):hover { color: #F3F23E; }
+.header-nav a:nth-child(4):hover { color: #C4F23D; }
+.header-nav a:nth-child(5):hover { color: #99ED4A; }
+.header-nav a:nth-child(6):hover { color: #07D796; }
+.header-nav a:nth-child(7):hover { color: #00C5C1; }
 .header-nav a.header-nav-strong {
   font-weight: 800;
 }
