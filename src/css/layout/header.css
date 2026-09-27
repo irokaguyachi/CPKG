@@ -120,15 +120,20 @@ body.is-top .header-logo {
    .header-nav 의 직계 <a> 가 아니다 — nth-child 대신 클래스로 지정한다.
    메인부터 대회까지 8개 항목에 무지개 hover색을 위에서부터 차례로 준다.
    북마크는 사이드바에서 오른쪽 아래 버튼 묶음(bookmarkFab.js)으로 옮겨서
-   여기엔 없다. */
-.header-nav-main:hover { color: #FC4845; }
-.header-nav-changelog:hover { color: #FC937C; }
-.header-nav a:nth-child(2):hover { color: #FED571; }
-.header-nav a:nth-child(3):hover { color: #F3F23E; }
-.header-nav a:nth-child(4):hover { color: #C4F23D; }
-.header-nav a:nth-child(5):hover { color: #99ED4A; }
-.header-nav a:nth-child(6):hover { color: #07D796; }
-.header-nav a:nth-child(7):hover { color: #00C5C1; }
+   여기엔 없다.
+   - 메인/공지사항은 .header-nav 를 앞에 붙여야 theme.css 의 다크 기본색
+     규칙([data-theme="dark"] .header-nav a)보다 우선한다. 없으면 다크 모드
+     에서 hover 색이 안 먹는다.
+   - 나머지는 > 로 .header-nav 직계 <a> 만 센다. 없으면 .header-nav-primary
+     안의 공지사항(2번째 자식)까지 nth-child(2) 에 걸려 공식 색이 된다. */
+.header-nav .header-nav-main:hover { color: #FC4845; }
+.header-nav .header-nav-changelog:hover { color: #FC937C; }
+.header-nav > a:nth-child(2):hover { color: #FED571; }
+.header-nav > a:nth-child(3):hover { color: #F3F23E; }
+.header-nav > a:nth-child(4):hover { color: #C4F23D; }
+.header-nav > a:nth-child(5):hover { color: #99ED4A; }
+.header-nav > a:nth-child(6):hover { color: #07D796; }
+.header-nav > a:nth-child(7):hover { color: #00C5C1; }
 .header-nav a.header-nav-strong {
   font-weight: 800;
 }
