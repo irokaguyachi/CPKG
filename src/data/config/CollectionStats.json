@@ -1,0 +1,19 @@
+{
+  "updatedAt": "2026-09-27",
+  "literature": {
+    "posts": 2163,
+    "authors": 232,
+    "chars": 6648762,
+    "series": 101,
+    "seriesEpisodes": 772,
+    "contest": 74,
+    "hof": 29,
+    "lastPost": { "id": 321943, "title": "[ 이로하 길들이기 ]" }
+  },
+  "translation": {
+    "posts": 1243,
+    "translators": 104,
+    "chars": 921868,
+    "lastPost": { "id": 321522, "title": "小胖胖胖胖王) 이 미친 페도하" }
+  }
+}

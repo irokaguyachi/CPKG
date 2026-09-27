@@ -14,8 +14,8 @@ POST_LINK_BASE = "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahim
 
 src_path = os.path.join(HERE, "..", "data", "MoonHakdata.json")
 hof_md_path = os.path.join(HERE, "..", "data", "문학 정리", "명예관", "명예관.md")
-photos_dir = os.path.join(HERE, "..", "assets", "Image", "크롤링사진", "시리즈")
-out_dir = os.path.join(HERE, "..", "data", "PageData")
+photos_dir = os.path.join(HERE, "..", "assets", "image", "크롤링사진", "시리즈")
+out_dir = os.path.join(HERE, "..", "data", "pageData")
 out_path = os.path.join(out_dir, "Series.json")
 
 data = json.load(open(src_path, encoding="utf-8"))
@@ -115,7 +115,7 @@ if os.path.isdir(photos_dir):
         cover_id = next((pid for pid in target_ids if pid in by_id), None)
         if cover_id is None:
             continue
-        rel_path = "../assets/Image/크롤링사진/시리즈/" + folder + "/" + by_id[cover_id]
+        rel_path = "../assets/image/크롤링사진/시리즈/" + folder + "/" + by_id[cover_id]
         target["image"] = rel_path
 
 os.makedirs(out_dir, exist_ok=True)

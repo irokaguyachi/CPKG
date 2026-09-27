@@ -18,7 +18,7 @@
 
 ⚠️ 이 스크립트는 원본 4개 파일을 읽기만 하며, image 경로를 포함해 어떤 필드도
    가공하지 않고 그대로 복사합니다(CLAUDE.md 최우선 규칙).
-⚠️ 반드시 3/5/7번(문학·시리즈 계열 PageData 빌드)을 먼저 돌린 뒤에 실행하세요.
+⚠️ 반드시 3/5/7번(문학·시리즈 계열 pageData 빌드)을 먼저 돌린 뒤에 실행하세요.
    그리고 결과를 배포에 반영하려면 10_update_data_version.py 로
    DATA_VERSION 을 올려야 브라우저 캐시가 깨집니다.
 """
@@ -29,7 +29,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PAGE_DATA_DIR = os.path.join(HERE, "..", "data", "PageData")
+PAGE_DATA_DIR = os.path.join(HERE, "..", "data", "pageData")
 OUT_PATH = os.path.join(PAGE_DATA_DIR, "Lookup.json")
 
 # bookmarksPage.js 가 북마크·라이브러리 항목의 type 문자열로 그대로 쓰는
@@ -47,7 +47,7 @@ SOURCES = [
 
 
 def load_list(path):
-    """PageData JSON 하나를 리스트로 읽습니다. 없거나 깨졌으면 빈 리스트."""
+    """pageData JSON 하나를 리스트로 읽습니다. 없거나 깨졌으면 빈 리스트."""
     if not os.path.exists(path):
         print("  ! 없음:", os.path.normpath(path))
         return []
@@ -110,7 +110,7 @@ def main():
                  " (대표 게시물 없음 %d개 제외)" % skipped if skipped else ""))
 
     os.makedirs(PAGE_DATA_DIR, exist_ok=True)
-    # 다른 PageData 산출물과 달리 들여쓰기 없이 압축해서 씁니다 — 사람이 diff로
+    # 다른 pageData 산출물과 달리 들여쓰기 없이 압축해서 씁니다 — 사람이 diff로
     # 읽을 파일이 아니라 매 북마크 상세 진입마다 그대로 전송되는 파일이라,
     # 공백만으로도 무시 못 할 크기 차이가 났습니다(같은 내용 기준 약 30% 차이).
     with open(OUT_PATH, "w", encoding="utf-8", newline="\n") as f:

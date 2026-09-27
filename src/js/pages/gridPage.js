@@ -190,7 +190,7 @@
     // 정적 자산이다. 실패해도 스냅샷 득표 태그만으로 필터가 그려지도록
     // 조용히 빈 배열로 넘어간다.
     var catalogPromise = wantUserTags
-      ? fetchJson('../data/PageData/UserTagCatalog.json')
+      ? fetchJson('../data/pageData/UserTagCatalog.json')
           .then(function (list) { return Array.isArray(list) ? list : []; })
           .catch(function () { return []; })
       : Promise.resolve([]);
@@ -585,8 +585,8 @@
       icon.className = 'series-loading-icon';
       if (miniLoadingIcons.length) {
         var pick = miniLoadingIcons[Math.floor(Math.random() * miniLoadingIcons.length)];
-        // served from the origin, not R2 — src/offline_src/LoadingLogo/
-        icon.style.backgroundImage = 'url("../offline_src/LoadingLogo/' + pick + '")';
+        // served from the origin, not R2 — offlineSrc/loadingLogo/
+        icon.style.backgroundImage = 'url("../offlineSrc/loadingLogo/' + pick + '")';
       }
       sentinelEl.appendChild(icon);
 

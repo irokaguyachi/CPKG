@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Yachiyo click easter egg (local-only, src/offline_src/ForEvent/yachiyo.png)
+   Yachiyo click easter egg (local-only, offlineSrc/forEvent/yachiyo.png)
    Triggered from src/js/components/yachiyoEvent.js by clicking the locked "번역" nav
    link — every 30/60/90th click, looping. Not part of the deployed asset
    pipeline.

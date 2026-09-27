@@ -1,6 +1,6 @@
 // 대회 페이지 — /contest 는 대회 목록, /contest?c=<id> 는 그 대회 참가작 그리드.
 //
-// [대회 목록 데이터] src/data/PageData/Contest.json 을 손으로 편집합니다.
+// [대회 목록 데이터] src/data/pageData/Contest.json 을 손으로 편집합니다.
 // 빌드 스크립트가 만드는 파일이 아니므로 재빌드로 덮어써지지 않습니다.
 // 배열 순서가 그대로 목록 순서이고, 항목 하나가 카드 하나(Figma Contest_List,
 // #2298:2)입니다.
@@ -19,18 +19,18 @@
 //   · posts          : 참가작 게시글 번호 목록
 //   · titleKeywords  : 제목에 이 글자가 들어간 글도 참가작으로 침 (진행 중인
 //                      대회에서 posts 를 매번 갱신하지 않으려고 쓸 때만)
-// 이미지 경로는 다른 데이터와 같이 "../assets/Image/..." 로 적으면 R2 CDN
+// 이미지 경로는 다른 데이터와 같이 "../assets/image/..." 로 적으면 R2 CDN
 // 으로 바뀝니다(cdnConfig.js). 새 이미지는 sync_to_r2.py 로 올려야 보입니다.
-// "../offline_src/..." 로 적으면 R2 를 거치지 않고 사이트에서 바로 받습니다
-// (대회 배너는 offline_src/contest/ 에 둠).
+// "../offlineSrc/..." 로 적으면 R2 를 거치지 않고 사이트에서 바로 받습니다
+// (대회 배너는 offlineSrc/contest/ 에 둠).
 //
 // [참가작] Novel.json(시리즈에 속하지 않은 단독 글)에서 골라냅니다. 시리즈
 // 회차로 들어간 글은 문학 탭과 마찬가지로 여기에도 나오지 않습니다.
 // Contest.json 을 고치면 src/scripts/10_update_data_version.py 로
 // DATA_VERSION 을 올려야 브라우저가 새 목록을 받아 갑니다.
 (function (global) {
-  var CONTEST_URL = '../data/PageData/Contest.json';
-  var NOVEL_URL = '../data/PageData/Novel.json';
+  var CONTEST_URL = '../data/pageData/Contest.json';
+  var NOVEL_URL = '../data/pageData/Novel.json';
   // HTML <title>("초카공 문학&번역 • 대회") 뒤에 대회 이름을 붙인다. 상세를
   // 다시 그려도 이름이 겹겹이 붙지 않도록 처음 제목을 따로 잡아 둔다.
   var BASE_TITLE = document.title;
@@ -118,10 +118,10 @@
     return items.filter(function (s) { return !CS.hasMatureTag(s.tags); });
   }
 
-  // offline_src/ 는 R2 가 아니라 오리진에서 서빙한다(theme.js 의 로고와 같은
+  // offlineSrc/ 는 R2 가 아니라 오리진에서 서빙한다(theme.js 의 로고와 같은
   // 예외). resolveAssetUrl 에 넘기면 R2 의 없는 주소로 바뀐다.
   function isOriginPath(path) {
-    return /^(\.\.\/|\/)offline_src\//.test(path || '');
+    return /^(\.\.\/|\/)offlineSrc\//.test(path || '');
   }
 
   function firstImage(items) {

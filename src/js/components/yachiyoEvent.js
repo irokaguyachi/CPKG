@@ -3,9 +3,9 @@
 
   // Local-only easter egg. Click the locked "번역" nav link — cumulative
   // clicks (persisted in localStorage) hit three milestones, each popping
-  // Yachiyo (src/offline_src/ForEvent/yachiyo.png — not part of the deploy
+  // Yachiyo (offlineSrc/forEvent/yachiyo.png — not part of the deploy
   // pipeline) in from the side with one of the dialogue1..dialogue3 arrays
-  // from src/data/ForEvent/YachiyoDialogue.json. A full-page overlay blocks
+  // from src/data/forEvent/YachiyoDialogue.json. A full-page overlay blocks
   // every other click on the site for as long as she's on screen; lines
   // type out one character at a time, and clicking either finishes the
   // current line instantly or advances to the next one. The counter resets
@@ -13,7 +13,7 @@
   // small source-credit badge/link sits over the art the whole time she's
   // on screen (always visible, not click-gated).
   var STORAGE_KEY = 'yachiyoEventClicks';
-  var DIALOGUE_URL = '../data/ForEvent/YachiyoDialogue.json';
+  var DIALOGUE_URL = '../data/forEvent/YachiyoDialogue.json';
   var FALLBACK_LINES = ['...?'];
   var TYPE_MS = 40;
   // 야치요 그림 출처 — showYachiyo()가 그림 위에 항상 이 링크를 띄운다.
@@ -28,7 +28,7 @@
     { count: 90, key: 'dialogue3', isLoop: true }
   ];
 
-  // fetched once and cached; src/data/ForEvent/YachiyoDialogue.json holds
+  // fetched once and cached; src/data/forEvent/YachiyoDialogue.json holds
   // dialogue1..dialogue3 — edit that file to change lines per milestone
   var dialoguePromise = fetch(DIALOGUE_URL)
     .then(function (res) { return res.json(); })
@@ -63,7 +63,7 @@
     wrap.innerHTML =
       '<div class="yachiyo-event-bubble"></div>' +
       '<div class="yachiyo-event-img-wrap">' +
-        '<img class="yachiyo-event-img" src="../offline_src/ForEvent/yachiyo.png" alt="야치요" />' +
+        '<img class="yachiyo-event-img" src="../offlineSrc/forEvent/yachiyo.png" alt="야치요" />' +
         '<a class="yachiyo-event-credit" href="' + IMAGE_SOURCE_URL + '" target="_blank" rel="noopener noreferrer">' + IMAGE_SOURCE_LABEL + '</a>' +
       '</div>';
     var bubble = wrap.querySelector('.yachiyo-event-bubble');

@@ -17,7 +17,8 @@ import { readJsonLimited } from '../worker/requestBody.js';
  *   (실수로 무방비 공개되는 것보다 안전한 기본값).
  *
  * 순 방문자 집계(Analytics Engine):
- * - _worker.js가 문서 요청마다 writeDataPoint를 남긴다. 인덱스는 "그날의
+ * - _worker.js가 브라우저 비콘(/api/pageview, Turnstile 사람 확인을 거친
+ *   방문만)마다 writeDataPoint를 남긴다. 인덱스는 "그날의
  *   방문자 해시"라서, 같은 사람은 하루에 한 번만 고유값으로 잡히고 날짜가
  *   바뀌면 해시도 바뀐다(개인 식별이 남지 않게 하는 장치이자, 우리가 원하는
  *   "일별 순 방문자"와 정확히 맞는 단위).

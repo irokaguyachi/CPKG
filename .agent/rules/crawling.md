@@ -44,6 +44,7 @@
      - **총 수집 문학 건수 (단편/시리즈 총합) 및 총 수집 시리즈 건수**
      - **총 수집 글자 수 (및 UTF-8 텍스트 용량)**
      - **총 수집 사진 수 및 총 사진 용량 (MB/GB/Bytes)**
+   - **사이트 설정창 정보 탭 동기화**: `CurrentStats.md`를 갱신하면 사용자용 요약본인 **`src/data/config/CollectionStats.json`**(기준일, 문학 작품·작가·글자·시리즈·회차·대회·명예관 수, 번역글·역자·글자 수, 문학·번역 마지막 수집 글 ID와 제목)도 같은 수치로 함께 고친 뒤 `python src/scripts/10_update_data_version.py`를 실행합니다.
 
 6. 🚫 **robots.txt에 의한 Claude 자동 수집 전면 금지 (`.agent/dc.robot.txt` 참조)**:
    - `m.dcinside.com` robots.txt는 `ClaudeBot`, `anthropic-ai`, `Claude-Web`을 명시적으로 **전체 차단(`Disallow: /`)**하고 있습니다. 다른 봇(`User-agent: *`)은 대부분 허용되지만 Anthropic 계열만 콕 집어 차단된 상태입니다.

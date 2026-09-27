@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 DATA_VERSION 자동 갱신 스크립트 (10_update_data_version.py)
-- src/data/ 아래에서 브라우저가 실제로 fetch하는 모든 .json 파일(PageData/,
-  LoadingIcons.json, Tip.json, ForEvent/ 등)의 내용을 해시해서
+- src/data/ 아래에서 브라우저가 실제로 fetch하는 모든 .json 파일(pageData/,
+  LoadingIcons.json, Tip.json, forEvent/ 등)의 내용을 해시해서
   src/js/config/cdnConfig.js 의 DATA_VERSION 상수를 자동으로 갱신합니다.
   ColorTheme.json은 빌드 시점에만 쓰이고 브라우저가 직접 fetch하지 않으므로
   제외합니다(9_build_color_theme.py가 그 값을 CSS로 미리 구워냅니다).
@@ -28,7 +28,7 @@ CDN_CONFIG_PATH = os.path.join(HERE, "..", "js", "config", "cdnConfig.js")
 # 이 파일들이 바뀔 때마다(크롤링·재빌드) 실제로 배포되는 데이터는 그대로인데도
 # DATA_VERSION이 튀어서 전 사용자의 캐시가 헛되이 무효화된다.
 #   - ColorTheme.json: 9_build_color_theme.py가 CSS로 미리 구워낸다.
-#   - MoonHakdata.json: PageData/*.json 을 만들어내는 원본 통합 데이터셋.
+#   - MoonHakdata.json: pageData/*.json 을 만들어내는 원본 통합 데이터셋.
 #     .assetsignore 에 올라가 있어 배포조차 되지 않는다.
 EXCLUDE_NAMES = {"ColorTheme.json", "MoonHakdata.json"}
 

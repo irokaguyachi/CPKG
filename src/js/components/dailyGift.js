@@ -121,7 +121,7 @@
 
   // DailyGift.create({ dataUrl, favType, secondaryDataUrl, secondaryFavType,
   //                    filterItems, renderCard })
-  // - dataUrl: 후보 전체가 담긴 JSON 경로(예: '../data/PageData/Novel.json')
+  // - dataUrl: 후보 전체가 담긴 JSON 경로(예: '../data/pageData/Novel.json')
   // - filterItems(items): 성인 태그 등 방문자 설정에 따른 거르기(mainPage 제공)
   // - secondaryDataUrl/secondaryFavType: 두 번째 후보(현재는 번역) 설정.
   // - renderCard(item, favType): 글의 카드 DOM을 만들어 돌려준다(mainPage 제공).

@@ -3,6 +3,7 @@
  * 배포 산출물 빌드 스크립트: src/ → dist/
  *
  * - src/ 전체를 dist/로 그대로 복사한다(HTML, CSS, 데이터, wrangler.toml 등).
+ *   저장소 루트의 offlineSrc/(로고·아이콘·파비콘)도 dist/offlineSrc/ 로 함께 복사한다.
  * - dist/js/**\/*.js 만 javascript-obfuscator로 난독화해서 덮어쓴다.
  *   실제 사이트는 Cloudflare Workers Assets가 이 디렉터리를 그대로 서빙하므로,
  *   여기 있는 파일이 곧 방문자가 다운로드하는 파일이다.
@@ -10,7 +11,9 @@
  *   난독화 대상이 아니다. Cloudflare 엣지에서만 실행되고 브라우저로는 절대
  *   내려가지 않으므로 애초에 노출 위험이 없고, 오히려 건드리면 Worker
  *   런타임 로직이 깨질 위험만 커진다.
- * - 개발은 계속 src/에서 한다(`cd src && python -m http.server`).
+ * - 개발은 계속 src/에서 한다(`cd src && python -m http.server`). 단 offlineSrc/
+ *   는 src/ 밖에 있으므로 로고·아이콘까지 확인하려면 `npm run build -- --loose`
+ *   후 dist/ 를 띄운다.
  *   dist/는 빌드할 때마다 새로 생성되는 산출물이라 git에 커밋하지 않는다.
  * - 난독화 결과는 .build-cache/에 (원본 내용 + 옵션) 해시로 캐싱한다. dist/는
  *   매번 통째로 새로 만들어도, 실제로 바뀐 js 파일만 다시 난독화하고 나머지는
@@ -37,6 +40,9 @@ const { stripJsComments } = require('./scripts/strip-js-comments.cjs');
 const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
 const DIST = path.join(ROOT, 'dist');
+// 오리진에서 직접 서빙하는 로고·아이콘·파비콘. src/ 밖(저장소 루트)에 두고
+// 빌드할 때 dist/offlineSrc/ 로 합쳐 넣는다 — 공개 URL은 /offlineSrc/... 이다.
+const OFFLINE_SRC = path.join(ROOT, 'offlineSrc');
 const CACHE_DIR = path.join(ROOT, '.build-cache', 'js');
 
 // 이 스크립트의 존재 이유는 "원본 JS가 그대로 배포되면 안 된다" 하나다. 그래서
@@ -81,6 +87,7 @@ function copySrcToDist() {
     // wrangler 로컬 캐시/상태는 산출물이 아니므로 복사하지 않는다.
     filter: (srcPath) => !srcPath.split(path.sep).includes('.wrangler'),
   });
+  fs.cpSync(OFFLINE_SRC, path.join(DIST, 'offlineSrc'), { recursive: true });
 }
 
 // OBFUSCATE_OPTIONS를 해시에 섞어 넣어서, 옵션을 바꾸면 캐시가 자동으로
@@ -173,7 +180,7 @@ function obfuscateJsDir(dir) {
   process.exit(1);
 }
 
-console.log('[build] src/ -> dist/ 복사 중...');
+console.log('[build] src/ + offlineSrc/ -> dist/ 복사 중...');
 copySrcToDist();
 
 console.log('[build] dist/js 난독화 중...');

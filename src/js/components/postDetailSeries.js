@@ -68,7 +68,7 @@
   // "공식 태그"는 AI가 분류해 둔 기존 장르 태그를 그대로 정적으로 보여주는
   // 줄이고(투표 불가), "유저 인기 태그"는 스팀 "이 제품의 태그 보기 및 변경"
   // 다이얼로그를 본뜬 투표 UI다. 둘은 별개 레이어 — 공식 태그를 유저 투표로
-  // 대체하는 게 아니라 그 위에 얹는다. 자유 입력 없음 — PageData/
+  // 대체하는 게 아니라 그 위에 얹는다. 자유 입력 없음 — pageData/
   // UserTagCatalog.json(문학 정리/유저인기태그후보.md에서 사람이 직접 정한
   // 후보)에서만 투표 가능하다. 메인 줄에는 득표 상위 3개만 보이고(0표뿐이면
   // 아무것도 안 보임), `+`를 누르면 전체 후보를 고를 수 있는 별도 모달이
@@ -96,7 +96,7 @@
     if (!tagCatalogPromise) {
       var fetchJson = global.fetchJsonCached || function (p) { return fetch(p).then(function (r) { return r.json(); }); };
       var dataUrl = global.dataUrl || function (p) { return p; };
-      tagCatalogPromise = fetchJson(dataUrl('../data/PageData/UserTagCatalog.json'))
+      tagCatalogPromise = fetchJson(dataUrl('../data/pageData/UserTagCatalog.json'))
         .then(function (list) { return Array.isArray(list) ? list : []; })
         .catch(function () {
           // 실패를 캐시해버리면 네트워크가 살아난 뒤에도 새로고침 전까지

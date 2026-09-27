@@ -169,6 +169,11 @@ crons = ["* * * * *"]
 # 접근 토큰(STATS_ADMIN_TOKEN)은 `wrangler secret put` 으로 따로 넣는다.
 [vars]
 CF_ACCOUNT_ID = "494ceae5bf9fdce6201060393a5a1d30"
+# Turnstile 사람 확인(src/js/core/pageView.js → _worker.js /api/pageview).
+# sitekey는 브라우저에 그대로 내려가는 공개 값이라 여기 둔다. 짝이 되는
+# TURNSTILE_SECRET은 `npx wrangler secret put TURNSTILE_SECRET` 으로 넣는다.
+# 둘 중 하나라도 비어 있으면 사람 확인 없이 비콘만으로 방문을 센다.
+TURNSTILE_SITEKEY = ""
 
 # ---- dev 브랜치 전용 배포 환경 ----
 # Cloudflare Workers Builds는 Durable Object(PRESENCE/PresenceDO)가 있는
@@ -197,6 +202,8 @@ routes = []
 
 [env.dev.vars]
 CF_ACCOUNT_ID = "494ceae5bf9fdce6201060393a5a1d30"
+# [vars]는 환경 간에 상속되지 않는다 — 위 TURNSTILE_SITEKEY 설명 참고.
+TURNSTILE_SITEKEY = ""
 
 [env.dev.assets]
 directory = "."

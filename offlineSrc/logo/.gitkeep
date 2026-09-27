@@ -9,7 +9,7 @@
 
 *_Dark.png  = 라이트 테마에서 보이는(어두운 색) 로고 — data-light-src
 *_Light.png = 다크 테마에서 보이는(밝은 색) 로고 — data-dark-src
-(원래 src/assets/Image/Logo/ 에 있던 것과 같은 이름·같은 규칙입니다.)
+(원래 src/assets/image/logo/ 에 있던 것과 같은 이름·같은 규칙입니다.)
 
 src/assets/ 는 .gitignore 에 걸려 있어 저장소·배포 어디에도 없었고,
 그래서 매 페이지 로드마다 로고 404 가 한 번씩 났습니다. 이 폴더는

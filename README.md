@@ -35,8 +35,8 @@
 │   ├── css/                     # CSS (base / layout / components / pages)
 │   ├── data/
 │   │   ├── config/              # 공통 JSON 설정 (사이트·색상·로딩 아이콘·팁)
-│   │   ├── PageData/            # 페이지별 JSON 데이터
-│   │   ├── ForEvent/            # 이벤트 JSON 데이터
+│   │   ├── pageData/            # 페이지별 JSON 데이터
+│   │   ├── forEvent/            # 이벤트 JSON 데이터
 │   │   ├── changelog/           # 변경 내역 Markdown 및 목록 JSON
 │   │   ├── notice/              # 공지 Markdown 및 목록 JSON
 │   │   ├── 문학 정리/           # 문학 원문·분류 자료
@@ -44,13 +44,13 @@
 │   │   └── MoonHakdata.json     # 빌드 전용 통합 데이터
 │   ├── scripts/                # Python 데이터 빌더·동기화 도구
 │   ├── assets/                 # 커스텀 이미지 및 CDN 에셋
-│   ├── offline_src/            # 사이트에서 직접 제공하는 로고·아이콘
-│   ├── AudioNovel/             # 오디오 노벨 원문·이미지·음원 묶음
+│   ├── audioNovel/             # 오디오 노벨 원문·이미지·음원 묶음
 │   ├── fonts/                  # 폰트
 │   ├── index.html              # 메인 페이지 이동 진입점
 │   ├── _worker.js              # Cloudflare 요청 라우팅 진입점
 │   ├── sw.js                   # 루트 범위를 사용하는 서비스 워커
 │   └── wrangler.toml           # 배포 설정
+├── offlineSrc/                 # 오리진에서 직접 제공하는 로고·아이콘 (빌드 시 dist/offlineSrc/ 로 복사)
 ├── worker/                     # 서버 JavaScript 및 D1 스키마
 ├── tests/                      # 보안·기능·파일 참조 회귀 검증
 ├── build.js                    # 배포 산출물 생성·JS 난독화
@@ -62,7 +62,7 @@
 ```
 
 HTML에는 화면 구조를, JS에는 실행 코드를, CSS에는 스타일을 둡니다. JSON은
-`data/config`와 `data/PageData`에서 관리합니다. 데이터 빌더가 사용하는 원문,
+`data/config`와 `data/pageData`에서 관리합니다. 데이터 빌더가 사용하는 원문,
 공지의 Markdown·목록 JSON, 오디오 노벨의 음원·메타데이터는 기능 단위로 함께
 보관합니다. 이미지와 CDN 경로는 유지합니다. `dist/`는 직접 수정하지 않습니다.
 
@@ -87,6 +87,10 @@ cd src
 python -m http.server 8000
 ```
 브라우저에서 `http://localhost:8000`으로 접속하여 사이트를 확인합니다.
+
+로고·아이콘·파비콘은 `src/` 밖의 `offlineSrc/`에 있어서 위 서버로는 보이지 않습니다.
+이 파일들까지 확인하려면 `npm run build -- --loose`로 `dist/`를 만든 뒤
+`python -m http.server 8000 --directory dist`로 띄웁니다.
 
 ---
 
@@ -132,7 +136,7 @@ python src/scripts/sync_to_r2.py
 ## 🚨 개발 및 유지보수 핵심 수칙
 
 1. **커스텀 에셋 영구 보존 (`AGENTS.md` 참조)**
-   - `src/assets/Image/` 내 사용자가 직접 제작하거나 배치한 커스텀 로고, 배너, 커버 이미지는 스크립트 실행이나 리팩토링 시 **절대 덮어쓰거나 기본 크롤링 이미지로 롤백하지 않습니다.**
+   - `src/assets/image/` 내 사용자가 직접 제작하거나 배치한 커스텀 로고, 배너, 커버 이미지는 스크립트 실행이나 리팩토링 시 **절대 덮어쓰거나 기본 크롤링 이미지로 롤백하지 않습니다.**
 2. **본문 파싱 고립성 (`.agent/rules/crawling.md` 참조)**
    - 게시글 수집 시 오직 순수 본문 구획(`<div class="write_div">`)만 격리 추출하여 댓글/광고 등의 텍스트 혼입을 원천 차단합니다.
 3. **태그 체계 무결성 유지 (`.agent/rules/tag.md` 참조)**

@@ -2,7 +2,7 @@
 """
 번역 페이지 데이터 생성 스크립트 (14_build_translation_page_data.py)
 - crawl_translations.py 가 만들어 둔 '번역 정리/크롤링 파일/*.md' 배치들을
-  파싱해 src/data/PageData/Translation.json 을 만듭니다.
+  파싱해 src/data/pageData/Translation.json 을 만듭니다.
 - 스키마는 Novel.json / Series.json 과 동일해서 gridPage.js 를 그대로 씁니다.
   (translationPage.js 가 GridPage.create 로 이 파일을 읽습니다.)
 - 번역 탭은 공식(AI) 태그를 지원하지 않으므로 tags 는 항상 빈 배열입니다.
@@ -10,7 +10,7 @@
 - 카드 한 줄 요약(charCount)은 크롤러가 붙인 말머리를 따릅니다:
   [이미지] 글은 "이미지", [글자] 글은 크롤링된 글자 수("1,234자").
 - 대표 이미지는 이미 아카이브된 번역 사진
-  (src/assets/Image/크롤링사진/번역 사진/<배치>/<글번호>_1.<ext>)을 글번호로
+  (src/assets/image/크롤링사진/번역 사진/<배치>/<글번호>_1.<ext>)을 글번호로
   매칭해 채웁니다. 7_build_novel_page_data.py 의 build_image_index() 와 같은
   방식이고, 프론트(cdnConfig.js)가 이 경로를 R2 CDN + 썸네일 트리로
   변환합니다.
@@ -32,13 +32,13 @@ sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
 SEP = chr(92)  # 윈도우 경로 구분자
 CRAWL_DIR = os.path.join(HERE, "..", "data", "번역 정리", "크롤링 파일")
-OUT_DIR = os.path.join(HERE, "..", "data", "PageData")
+OUT_DIR = os.path.join(HERE, "..", "data", "pageData")
 OUT_PATH = os.path.join(OUT_DIR, "Translation.json")
 PAGE_DIR = os.path.join(HERE, "..", "page")
 ASSETS_DIR = os.path.join(HERE, "..", "assets")
 # 이미 아카이브된 번역 사진. 7_build_novel_page_data.py 는 크롤링사진 트리
 # 전체를 훑지만, 여기서는 번역 사진만 필요하므로 하위 폴더를 바로 가리킨다.
-PHOTO_ROOT = os.path.join(ASSETS_DIR, "Image", "크롤링사진", "번역 사진")
+PHOTO_ROOT = os.path.join(ASSETS_DIR, "image", "크롤링사진", "번역 사진")
 
 POST_LINK_BASE = "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no="
 

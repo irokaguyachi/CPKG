@@ -44,7 +44,7 @@ src/assets
 src/data/번역 정리
 
 # 크롤링 첨부 사진 원본 스테이징 폴더 — 실제 서빙되는 이미지는 큐레이션 후
-# src/assets/Image/(이미 gitignore됨)로 옮겨져 R2로 관리되므로, 여기 원본
+# src/assets/image/(이미 gitignore됨)로 옮겨져 R2로 관리되므로, 여기 원본
 # 스테이징 사본은 git에 넣지 않는다.
 src/data/문학 정리/사진
 

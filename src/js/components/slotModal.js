@@ -14,7 +14,7 @@
   var PK = global.PickerKit;
   if (!PK || !document.body) return;
 
-  var DATA_PATH = '../data/PageData/Translation.json';
+  var DATA_PATH = '../data/pageData/Translation.json';
   var FAV_TYPE = 'translation';
 
   var CELL_COUNT = 30;     // 한 번 돌 때 지나가는 칸 수(마지막 칸이 당첨)

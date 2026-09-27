@@ -61,7 +61,7 @@ def download_attached_photos(post_id, photo_field):
     """'첨부 사진' 필드에 이미 적힌 상대경로 그대로 실제 파일을 받는다."""
     if not photo_field or photo_field == "없음":
         return
-    photo_root = os.path.join(os.path.dirname(__file__), "..", "assets", "Image", "크롤링사진", "문학")
+    photo_root = os.path.join(os.path.dirname(__file__), "..", "assets", "image", "크롤링사진", "문학")
     targets = []
     for p in photo_field.split(","):
         p_str = p.strip()

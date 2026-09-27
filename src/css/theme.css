@@ -864,6 +864,25 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .settings-slider-value {
   color: rgba(255, 255, 255, 0.6);
 }
+[data-theme="dark"] .settings-stat {
+  background: var(--dark-input-bg);
+}
+[data-theme="dark"] .settings-stat-label,
+[data-theme="dark"] .settings-stat-unit {
+  color: rgba(255, 255, 255, 0.55);
+}
+[data-theme="dark"] .settings-stat-value {
+  color: var(--dark-emphasis);
+}
+[data-theme="dark"] .settings-stat-sub {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .settings-stat-link:hover {
+  color: var(--dark-emphasis);
+}
+[data-theme="dark"] .settings-stat-note {
+  color: rgba(255, 255, 255, 0.45);
+}
 
 /* 메인 페이지 다크 모드 */
 [data-theme="dark"] .content-heading {

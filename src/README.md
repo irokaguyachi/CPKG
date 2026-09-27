@@ -7,7 +7,7 @@
 - `js/pages/`: 페이지별 실행 코드
 - `css/`: 스타일 (base / layout / components / pages)
 - `data/config/`: 공통 JSON 설정
-- `data/PageData/`: 페이지별 JSON
+- `data/pageData/`: 페이지별 JSON
 - `scripts/`: Python 데이터 처리 도구
 
 서버 API와 접속자 집계 코드는 저장소 루트의 `worker/`에 있습니다.
@@ -29,7 +29,7 @@ npm test
 npm run build
 ```
 
-빌드는 `src/`를 `dist/`로 복사하고 `js/` 하위 폴더까지 재귀적으로
+빌드는 `src/`와 저장소 루트의 `offlineSrc/`(로고·아이콘·파비콘)를 `dist/`로 복사하고 `js/` 하위 폴더까지 재귀적으로
 난독화합니다. 서버 코드는 난독화하지 않습니다. 생성된 `dist/`는 직접
 수정하지 마세요. 데이터 변경 뒤에는 다음 명령으로 캐시 버전을 갱신합니다.
 

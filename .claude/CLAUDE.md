@@ -8,7 +8,7 @@
 
 ### 1. 사용자 변경 이미지 에셋 절대 보존
 
-- **대상 폴더**: `src/assets/Image/` 및 모든 하위 경로
+- **대상 폴더**: `src/assets/image/` 및 모든 하위 경로
 - **보존 항목**: 로고(`Logo.png`, `Logo_HOF.png`, `명예관_Light.png`, `명예관_Dark.png`, `Logo_Series.png`), 배너, 커버 이미지, 일러스트, 아이콘, 썸네일 등
 - **수칙**:
   - 사용자가 직접 제작, 추가, 교체 또는 위치를 조정한 이미지 에셋은 **절대 이전 원본 크롤링 이미지나 기본 템플릿 이미지로 되돌리거나(롤백) 덮어쓰지 마십시오**.
@@ -74,6 +74,18 @@ npm run deploy:dev   # 위와 동일하되 --env dev  (cpkg-dev)
 ```
 
 Workers Builds 를 사용할 때 각 워커의 Build 명령은 `npm run build`, Deploy 명령은 `npx wrangler deploy --config dist/wrangler.toml`(dev 워커는 `--env dev` 추가), Root directory 는 저장소 루트로 맞춥니다.
+
+### 5. ⏳ [다음 업데이트 때 반드시 처리] 폴더 camelCase 변경과 R2 옛 키 정리
+
+2026-09-27 에 폴더 이름을 camelCase 로 바꾸고(`src/assets/Image` → `image`, `src/AudioNovel` → `audioNovel`, `src/data/PageData` → `pageData`, `src/data/ForEvent` → `forEvent` 등) `src/offline_src` 를 저장소 루트 `offlineSrc/` 로 옮겼습니다(`build.js` 가 `dist/offlineSrc/` 로 복사). R2 에는 새 키(`assets/image/...`, `audioNovel/...`)가 올라가 있지만, 이미 배포된 사이트가 옛 키를 읽고 있어서 **옛 키(`assets/Image/...`, `AudioNovel/...`)도 임시로 함께 남아 있습니다.**
+
+이 변경이 포함된 다음 업데이트를 배포할 때는 아래 순서를 지킵니다. 각 단계는 위 가드레일대로 사용자가 요청하거나 허락했을 때만 진행합니다.
+
+1. **배포 전 R2 동기화**: `python src/scripts/sync_to_r2.py` 를 실행해 그 사이 추가된 이미지까지 새 키로 올립니다.
+2. **배포**: 새 경로를 쓰는 코드를 `dev`(cpkg-dev)와 `release`(cpkg.cloud)에 모두 반영하고, 두 사이트에서 이미지와 오디오 노벨이 새 경로로 뜨는지 확인합니다.
+3. **옛 키 정리 (반드시 배포 뒤에)**: `python src/scripts/cleanup_r2_legacy_keys.py` 로 dry-run 결과를 확인한 뒤 `--apply` 로 삭제합니다. 배포 전에 지우면 실서버 이미지가 전부 404 가 됩니다(2026-09-27 에 실제로 발생해 옛 키를 복원한 이력이 있습니다).
+4. **보류된 R2 전용 파일**: 새 키가 없는 옛 키(로컬 원본이 없는 로고·명예관 이미지 등 약 31개)는 스크립트가 지우지 않고 목록만 출력합니다. 백업할지 지울지는 사용자에게 물어봅니다.
+5. 모두 끝나면 이 5번 절을 문서에서 삭제합니다.
 
 ---
 

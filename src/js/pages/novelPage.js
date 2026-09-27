@@ -2,7 +2,7 @@
 // Novel.json 은 시리즈에 속하지 않은 단독 게시물만 담고 있습니다
 // (생성: src/scripts/7_build_novel_page_data.py).
 window.GridPage.create({
-  dataUrl: '../data/PageData/Novel.json',
+  dataUrl: '../data/pageData/Novel.json',
   favType: 'novel',
   userTags: true,
   countText: function (n) { return n + '개의 문학이 있습니다!'; },

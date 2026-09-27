@@ -109,3 +109,44 @@
 @keyframes loader-caret-blink {
   50% { opacity: 0; }
 }
+
+/* pageView.js가 Turnstile 사람 확인을 띄우는 자리. 위젯은 interaction-only라
+   Cloudflare가 봇으로 의심할 때만 보이고, 그때 .is-interactive가 붙어 안내
+   문구도 함께 나타난다. 로딩 화면이 떠 있으면 로고 아래에, 이미 걷혔으면
+   화면 아래에 작은 상자로 띄운다. */
+.human-check {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.human-check-caption {
+  display: none;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #06b3ba;
+  letter-spacing: 0.01em;
+}
+.human-check.is-interactive .human-check-caption {
+  display: block;
+}
+.human-check.is-in-loader {
+  position: absolute;
+  top: calc(50% + 132px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.human-check.is-floating {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 1001;
+  transform: translateX(-50%);
+}
+.human-check.is-floating.is-interactive {
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  background: #17324a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}

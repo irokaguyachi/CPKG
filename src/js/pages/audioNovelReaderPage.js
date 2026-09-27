@@ -27,16 +27,16 @@ window.addEventListener('DOMContentLoaded', function () {
   link.href = 'https://gall.dcinside.com/mgallery/board/view/?id=singles&no=' + chapter.dcId;
   document.getElementById('an-source-link-chapter').textContent = chapter.dcLabel;
 
-  // src/AudioNovel 전체가 이제 R2 CDN(sync_to_r2.py)에 올라가 있으므로,
+  // src/audioNovel 전체가 이제 R2 CDN(sync_to_r2.py)에 올라가 있으므로,
   // 로컬 상대경로 대신 그 주소를 그대로 쓴다 (cdnConfig.js 의 R2_CDN_BASE).
-  var AN_CDN_BASE = window.R2_CDN_BASE + '/AudioNovel';
+  var AN_CDN_BASE = window.R2_CDN_BASE + '/audioNovel';
 
   AudioNovelReader.init({
     containerId: 'an-content',
-    sourceUrl: AN_CDN_BASE + '/NovelData/Official/' + chapter.file,
-    audioDataUrl: AN_CDN_BASE + '/asset/sound/Music/Official/Novel/AudioData.json',
-    soundBase: AN_CDN_BASE + '/asset/sound/Music/Official/Novel/',
+    sourceUrl: AN_CDN_BASE + '/novelData/official/' + chapter.file,
+    audioDataUrl: AN_CDN_BASE + '/asset/sound/music/official/novel/AudioData.json',
+    soundBase: AN_CDN_BASE + '/asset/sound/music/official/novel/',
     imgBase: AN_CDN_BASE + '/asset/img/',
-    sfxBase: AN_CDN_BASE + '/asset/sound/Sfx/Official/'
+    sfxBase: AN_CDN_BASE + '/asset/sound/sfx/official/'
   });
 });

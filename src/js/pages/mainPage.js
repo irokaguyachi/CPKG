@@ -548,8 +548,8 @@
       currentKey = key;
       // 카드에 필요한 필드(name/image/tags/posts)만 담긴 경량 조회 인덱스 —
       // bookmarksPage.js가 북마크 상세에 쓰는 것과 같은 Lookup.json을
-      // 재사용한다(타입별 PageData 5개를 따로 받을 필요가 없다).
-      fetchJson('../data/PageData/Lookup.json').then(function (lookup) {
+      // 재사용한다(타입별 pageData 5개를 따로 받을 필요가 없다).
+      fetchJson('../data/pageData/Lookup.json').then(function (lookup) {
         if (currentKey !== key) return; // 그 사이 활성 항목이 또 바뀜
         var entry = lookup && lookup[active.type] && lookup[active.type][String(active.id)];
         list.innerHTML = '';
@@ -622,8 +622,8 @@
     var src = contest.image;
     if (src) {
       if (contest.imagePosition) thumb.style.backgroundPosition = contest.imagePosition;
-      // offline_src/ 는 R2 가 아니라 오리진에서 서빙한다(contestPage.js 와 같은 예외).
-      if (/^(\.\.\/|\/)offline_src\//.test(src)) {
+      // offlineSrc/ 는 R2 가 아니라 오리진에서 서빙한다(contestPage.js 와 같은 예외).
+      if (/^(\.\.\/|\/)offlineSrc\//.test(src)) {
         thumb.style.backgroundImage = 'url("' + src + '")';
       } else if (global.lazyLoadBackground) {
         global.lazyLoadBackground(thumb, src);
@@ -670,7 +670,7 @@
     return card;
   }
 
-  fetchJson('../data/PageData/Contest.json')
+  fetchJson('../data/pageData/Contest.json')
     .then(function (contests) {
       var live = ongoingContests(Array.isArray(contests) ? contests : []);
       if (!live.length) return; // 진행 중인 대회가 없으면 자리도 만들지 않는다
@@ -684,9 +684,9 @@
 
   if (global.DailyGift) {
     dailyGiftEl = global.DailyGift.create({
-      dataUrl: '../data/PageData/Novel.json',
+      dataUrl: '../data/pageData/Novel.json',
       favType: 'novel',
-      secondaryDataUrl: '../data/PageData/Translation.json',
+      secondaryDataUrl: '../data/pageData/Translation.json',
       secondaryFavType: 'translation',
       primaryLabel: '오늘의 문학',
       secondaryLabel: '오늘의 번역',
@@ -705,7 +705,7 @@
   try { audioPromoDismissed = !!localStorage.getItem(AUDIO_PROMO_DISMISS_KEY); } catch (e) {}
 
   if (!audioPromoDismissed) {
-    fetch(DATA('../data/PageData/Official.json'))
+    fetch(DATA('../data/pageData/Official.json'))
       .then(function (r) { return r.json(); })
       .then(function (items) {
         items = filterMature(Array.isArray(items) ? items : []);
@@ -727,7 +727,7 @@
   // 가 빌드 시점에 만들어 두는 파일로, 두 배열의 앞 10건을 필드 손실 없이
   // 그대로 담고 있어서 카드와 상세 모달이 예전과 똑같이 동작한다.
   // (데이터를 다시 빌드했으면 cdnConfig.js 의 DATA_VERSION 을 올릴 것)
-  fetch(DATA('../data/PageData/Recent.json'))
+  fetch(DATA('../data/pageData/Recent.json'))
     .then(function (r) { return r.json(); })
     .then(function (data) {
       var novels = filterMature((data && Array.isArray(data.novels)) ? data.novels : []);
@@ -763,7 +763,7 @@
       var recentTranslationSlot = document.createElement('div');
       recentTranslationSlot.hidden = true;
       contentEl.appendChild(recentTranslationSlot);
-      fetchJson('../data/PageData/Translation.json')
+      fetchJson('../data/pageData/Translation.json')
         .then(function (items) {
           var translations = filterMature(Array.isArray(items) ? items : []);
           if (!translations.length) {
@@ -786,16 +786,16 @@
         .catch(function () { recentTranslationSlot.remove(); });
 
       // 2. 랜덤 문학 — 5초마다 다른 문학으로 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 문학', '../data/PageData/Novel.json', '/novel', 'novel'));
+      contentEl.appendChild(createRandomSection('랜덤 문학', '../data/pageData/Novel.json', '/novel', 'novel'));
 
       // 랜덤 번역은 랜덤 문학과 랜덤 시리즈 사이에 배치한다.
-      contentEl.appendChild(createRandomSection('랜덤 번역', '../data/PageData/Translation.json', '/translation', 'translation'));
+      contentEl.appendChild(createRandomSection('랜덤 번역', '../data/pageData/Translation.json', '/translation', 'translation'));
 
       // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/PageData/Series.json', '/series', 'series'));
+      contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/pageData/Series.json', '/series', 'series'));
 
       // 4. 랜덤 명예관 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/PageData/HOF.json', '/hof', 'hof'));
+      contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/pageData/HOF.json', '/hof', 'hof'));
     })
     .catch(function () {});
 

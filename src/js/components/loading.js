@@ -35,8 +35,8 @@
           var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10);
           var idx = ((counter % files.length) + files.length) % files.length;
           // served from the origin, not R2 (see theme.js's isLocal exception
-          // for the same reasoning) — src/offline_src/LoadingLogo/
-          var src = '../offline_src/LoadingLogo/' + files[idx];
+          // for the same reasoning) — offlineSrc/loadingLogo/
+          var src = '../offlineSrc/loadingLogo/' + files[idx];
           iconEl.style.backgroundImage = 'url("' + src + '")';
         };
         window.__loaderShowIcon();
@@ -121,6 +121,30 @@
     });
   }
 
+  // ---------------------------------------------------------------------
+  // 로더 붙잡기 (holdLoader)
+  // registerLoadingTask와 달리 10초 상한이 없고, 이미 퇴장 연출에 들어간
+  // 로더를 되돌리지도 않는다. 로딩 화면 위에서 사용자 조작을 기다려야 하는
+  // 경우(pageView.js의 Turnstile 사람 확인)에 쓴다 — 시간 상한은 붙잡는
+  // 쪽이 자기 프라미스 안에서 직접 건다.
+  //   holdLoader(promise) — 로더가 아직 떠 있으면 true, 이미 없으면 false
+  // ---------------------------------------------------------------------
+  var holds = [];
+  var outroStarted = false;
+
+  window.holdLoader = function (promise) {
+    if (outroStarted || loadingFinished || loaderEl.style.display === 'none') return false;
+    holds.push(Promise.resolve(promise).then(null, function () {}));
+    return true;
+  };
+
+  function waitForHolds() {
+    var snapshot = holds.slice();
+    return Promise.all(snapshot).then(function () {
+      if (holds.length !== snapshot.length) return waitForHolds();
+    });
+  }
+
   function waitForTasksCapped() {
     return Promise.race([
       waitForTasks(),
@@ -172,14 +196,18 @@
   // the rest of the oversized transition.
   var OUTRO_REVEAL_MS = 700;
   window.finishLoading = function () {
-    if (contentEl) contentEl.classList.remove('is-visible');
-    wipeEl.style.transitionDuration = OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms';
-    wipeEl.classList.add('is-covering');
-    setTimeout(function () {
-      loaderEl.classList.add('is-hidden');
-      unlockScroll();
-      markLoadingFinished();
-    }, OUTRO_REVEAL_MS);
+    waitForHolds().then(function () {
+      if (outroStarted) return;
+      outroStarted = true;
+      if (contentEl) contentEl.classList.remove('is-visible');
+      wipeEl.style.transitionDuration = OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms, ' + OUTRO_MS + 'ms';
+      wipeEl.classList.add('is-covering');
+      setTimeout(function () {
+        loaderEl.classList.add('is-hidden');
+        unlockScroll();
+        markLoadingFinished();
+      }, OUTRO_REVEAL_MS);
+    });
   };
 
   // the wipe only plays on a genuine fresh entry into the page (e.g.

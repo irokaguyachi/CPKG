@@ -71,7 +71,7 @@
     // 사실상 항상 resolve된다.
     if (itemLookupPromise) return itemLookupPromise;
 
-    itemLookupPromise = fetch(DATA('../data/PageData/Lookup.json'))
+    itemLookupPromise = fetch(DATA('../data/pageData/Lookup.json'))
       .then(function (r) { return r.json(); })
       .catch(function () { return { novel: {}, series: {}, hof: {}, official: {} }; });
     return itemLookupPromise;

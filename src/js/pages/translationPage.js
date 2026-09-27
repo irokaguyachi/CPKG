@@ -40,7 +40,7 @@
 })(window);
 
 window.GridPage.create({
-  dataUrl: '../data/PageData/Translation.json',
+  dataUrl: '../data/pageData/Translation.json',
   favType: 'translation',
   userTagsOnly: true,
   countText: function (n) { return n + '개의 번역이 있습니다!'; },

@@ -3,12 +3,12 @@
 카드 썸네일 + 상세 모달용 중간 이미지 생성 스크립트 (6_build_thumbnails.py)
 - Series.json / HOF.json / Official.json / Novel.json / Translation.json 의 `image` 가 가리키는 원본을 읽어
   두 가지를 만듭니다.
-  1. 가로 600px WebP 썸네일 -> src/assets/Image/thumb/  (카드용, 기존과 동일)
-  2. 가로 1200px WebP 중간 이미지 -> src/assets/Image/mid/  (상세 모달용, 신규)
+  1. 가로 600px WebP 썸네일 -> src/assets/image/thumb/  (카드용, 기존과 동일)
+  2. 가로 1200px WebP 중간 이미지 -> src/assets/image/mid/  (상세 모달용, 신규)
 - 원본 경로 구조를 그대로 미러링하며, 확장자만 .webp 로 바뀝니다.
-  예) ../assets/Image/크롤링사진/시리즈/A/1.gif
-      -> src/assets/Image/thumb/크롤링사진/시리즈/A/1.webp
-      -> src/assets/Image/mid/크롤링사진/시리즈/A/1.webp
+  예) ../assets/image/크롤링사진/시리즈/A/1.gif
+      -> src/assets/image/thumb/크롤링사진/시리즈/A/1.webp
+      -> src/assets/image/mid/크롤링사진/시리즈/A/1.webp
 - 애니메이션 GIF 는 두 트리에서 다르게 다룹니다.
   · thumb/: 첫 프레임만 정지 WebP 로 뽑습니다. 카드에서는 ~300px 로 줄어들 뿐인데
     매 프레임 디코딩이 메인 스레드를 계속 점유하기 때문입니다.
@@ -20,8 +20,8 @@
     (TRAFFIC_SECURITY_AUDIT_2.md N-T2 — 애니메이션 없는 나머지 다수는 중간
     이미지로 상세 모달 전송량이 크게 줄고, 애니메이션 있는 소수는 그대로 유지).
 
-⚠️ 원본(src/assets/Image/크롤링사진/...)은 읽기만 하며 절대 수정/삭제하지 않습니다.
-   PageData/*.json 의 `image` 필드도 건드리지 않습니다 (CLAUDE.md 최우선 규칙).
+⚠️ 원본(src/assets/image/크롤링사진/...)은 읽기만 하며 절대 수정/삭제하지 않습니다.
+   pageData/*.json 의 `image` 필드도 건드리지 않습니다 (CLAUDE.md 최우선 규칙).
 """
 import json
 import os
@@ -34,10 +34,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAGE_DIR = os.path.join(HERE, "..", "page")          # JSON 의 ../assets/... 기준 경로
-IMAGE_DIR = os.path.join(HERE, "..", "assets", "Image")
+IMAGE_DIR = os.path.join(HERE, "..", "assets", "image")
 THUMB_DIR = os.path.join(IMAGE_DIR, "thumb")
 MID_DIR = os.path.join(IMAGE_DIR, "mid")
-DATA_DIR = os.path.join(HERE, "..", "data", "PageData")
+DATA_DIR = os.path.join(HERE, "..", "data", "pageData")
 
 SOURCES = ["Series.json", "HOF.json", "Official.json", "Novel.json", "Translation.json"]
 THUMB_WIDTH = 600
@@ -47,7 +47,7 @@ MID_QUALITY = 82
 
 
 def collect_image_paths():
-    """PageData JSON 들에서 image 경로를 중복 없이 모읍니다 (읽기 전용)."""
+    """pageData JSON 들에서 image 경로를 중복 없이 모읍니다 (읽기 전용)."""
     seen = []
     for name in SOURCES:
         path = os.path.join(DATA_DIR, name)
@@ -69,7 +69,7 @@ def collect_image_paths():
 
 
 def to_variant_path(rel, base_dir):
-    """'../assets/Image/<sub>/x.gif' -> (원본 절대경로, <base_dir>/<sub>.webp)"""
+    """'../assets/image/<sub>/x.gif' -> (원본 절대경로, <base_dir>/<sub>.webp)"""
     src_abs = os.path.normpath(os.path.join(PAGE_DIR, rel))
     sub = os.path.relpath(src_abs, os.path.normpath(IMAGE_DIR))
     variant_abs = os.path.join(base_dir, os.path.splitext(sub)[0] + ".webp")
@@ -120,7 +120,7 @@ def build_one(src_abs, thumb_abs, mid_abs):
 
 
 def main():
-    print("[1/3] PageData JSON 에서 이미지 경로 수집 중...")
+    print("[1/3] pageData JSON 에서 이미지 경로 수집 중...")
     rels = collect_image_paths()
     print(f"       -> 고유 이미지 {len(rels)}개\n")
 

@@ -1,6 +1,6 @@
 """
 Cloudflare R2 자동 동기화 스크립트 (sync_to_r2.py)
-- 로컬의 src/assets 와 src/AudioNovel 폴더 내 모든 파일을 Cloudflare R2 버킷에 초고속 병렬 업로드합니다.
+- 로컬의 src/assets 와 src/audioNovel 폴더 내 모든 파일을 Cloudflare R2 버킷에 초고속 병렬 업로드합니다.
 - 이미 업로드되어 크기가 일치하는 파일은 자동으로 건너뛰어(Delta Sync), 새 파일만 1~2초 만에 빠르게 동기화합니다.
 """
 
@@ -56,11 +56,11 @@ def fetch_existing_r2_objects(s3, bucket_name):
 # 그대로 CDN 경로가 된다 (R2_CDN_BASE + '/' + 접두사 + '/...').
 SYNC_ROOTS = [
     ('assets', 'assets'),
-    ('AudioNovel', 'AudioNovel'),
+    ('audioNovel', 'audioNovel'),
 ]
 
 def scan_local_files():
-    print("[2/4] 로컬 src/assets, src/AudioNovel 파일 스캔 중...")
+    print("[2/4] 로컬 src/assets, src/audioNovel 파일 스캔 중...")
     local_files = []
 
     for folder_name, key_prefix in SYNC_ROOTS:
@@ -121,7 +121,7 @@ def sync():
     
     if total_upload_count == 0:
         print("\n✨ [완료] R2와 로컬 파일이 완벽하게 일치합니다! 업로드할 새 파일이 없습니다.")
-        print(f"🌐 Public CDN URL: {cfg['public_url']}/assets/ , {cfg['public_url']}/AudioNovel/")
+        print(f"🌐 Public CDN URL: {cfg['public_url']}/assets/ , {cfg['public_url']}/audioNovel/")
         return
         
     print(f"\n[3/4] 새 파일 동기화 시작 (총 {total_upload_count:,}개 / {total_upload_size/(1024*1024):.1f} MB)...")
@@ -158,7 +158,7 @@ def sync():
         print(f"       - 실패: {len(errors)}개")
         for k, e in errors[:5]:
             print(f"         * {k}: {e}")
-    print(f"\n🌐 R2 Public Base URL: {cfg['public_url']}/assets/ , {cfg['public_url']}/AudioNovel/")
+    print(f"\n🌐 R2 Public Base URL: {cfg['public_url']}/assets/ , {cfg['public_url']}/audioNovel/")
 
 if __name__ == '__main__':
     sync()

@@ -34,7 +34,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-page_data_dir = os.path.join(HERE, "..", "data", "PageData")
+page_data_dir = os.path.join(HERE, "..", "data", "pageData")
 novel_path = os.path.join(page_data_dir, "Novel.json")
 series_path = os.path.join(page_data_dir, "Series.json")
 out_path = os.path.join(page_data_dir, "Recent.json")
@@ -45,7 +45,7 @@ RECENT_COUNT = 5
 
 
 def load_list(path):
-    """PageData JSON 하나를 리스트로 읽습니다. 없거나 깨졌으면 빈 리스트."""
+    """pageData JSON 하나를 리스트로 읽습니다. 없거나 깨졌으면 빈 리스트."""
     if not os.path.exists(path):
         print("  ! 없음:", os.path.normpath(path))
         return []

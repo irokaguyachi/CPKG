@@ -81,14 +81,15 @@ print("tag overrides applied:", sum(1 for e in crawl if e["id"] in tag_overrides
       "of", len(tag_overrides), "rows in 태그보정.md")
 print("user tag catalog:", len(user_tag_catalog), "개 —", user_tag_catalog)
 
-catalog_out = os.path.join(HERE, "..", "data", "PageData", "UserTagCatalog.json")
+catalog_out = os.path.join(HERE, "..", "data", "pageData", "UserTagCatalog.json")
 os.makedirs(os.path.dirname(catalog_out), exist_ok=True)
 with open(catalog_out, "w", encoding="utf-8", newline="\n") as f:
     json.dump(user_tag_catalog, f, ensure_ascii=False, indent=2)
     f.write("\n")
 
 # ---- loading screen icon manifest ----
-icon_dir = os.path.join(HERE, "..", "offline_src", "LoadingLogo")
+# offlineSrc/ 는 src/ 밖(저장소 루트)에 있고, build.js 가 dist/ 로 복사해 서빙한다.
+icon_dir = os.path.join(HERE, "..", "..", "offlineSrc", "loadingLogo")
 icon_exts = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 icons = sorted(f for f in os.listdir(icon_dir) if f.lower().endswith(icon_exts)) if os.path.isdir(icon_dir) else []
 icons_out = os.path.join(HERE, "..", "data", "config", "LoadingIcons.json")

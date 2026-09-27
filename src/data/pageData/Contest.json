@@ -9,7 +9,7 @@
     "notices": [
       { "label": "개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=319148&exception_mode=recommend&search_head=90&page=1" }
     ],
-    "image": "../offline_src/contest/초음문대.png",
+    "image": "../offlineSrc/contest/초음문대.png",
     "imagePosition": "center 15%",
     "characterImage": "",
     "titleKeywords": ["초음문대"],
@@ -53,7 +53,7 @@
       { "label": "개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=43845" },
       { "label": "왕중왕전 개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=59052" }
     ],
-    "image": "../offline_src/contest/카문대.png",
+    "image": "../offlineSrc/contest/카문대.png",
     "imagePosition": "center 25%",
     "characterImage": "",
     "titleKeywords": [],

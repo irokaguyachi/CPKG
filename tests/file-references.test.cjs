@@ -12,6 +12,13 @@ function files(dir) {
   });
 }
 
+// offlineSrc/ lives at the repo root and build.js merges it into the site root,
+// so a site path under src/offlineSrc/ is actually served from root/offlineSrc/.
+function servedFile(target) {
+  const rel = path.relative(src, target);
+  return rel.split(path.sep)[0] === 'offlineSrc' ? path.join(root, rel) : target;
+}
+
 test('HTML scripts and styles resolve to existing files', () => {
   const htmlFiles = [path.join(root, 'index.html'), path.join(src, 'index.html'),
     ...files(path.join(src, 'page')).filter(file => file.endsWith('.html'))];
@@ -23,7 +30,7 @@ test('HTML scripts and styles resolve to existing files', () => {
       const target = url.startsWith('/')
         ? path.join(src, decodeURI(url.split(/[?#]/)[0]))
         : path.resolve(path.dirname(file), decodeURI(url.split(/[?#]/)[0]));
-      assert.ok(fs.existsSync(target), `${path.relative(root, file)}: missing ${url}`);
+      assert.ok(fs.existsSync(servedFile(target)), `${path.relative(root, file)}: missing ${url}`);
     }
   }
 });
@@ -76,7 +83,7 @@ test('main page warns before recent translations and blurs only their photos', (
 test('daily gift includes one daily literature and one daily translation', () => {
   const main = fs.readFileSync(path.join(src, 'js', 'pages', 'mainPage.js'), 'utf8');
   const dailyGift = fs.readFileSync(path.join(src, 'js', 'components', 'dailyGift.js'), 'utf8');
-  assert.match(main, /secondaryDataUrl:\s*['"]\.\.\/data\/PageData\/Translation\.json['"]/);
+  assert.match(main, /secondaryDataUrl:\s*['"]\.\.\/data\/pageData\/Translation\.json['"]/);
   assert.match(main, /secondaryFavType:\s*['"]translation['"]/);
   assert.match(main, /renderCard:\s*function \(item, favType\)/);
   assert.match(dailyGift, /오늘의 랜덤 문학 \/ 번역!/);

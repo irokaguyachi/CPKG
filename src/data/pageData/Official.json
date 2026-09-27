@@ -1,7 +1,7 @@
 [
     {
     "name": "초 카구야 공주! 소설판",
-    "image": "../assets/Image/크롤링사진/공식/소설.png",
+    "image": "../assets/image/크롤링사진/공식/소설.png",
     "tags": [
 
     ],
@@ -60,7 +60,7 @@
   },
   {
     "name": "가이드북",
-    "image": "../assets/Image/크롤링사진/공식/가이드북.webp",
+    "image": "../assets/image/크롤링사진/공식/가이드북.webp",
     "tags": [
     ],
     "posts": [
@@ -92,7 +92,7 @@
   },
   {
     "name": "초 카구야 공주! 코믹스",
-    "image": "../assets/Image/크롤링사진/공식/코믹스.webp",
+    "image": "../assets/image/크롤링사진/공식/코믹스.webp",
     "tags": [
     ],
     "posts": [
@@ -136,7 +136,7 @@
   },
     {
         "name": "초 카구야 밥!",
-        "image": "../assets/Image/크롤링사진/공식/초카밥.jpg",
+        "image": "../assets/image/크롤링사진/공식/초카밥.jpg",
         "tags": [
         ],
         "posts": [

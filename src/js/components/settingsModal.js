@@ -21,7 +21,8 @@
   var TABS = [
     { id: 'general', label: '일반' },
     { id: 'account', label: '계정' },
-    { id: 'audio', label: '오디오 문학' }
+    { id: 'audio', label: '오디오 문학' },
+    { id: 'info', label: '정보' }
   ];
 
   function el(tag, className, text) {
@@ -236,6 +237,103 @@
     pane.appendChild(volumeRow);
   }
 
+  // ---- 정보 탭 ----
+  // 저장소 루트의 CurrentStats.md(에이전트용 상세 수집 기록)를 사용자가 볼
+  // 만한 수치만 추려 src/data/config/CollectionStats.json 에 옮겨 두고, 그
+  // JSON을 읽어 보여준다. 크롤링 후 CurrentStats.md 를 갱신할 때 이 JSON도
+  // 같이 고친다(.agent/rules/crawling.md 5번).
+  var STATS_URL = '../data/config/CollectionStats.json';
+  var DC_POST_URL = 'https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=';
+
+  function formatCount(n) {
+    return Number(n || 0).toLocaleString('ko-KR');
+  }
+
+  // 글자 수는 자릿수가 커서 그대로 쓰면 타일에 안 들어간다 — 만 단위로 줄인다.
+  function formatChars(n) {
+    n = Number(n || 0);
+    if (n < 10000) return { value: formatCount(n), unit: '자' };
+    return { value: formatCount(Math.round(n / 10000)), unit: '만 자' };
+  }
+
+  function statTile(label, value, unit, sub) {
+    var tile = el('div', 'settings-stat');
+    tile.appendChild(el('p', 'settings-stat-label', label));
+    var valueEl = el('p', 'settings-stat-value', value);
+    valueEl.appendChild(el('span', 'settings-stat-unit', unit));
+    tile.appendChild(valueEl);
+    if (sub) tile.appendChild(el('p', 'settings-stat-sub', sub));
+    return tile;
+  }
+
+  function lastPostRow(post) {
+    var row = el('div', 'settings-row');
+    var text = el('div', 'settings-row-text');
+    text.appendChild(el('p', 'settings-row-label', '마지막으로 수집한 글'));
+    var desc = el('p', 'settings-row-desc');
+    var link = el('a', 'settings-stat-link', formatCount(post.id) + '번 · ' + post.title);
+    link.href = DC_POST_URL + post.id;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    desc.appendChild(link);
+    text.appendChild(desc);
+    row.appendChild(text);
+    return row;
+  }
+
+  function renderInfoContent(box, stats) {
+    var lit = stats.literature || {};
+    var tr = stats.translation || {};
+
+    if (stats.updatedAt) {
+      box.appendChild(el('p', 'settings-desc', stats.updatedAt + ' 기준 · 갤러리 글을 주기적으로 모아 반영하므로 최근 글은 다음 수집 때 추가됩니다.'));
+    }
+
+    box.appendChild(el('p', 'settings-field-label', '문학'));
+    var litGrid = el('div', 'settings-stat-grid');
+    var litChars = formatChars(lit.chars);
+    litGrid.appendChild(statTile('작품', formatCount(lit.posts), '편'));
+    litGrid.appendChild(statTile('작가', formatCount(lit.authors), '명'));
+    litGrid.appendChild(statTile('글자 수', litChars.value, litChars.unit));
+    litGrid.appendChild(statTile('시리즈', formatCount(lit.series), '개', lit.seriesEpisodes ? '총 ' + formatCount(lit.seriesEpisodes) + '화' : ''));
+    litGrid.appendChild(statTile('대회 출품작', formatCount(lit.contest), '편'));
+    litGrid.appendChild(statTile('명예관', formatCount(lit.hof), '편'));
+    box.appendChild(litGrid);
+    if (lit.lastPost) box.appendChild(lastPostRow(lit.lastPost));
+
+    box.appendChild(el('p', 'settings-field-label', '번역'));
+    var trGrid = el('div', 'settings-stat-grid');
+    var trChars = formatChars(tr.chars);
+    trGrid.appendChild(statTile('번역글', formatCount(tr.posts), '편'));
+    trGrid.appendChild(statTile('역자', formatCount(tr.translators), '명'));
+    trGrid.appendChild(statTile('글자 수', trChars.value, trChars.unit));
+    box.appendChild(trGrid);
+    if (tr.lastPost) box.appendChild(lastPostRow(tr.lastPost));
+
+    box.appendChild(el('p', 'settings-stat-note', '끌올·잡담·소재 요청처럼 작품이 아닌 글은 집계에서 뺐고, 여러 곳에 함께 실린 글은 한 번만 셌습니다.'));
+  }
+
+  function renderInfoPane(pane) {
+    pane.appendChild(el('h3', 'settings-pane-title', '정보'));
+    var box = el('div', 'settings-info');
+    box.appendChild(el('p', 'settings-desc', '수집 현황을 불러오는 중…'));
+    pane.appendChild(box);
+
+    var load = global.fetchJsonCached
+      ? global.fetchJsonCached(STATS_URL)
+      : fetch(STATS_URL).then(function (r) { return r.json(); });
+    load.then(function (stats) {
+      // 불러오는 사이 다른 탭으로 옮겨 갔으면 이미 치워진 노드라 건드리지 않는다.
+      if (!box.isConnected) return;
+      box.innerHTML = '';
+      renderInfoContent(box, stats || {});
+    }).catch(function () {
+      if (!box.isConnected) return;
+      box.innerHTML = '';
+      box.appendChild(el('p', 'settings-desc', '수집 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'));
+    });
+  }
+
   var PANE_FADE_MS = 120;
 
   // 탭을 바꿀 때 내용을 바로 갈아치우지 않고, 살짝 페이드아웃한 뒤 새
@@ -248,6 +346,7 @@
       if (tabId === 'general') renderGeneralPane(paneEl);
       else if (tabId === 'account') renderAccountPane(paneEl);
       else if (tabId === 'audio') renderAudioPane(paneEl);
+      else if (tabId === 'info') renderInfoPane(paneEl);
       requestAnimationFrame(function () {
         paneEl.classList.remove('is-fading');
       });

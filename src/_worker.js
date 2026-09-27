@@ -33,6 +33,8 @@ import backend from '../worker/favoritesShareWorker.js';
 import statsApi from '../worker/statsApi.js';
 import { refreshLibraryIndex } from '../worker/libraryIndex.js';
 import { PresenceDO } from '../worker/presenceDO.js';
+import { readJsonLimited } from '../worker/requestBody.js';
+import * as humanCheck from '../worker/humanCheck.js';
 
 // 방문자 통계용 Durable Object 클래스. wrangler가 배포 시 이 export를 보고
 // [[durable_objects.bindings]] / [[migrations]] 와 연결한다.
@@ -55,19 +57,6 @@ function isStatsPath(pathname) {
   return pathname.indexOf('/api/presence/') === 0 || pathname.indexOf('/api/stats/') === 0;
 }
 
-// 이 요청이 "사람이 페이지를 열어본 것"인지 판정한다. Analytics Engine에
-// 방문 기록을 남길지 여기서 거른다 — 정적 자산(js/css/이미지)과 fetch API
-// 호출은 제외하고, HTML 문서 요청만 센다.
-function isPageView(request, url) {
-  if (request.method !== 'GET') return false;
-  var accept = request.headers.get('Accept') || '';
-  if (accept.indexOf('text/html') === -1) return false;
-  // 확장자가 붙은 경로(/foo.png, /bar.js)는 문서로 보지 않는다. .html은 예외.
-  var last = url.pathname.split('/').pop() || '';
-  if (last.indexOf('.') !== -1 && last.slice(-5) !== '.html') return false;
-  return true;
-}
-
 async function sha256Hex(str) {
   var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   var bytes = new Uint8Array(digest);
@@ -87,8 +76,10 @@ function deviceTypeFromUA(ua) {
 // Analytics Engine에 방문 기록 한 줄을 남긴다. 인덱스는 "그날의 방문자 해시"라,
 // 같은 사람은 하루에 한 번만 고유값으로 잡히고 날짜가 바뀌면 값도 바뀐다
 // (개인 식별을 남기지 않으면서 "일별 순 방문자"를 얻는 방법). 통계는 어디까지나
-// 부가 기능이라, 여기서 무슨 일이 생겨도 페이지 응답에는 영향을 주지 않는다.
-async function recordPageView(request, env, url) {
+// 부가 기능이라, 여기서 무슨 일이 생겨도 응답에는 영향을 주지 않는다.
+// 문서 요청이 아니라 브라우저 비콘(/api/pageview)에서 부르므로, 경로와
+// 유입 호스트는 비콘 본문에서 받는다(IP·UA·국가는 비콘 요청 자체의 값).
+async function recordPageView(request, env, pathname, refHost) {
   try {
     if (!env.VISITS_AE) return;
     var ua = request.headers.get('User-Agent') || '';
@@ -96,17 +87,12 @@ async function recordPageView(request, env, url) {
     var cf = request.cf || {};
     var daySalt = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
     var visitorId = (await sha256Hex(daySalt + '|' + ip + '|' + ua)).slice(0, 32);
-    var refHost = '';
-    try {
-      var ref = request.headers.get('Referer');
-      if (ref) refHost = new URL(ref).hostname;
-    } catch (e) {}
     env.VISITS_AE.writeDataPoint({
       indexes: [visitorId],
       blobs: [
         String(cf.country || 'XX'),
         deviceTypeFromUA(ua),
-        url.pathname.slice(0, 96),
+        pathname.slice(0, 96),
         refHost.slice(0, 96)
       ],
       doubles: [1]
@@ -114,6 +100,53 @@ async function recordPageView(request, env, url) {
   } catch (e) {
     // 기록 실패는 삼킨다 — 통계보다 페이지가 우선이다.
   }
+}
+
+// 방문으로 셀 수 있는 경로. 실제로 존재하는 페이지만 센다 — 예전엔 Accept
+// 헤더만 보고 세서 /TikTok/TikTok.html 같은 스캐너 경로(404)까지 방문으로
+// 잡혔다. 관리자 통계 페이지(/stats)는 수치를 보는 행위가 수치를 흔들면
+// 안 되므로 뺀다. 오디오 노벨 리더는 짧은 주소 없이 파일 경로로 열린다.
+function isCountedPath(pathname) {
+  if (pathname === '/' || pathname === '/page/audioNovelReaderPage.html') return true;
+  var slug = pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  return slug !== 'stats' && Object.prototype.hasOwnProperty.call(PAGE_SLUGS, slug);
+}
+
+function jsonResponse(body, status, extraHeaders) {
+  var headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+  for (var k in extraHeaders || {}) headers[k] = extraHeaders[k];
+  return new Response(JSON.stringify(body), { status: status || 200, headers: headers });
+}
+
+// POST /api/pageview { path, ref, token? } — src/js/core/pageView.js가
+// 페이지를 열 때마다 한 번 보낸다. Turnstile을 통과한 적이 있는 브라우저
+// (cpkg_hv 쿠키)면 바로 기록하고, 아니면 { need: 'turnstile', sitekey }로
+// 답해 브라우저가 로딩 화면에서 검증을 받아 token과 함께 다시 보내게 한다.
+async function handlePageViewBeacon(request, env, ctx, url) {
+  var origin = request.headers.get('Origin');
+  if ((origin && origin !== url.origin) || request.headers.get('Sec-Fetch-Site') === 'cross-site') {
+    return jsonResponse({ error: 'forbidden origin' }, 403);
+  }
+  var parsed = await readJsonLimited(request, 4096);
+  if (parsed.error) return jsonResponse({ error: parsed.error }, parsed.status);
+  var body = parsed.value || {};
+  var path = typeof body.path === 'string' ? body.path : '';
+  if (!isCountedPath(path)) return jsonResponse({ ok: false, counted: false });
+  var refHost = typeof body.ref === 'string' && /^[a-z0-9.-]{0,96}$/i.test(body.ref) ? body.ref : '';
+
+  if (humanCheck.isConfigured(env) && !(await humanCheck.hasValidPass(request, env))) {
+    if (body.token == null) {
+      return jsonResponse({ need: 'turnstile', sitekey: env.TURNSTILE_SITEKEY });
+    }
+    if (!(await humanCheck.verifyToken(body.token, request, env))) {
+      return jsonResponse({ error: 'verification failed' }, 403);
+    }
+    ctx.waitUntil(recordPageView(request, env, path, refHost));
+    return jsonResponse({ ok: true, counted: true }, 200, { 'Set-Cookie': await humanCheck.passCookie(env) });
+  }
+
+  ctx.waitUntil(recordPageView(request, env, path, refHost));
+  return jsonResponse({ ok: true, counted: true });
 }
 
 // 1분 Cron이 부른다. Durable Object에서 현재 접속자 수와 피크를 읽어
@@ -246,6 +279,11 @@ export default {
       return statsApi.fetch(request, env, ctx);
     }
 
+    // 방문 기록 비콘. 사람 판정(Turnstile)을 거친 방문만 통계에 남긴다.
+    if (url.pathname === '/api/pageview' && request.method === 'POST') {
+      return handlePageViewBeacon(request, env, ctx, url);
+    }
+
     // CORS 프리플라이트(OPTIONS)는 API 경로에서만 의미가 있지만, 정적 자산은
     // 애초에 OPTIONS를 받을 일이 없으므로 전부 backend로 넘겨도 무해하다.
     if (request.method === 'OPTIONS' || isApiPath(url.pathname)) {
@@ -281,13 +319,8 @@ export default {
       return Response.redirect(redirectUrl.toString(), 308);
     }
 
-    // 여기까지 왔다는 건 리다이렉트 없이 실제 페이지를 돌려준다는 뜻이다.
-    // 사람이 문서를 연 요청이면 Analytics Engine에 방문 한 줄을 남긴다
-    // (waitUntil로 응답 흐름 밖에서 처리). 관리자 통계 페이지 자신은 세지
-    // 않는다 — 수치를 보는 행위가 수치를 흔들면 안 된다.
-    if (url.pathname !== '/stats' && isPageView(request, url)) {
-      ctx.waitUntil(recordPageView(request, env, url));
-    }
+    // 방문 기록은 여기(문서 요청)가 아니라 /api/pageview 비콘에서 남긴다 —
+    // 문서 요청 시점에 세면 JS를 안 돌리는 스캐너 봇까지 전부 잡힌다.
 
     // "/"는 메인 페이지 슬러그(main)와 같은 것으로 취급한다.
     var pathSlug = url.pathname === '/'

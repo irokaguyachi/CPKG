@@ -15,7 +15,7 @@
   // src/data/ 아래 실제로 fetch되는 .json 파일들의 내용을 해시해서 자동으로
   // 채워 넣습니다. 데이터 빌드 스크립트를 돌린 뒤 마지막에 이 스크립트를
   // 실행하세요: python src/scripts/10_update_data_version.py
-  var DATA_VERSION = '8fad3a59f794';
+  var DATA_VERSION = 'c71eeaf8fa1a';
   function dataUrl(path) {
     if (!path) return path;
     return path + (path.indexOf('?') === -1 ? '?' : '&') + 'v=' + DATA_VERSION;
@@ -51,8 +51,8 @@
     return R2_CDN_BASE + '/' + segments.join('/');
   }
 
-  // 카드 썸네일(assets/Image/thumb/, 600px)과 상세 모달용 중간 이미지
-  // (assets/Image/mid/, 1200px)는 src/scripts/6_build_thumbnails.py 가 원본과
+  // 카드 썸네일(assets/image/thumb/, 600px)과 상세 모달용 중간 이미지
+  // (assets/image/mid/, 1200px)는 src/scripts/6_build_thumbnails.py 가 원본과
   // 같은 폴더 구조로, 항상 .webp 로 만들어 둔다 — 변형 트리 이름만 다를 뿐
   // 경로 변환 규칙은 동일해서 한 헬퍼로 묶는다. 애니메이션 GIF 원본은 mid/
   // 트리에 일부러 없으므로(모달에서 계속 움직이게 두려고) 그런 경로는 여기서
@@ -67,12 +67,12 @@
     if (!cleanPath.startsWith('assets/')) {
       cleanPath = 'assets/' + cleanPath;
     }
-    // anything under assets/Image/ maps into the mirrored variant tree. Only
+    // anything under assets/image/ maps into the mirrored variant tree. Only
     // paths the builder actually saw have a file there, so callers go through
     // revealBackground()/revealBackgroundProgressive(), which fall back to the
     // original on a 404. Logos and loading icons never come through here —
     // they use resolveAssetUrl.
-    var prefix = 'assets/Image/';
+    var prefix = 'assets/image/';
     if (cleanPath.indexOf(prefix) !== 0) {
       return resolveAssetUrl(path);
     }

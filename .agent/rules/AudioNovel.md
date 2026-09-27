@@ -23,20 +23,20 @@
 기획과 별개로 사용자가 이미 아래 구조로 실제 작업을 시작했습니다. 계획도 이 구조를 기준으로 삼습니다.
 
 ```
-src/AudioNovel/
-├── NovelData/
-│   ├── Backup/                 # 크롤링 원본 백업 (장별 txt + 이미지, 손대지 않음)
+src/audioNovel/
+├── novelData/
+│   ├── backup/                 # 크롤링 원본 백업 (장별 txt + 이미지, 손대지 않음)
 │   │   └── 서장/, 제 2장/, ...
 │   ├── ㅇㅇ/                    # 태그 없는 순수 초안 (장별로 세분화된 .md)
 │   │   └── 1장.md, 2장_1.md, 2장_2.md, ...
-│   └── Official/                # 태그를 붙인 최종 편집본 — 리더 페이지가 실제로 읽는 파일
+│   └── official/                # 태그를 붙인 최종 편집본 — 리더 페이지가 실제로 읽는 파일
 │       └── 1장.md, ...
 └── asset/
     ├── img/                      # 오디오 노벨 전용 이미지
     └── sound/
-        └── Music/
+        └── music/
             ├── (공용 트랙들).mp3
-            └── Official/Novel/
+            └── official/novel/
                 ├── OPENING ACT@TSUKUYOMI.mp3
                 ├── Iroha Sakayori.mp3
                 ├── Remember.mp3
@@ -51,7 +51,7 @@ src/AudioNovel/
 |---|---|---|
 | 사운드 구간 | `<sound="music/official/novel/fullmoon">...한 문단...</sound>` | 여는 태그부터 해당 곡 재생을 시작하고, 닫는 태그에서 그 문단이 끝남. **문단마다 여닫는 것이 기본 단위** |
 | 이미지 삽입 | `<img="...">` | 닫는 태그 없이 그 위치에 이미지 한 장을 삽입 (self-closing) |
-| 효과음 | `<sfx="이로하_리멤버">` | 닫는 태그 없는 점(point) 트리거 (self-closing). 배경음악(`sound`)과 독립적으로 겹쳐서 재생되며, 그 지점을 읽고 지나치는 순간 **딱 한 번만** 재생된다(loop 없음). 값은 `src/AudioNovel/asset/sound/Sfx/Official/` 기준 확장자 없는 파일명 |
+| 효과음 | `<sfx="이로하_리멤버">` | 닫는 태그 없는 점(point) 트리거 (self-closing). 배경음악(`sound`)과 독립적으로 겹쳐서 재생되며, 그 지점을 읽고 지나치는 순간 **딱 한 번만** 재생된다(loop 없음). 값은 `src/audioNovel/asset/sound/sfx/official/` 기준 확장자 없는 파일명 |
 
 예시 (문단마다 여닫되, 같은 곡이 이어지면 값이 반복됨):
 
@@ -65,7 +65,7 @@ src/AudioNovel/
 <sound="music/official/novel/battle">그 순간, 검은 그림자가 덮쳐왔다.</sound>
 ```
 
-`sound`의 값(`music/official/novel/fullmoon`)은 확장자 없는 경로이며, 실제 파일은 `src/AudioNovel/asset/sound/Music/official/novel/fullmoon.mp3` 식으로 매핑됩니다.
+`sound`의 값(`music/official/novel/fullmoon`)은 확장자 없는 경로이며, 실제 파일은 `src/audioNovel/asset/sound/music/official/novel/fullmoon.mp3` 식으로 매핑됩니다.
 
 ### 중요: 인접한 같은 곡 문단은 하나의 재생 구간으로 합침
 
@@ -113,8 +113,8 @@ src/AudioNovel/
 3. **재생 트리거**: 구간이 뷰포트에 들어오면 재생 시작, 빠져나가면 정지 (`IntersectionObserver`)
 4. **미니 플레이어**: 리더 페이지 하단에 작게 고정. 현재 재생 중인 곡을 `AudioData.json`에서 찾아 곡명·작곡가 표시 + 재생/일시정지·음소거
 5. **리더 페이지**: 신규 `src/page/audioNovelReaderPage.html` + `src/js/audioNovelReaderPage.js` — 상단 원문 링크, 하단 렌더링된 본문 + 미니 플레이어
-6. **본문 원본 파일**: `src/AudioNovel/NovelData/Official/<장>.md` (이미 존재하는 실제 작업 폴더)
-7. **오디오·이미지 에셋**: `src/AudioNovel/asset/` 밑 (이미 존재). `CLAUDE.md`의 커스텀 에셋 보호 수칙에 `src/AudioNovel/asset/`도 포함시켜야 함
+6. **본문 원본 파일**: `src/audioNovel/novelData/official/<장>.md` (이미 존재하는 실제 작업 폴더)
+7. **오디오·이미지 에셋**: `src/audioNovel/asset/` 밑 (이미 존재). `CLAUDE.md`의 커스텀 에셋 보호 수칙에 `src/audioNovel/asset/`도 포함시켜야 함
 8. **연결 지점**: `Official.json`의 해당 게시물 항목에 리더 페이지로 연결되는 필드(예: `"reader": "1장"`)를 추가해, 오디오 노벨이 있는 화는 카드에서 외부 링크 대신 이 리더 페이지로 이동
 
 ## 남은 세부 사항: 일단 기본값으로 진행
@@ -125,7 +125,7 @@ src/AudioNovel/
 |---|---|
 | 구간 전환 | 이전 곡은 ~0.6초 페이드아웃, 새 곡은 페이드인 (뚝 끊기지 않게) |
 | 뒤로 스크롤 시 | 이미 지나간 구간에 다시 들어오면 처음부터 다시 재생 (구간에 들어올 때마다 항상 같은 동작) |
-| sound 경로 매핑 | `<sound="music/official/novel/fullmoon">` → `src/AudioNovel/asset/sound/Music/official/novel/fullmoon.mp3` (확장자는 `.mp3` 고정, 대소문자·폴더명은 실제 파일과 맞춰야 함) |
+| sound 경로 매핑 | `<sound="music/official/novel/fullmoon">` → `src/audioNovel/asset/sound/music/official/novel/fullmoon.mp3` (확장자는 `.mp3` 고정, 대소문자·폴더명은 실제 파일과 맞춰야 함) |
 | 본문 줄바꿈 규칙 | **문단마다 `<sound>...</sound>`로 감싸는 것을 문단 구분으로 사용** (빈 줄 자체는 구분자로 쓰지 않음) |
 | `Official.json` 연결 | 게시물 항목에 `reader` 필드가 있으면 카드 클릭 시 리더 페이지로 이동, 없으면 기존처럼 원문 새 탭 유지 |
 

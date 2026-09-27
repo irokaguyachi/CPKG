@@ -23,8 +23,8 @@ SEP = chr(92)  # 윈도우 경로 구분자
 
 src_path = os.path.join(HERE, "..", "data", "MoonHakdata.json")
 ignore_path = os.path.join(HERE, "..", "data", "ignoreID.md")
-photos_root = os.path.join(HERE, "..", "assets", "Image", "크롤링사진")
-out_dir = os.path.join(HERE, "..", "data", "PageData")
+photos_root = os.path.join(HERE, "..", "assets", "image", "크롤링사진")
+out_dir = os.path.join(HERE, "..", "data", "pageData")
 out_path = os.path.join(out_dir, "Novel.json")
 
 POST_LINK_BASE = "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no="

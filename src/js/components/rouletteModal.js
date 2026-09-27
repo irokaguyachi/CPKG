@@ -16,7 +16,7 @@
   var PK = global.PickerKit;
   if (!PK || !global.TagConfig || !document.body) return;
 
-  var DATA_PATH = '../data/PageData/Novel.json';
+  var DATA_PATH = '../data/pageData/Novel.json';
   var FAV_TYPE = 'novel';
 
   // 작품 수가 이보다 적은 태그(명언·이모티콘처럼 1편뿐인 태그)는 바퀴에

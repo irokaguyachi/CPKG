@@ -156,7 +156,7 @@ const DAY_MS = 86400000;
 // 스팀 상점 페이지의 "이 제품의 인기 태그"를 본뜬 기능. 공식 태그(AI 장르
 // 분류)를 대체하는 게 아니라 그 위에 얹는 별도 레이어다 — 신규·기존 글
 // 구분 없이 모든 개별 문학이 투표 대상이다. 자유 입력 없이
-// PageData/UserTagCatalog.json(빌드 산출물, 문학 정리/유저인기태그후보.md에서
+// pageData/UserTagCatalog.json(빌드 산출물, 문학 정리/유저인기태그후보.md에서
 // 사람이 직접 정한 후보)에서만 투표할 수 있다. 어뷰징 방지는 계정당 1표
 // (D1 tag_votes의 PRIMARY KEY가 강제)와 레이트리밋만으로 충분하다 —
 // 태그명이 자유 문자열이 아니라서 표기 정규화나 신고 기능이 필요 없다.
@@ -167,13 +167,13 @@ function cleanTagPostId(raw) {
   return raw;
 }
 
-// UserTagCatalog.json은 다른 PageData/*.json과 똑같이 정상 배포되는 정적
+// UserTagCatalog.json은 다른 pageData/*.json과 똑같이 정상 배포되는 정적
 // 자산이다 — R2에 따로 복사하지 않고 같은 Worker의 ASSETS 바인딩으로 그대로
 // 읽는다(src/_worker.js가 짧은 주소를 실제 파일로 매핑할 때 쓰는 것과 같은
 // new URL + env.ASSETS.fetch 패턴).
 async function loadTagCatalog(request, env) {
   var assetUrl = new URL(request.url);
-  assetUrl.pathname = '/data/PageData/UserTagCatalog.json';
+  assetUrl.pathname = '/data/pageData/UserTagCatalog.json';
   var res = await env.ASSETS.fetch(new Request(assetUrl, { method: 'GET' }));
   if (!res.ok) return [];
   try {
@@ -250,7 +250,7 @@ async function handleTagsVote(request, env) {
   // 둘 중 하나의 실제 게시물 목록에 있는지 반드시 확인한다. 시리즈/명예관/
   // 공식은 원래부터 사용자가 직접 관리하는 영역이라 투표 대상이 아니다
   // (literature-data-scope-boundary).
-  var TAG_VOTE_CATALOG_PATHS = ['/data/PageData/Novel.json', '/data/PageData/Translation.json'];
+  var TAG_VOTE_CATALOG_PATHS = ['/data/pageData/Novel.json', '/data/pageData/Translation.json'];
   var catalogResponses = await Promise.all(
     TAG_VOTE_CATALOG_PATHS.map(function (path) {
       return env.ASSETS.fetch(new Request(new URL(path, request.url)));
@@ -348,14 +348,14 @@ function cleanBumpId(raw) {
 }
 
 // handleTagsVote의 loadTagCatalog와 같은 이유(위조된 id로 신청하는 것을
-// 막기 위한 존재 검증)지만, 여기는 타입이 5개라 타입별 PageData를 따로 받는
+// 막기 위한 존재 검증)지만, 여기는 타입이 5개라 타입별 pageData를 따로 받는
 // 대신 이미 { type: { id: {...} } } 모양으로 합쳐 둔 경량 인덱스(Lookup.json,
 // bookmarksPage.js가 북마크 상세에 쓰는 것과 같은 파일 — src/scripts/
 // 11_build_lookup.py)를 재사용한다. 값을 못 얻으면(파일 없음/파싱 실패)
 // 존재하지 않는 것으로 취급해 신청을 막는다(허용 쪽으로 fail-open하지 않음).
 async function bumpItemExists(request, env, type, id) {
   var assetUrl = new URL(request.url);
-  assetUrl.pathname = '/data/PageData/Lookup.json';
+  assetUrl.pathname = '/data/pageData/Lookup.json';
   var res = await env.ASSETS.fetch(new Request(assetUrl, { method: 'GET' }));
   if (!res.ok) return false;
   try {
