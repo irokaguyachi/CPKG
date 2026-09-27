@@ -1,0 +1,235 @@
+/* 대회 페이지 (contestPage.js)
+   - /contest          : .contest-list 에 대회 카드만 세로로 쌓는다.
+   - /contest?c=<id>   : .contest-hero 에 해당 대회 카드 한 장을 얹고, 그 아래
+                         문학 탭과 같은 검색 툴바 + 참가작 그리드를 보여준다.
+   툴바와 그리드는 상세 모드가 확정되기 전까지 숨겨 목록 화면에 빈 검색창이
+   잠깐 비치지 않게 한다. */
+.contest-page:not(.is-contest-detail) .series-toolbar,
+.contest-page:not(.is-contest-detail) .series-grid {
+  display: none;
+}
+
+.contest-list,
+.contest-hero {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: calc(1059px + var(--content-padding) * 2);
+  margin: 0 auto;
+  padding: 30px var(--content-padding) 60px;
+  box-sizing: border-box;
+}
+.contest-list {
+  gap: 28px;
+}
+.contest-list[hidden],
+.contest-hero[hidden] {
+  display: none;
+}
+.contest-hero {
+  gap: 14px;
+  padding-bottom: 36px;
+}
+
+.contest-list-empty {
+  padding: 80px 0;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.contest-back-link {
+  align-self: flex-start;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.contest-back-link:hover {
+  color: #000000;
+}
+
+/* 카드 — Figma Contest_List (#2298:2): 1059×317, 모서리 15px, 흰 배경.
+   배너(Image) 184px 위에 아래쪽이 흰색으로 녹아드는 그라데이션(Rectangle 24)을
+   덮고, 기간/이름/설명 텍스트는 그 그라데이션 끝자락에 걸쳐 시작한다.
+   캐릭터(Character_Image)는 카드 위쪽 밖에서 시작해 카드가 잘라낸다. */
+.contest-card {
+  --contest-card-bg: #ffffff;
+  position: relative;
+  display: block;
+  min-height: 317px;
+  background: var(--contest-card-bg);
+  border: 0.5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  color: #000000;
+  text-decoration: none;
+  isolation: isolate;
+}
+a.contest-card {
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease;
+}
+a.contest-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.contest-card-banner {
+  position: relative;
+  height: 184px;
+  background-color: #eceef1;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.contest-card-banner.is-empty {
+  background-image: linear-gradient(120deg, #fed571 0%, #fc937c 45%, #c88bff 100%);
+}
+.contest-card-banner::after {
+  content: '';
+  position: absolute;
+  /* 카드 테두리 0.5px 때문에 배너 높이가 소수점으로 떨어져, 페이드가 배너
+     끝까지 덮지 못하면 사진 한 줄이 가로선처럼 비친다. 아래로 2px 더 덮는다. */
+  inset: 0 0 -2px;
+  background: linear-gradient(
+    to top,
+    var(--contest-card-bg) 0%,
+    rgba(245, 245, 245, 0.9) 25%,
+    rgba(153, 153, 153, 0) 100%
+  );
+}
+
+.contest-card-character {
+  position: absolute;
+  top: -57px;
+  right: 39px;
+  z-index: 1;
+  width: 172px;
+  height: 257px;
+  object-fit: contain;
+  object-position: bottom center;
+  pointer-events: none;
+}
+
+.contest-card-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  margin-top: -18px;
+  padding: 0 25px 26px;
+}
+.contest-card.has-character .contest-card-body {
+  padding-right: 236px;
+}
+
+.contest-card-date {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.5);
+}
+.contest-card-name {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+.contest-card-info {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.5);
+}
+.contest-card-count {
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 600px) {
+  .contest-list {
+    gap: 18px;
+    padding-top: 20px;
+  }
+  .contest-card {
+    min-height: 0;
+  }
+  .contest-card-banner {
+    height: 120px;
+  }
+  .contest-card-character {
+    top: -30px;
+    right: 14px;
+    width: 96px;
+    height: 144px;
+  }
+  .contest-card-body {
+    margin-top: -12px;
+    padding: 0 16px 18px;
+  }
+  .contest-card.has-character .contest-card-body {
+    padding-right: 120px;
+  }
+  .contest-card-date {
+    font-size: 14px;
+  }
+  .contest-card-name {
+    font-size: 22px;
+  }
+  .contest-card-info {
+    font-size: 13px;
+  }
+  .contest-card-count {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.contest-card,
+  a.contest-card:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* 다크 모드 — 다른 카드(series-card)와 같은 서피스 색을 쓰고, 배너 페이드도
+   그 색으로 녹아들게 한다. */
+[data-theme="dark"] .contest-card {
+  --contest-card-bg: var(--dark-surface);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+  color: var(--dark-text);
+}
+[data-theme="dark"] a.contest-card:hover {
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .contest-card-banner {
+  background-color: #25272d;
+}
+[data-theme="dark"] .contest-card-banner::after {
+  background: linear-gradient(
+    to top,
+    var(--contest-card-bg) 0%,
+    rgba(28, 29, 34, 0.9) 25%,
+    rgba(28, 29, 34, 0) 100%
+  );
+}
+[data-theme="dark"] .contest-card-date,
+[data-theme="dark"] .contest-card-info {
+  color: rgba(255, 255, 255, 0.55);
+}
+[data-theme="dark"] .contest-card-count,
+[data-theme="dark"] .contest-list-empty,
+[data-theme="dark"] .contest-back-link {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .contest-back-link:hover {
+  color: var(--dark-text);
+}

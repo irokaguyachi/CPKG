@@ -118,7 +118,7 @@ body.is-top .header-logo {
 }
 /* "메인"+"공지사항"은 .header-nav-primary 로 한 묶음에 들어 있어 더 이상
    .header-nav 의 직계 <a> 가 아니다 — nth-child 대신 클래스로 지정한다.
-   메인부터 명예관까지 7개 항목에 무지개 hover색을 위에서부터 차례로 준다.
+   메인부터 대회까지 8개 항목에 무지개 hover색을 위에서부터 차례로 준다.
    북마크는 사이드바에서 오른쪽 아래 버튼 묶음(bookmarkFab.js)으로 옮겨서
    여기엔 없다. */
 .header-nav-main:hover { color: #FC4845; }
@@ -128,6 +128,7 @@ body.is-top .header-logo {
 .header-nav a:nth-child(4):hover { color: #C4F23D; }
 .header-nav a:nth-child(5):hover { color: #99ED4A; }
 .header-nav a:nth-child(6):hover { color: #07D796; }
+.header-nav a:nth-child(7):hover { color: #00C5C1; }
 .header-nav a.header-nav-strong {
   font-weight: 800;
 }

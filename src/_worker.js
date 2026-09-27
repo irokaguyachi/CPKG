@@ -201,6 +201,7 @@ var PAGE_SLUGS = {
   translation: 'translationPage.html',
   series: 'seriesPage.html',
   hof: 'HOFPage.html',
+  contest: 'contestPage.html',
   official: 'OfficialPage.html',
   bookmarks: 'bookmarksPage.html',
   notice: 'changelogPage.html',

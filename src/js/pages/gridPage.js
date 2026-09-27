@@ -3,7 +3,7 @@
  * - Shared implementation behind 시리즈 / 명예관 / 공식 — the three pages had
  *   ~95% identical scripts, so they now pass their differences in as config
  *   and this file owns the behaviour.
- * - Config: { dataUrl, favType, countText(n), emptyText, countLine(s) }
+ * - Config: { dataUrl, favType, countText(n), emptyText, countLine(s), filterItems(items) }
  *   countLine 을 생략하면 SeriesUtil.countLine (자식 글이 2개 이상이면 시리즈로
  *   보고 화수, 아니면 글자 수) 을 씁니다.
  */
@@ -198,6 +198,11 @@
     Promise.all([itemsPromise, snapshotPromise, catalogPromise])
       .then(function (results) {
         rawItems = Array.isArray(results[0]) ? results[0] : [];
+        // config.filterItems 는 같은 데이터 파일에서 일부만 보여주는 페이지
+        // (대회 — Novel.json 중 해당 대회 참가작만)가 넘긴다. 태그 스냅샷
+        // 병합과 후방주의 필터보다 먼저 걸러야 카운트·태그 필터 후보도 그
+        // 부분집합 기준으로 계산된다.
+        if (config.filterItems) rawItems = config.filterItems(rawItems);
         if (wantUserTags) {
           mergeUserTagSnapshot(results[1]);
           userTagCatalog = results[2].filter(function (t) { return typeof t === 'string'; });

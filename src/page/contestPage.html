@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>초카공 문학&amp;번역 • 대회</title>
+<link rel="icon" type="image/png" href="../offline_src/favicon.png" />
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#ffffff" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="초카공 문학" />
+<link rel="apple-touch-icon" href="../offline_src/icon/icon-192.png" />
+<link rel="stylesheet" href="../fonts/Pretendard-dynamic/pretendardvariable-dynamic-subset.css" />
+<link rel="stylesheet" href="../css/base/fonts.css" />
+<link rel="stylesheet" href="../css/base/reset.css" />
+<link rel="stylesheet" href="../css/components/modal-base.css" />
+<link rel="stylesheet" href="../css/base/colorTheme.css" />
+<link rel="stylesheet" href="../css/layout/header.css" />
+<link rel="stylesheet" href="../css/layout/sidebar.css" />
+<link rel="stylesheet" href="../css/layout/site-info.css" />
+<link rel="stylesheet" href="../css/layout/footer.css" />
+<link rel="stylesheet" href="../css/components/loader.css" />
+<link rel="stylesheet" href="../css/components/series-toolbar.css" />
+<link rel="stylesheet" href="../css/components/series-card.css" />
+<link rel="stylesheet" href="../css/components/modal-series.css" />
+<link rel="stylesheet" href="../css/components/auth.css" />
+<link rel="stylesheet" href="../css/components/bookmarks.css" />
+<link rel="stylesheet" href="../css/components/settings-modal.css" />
+<link rel="stylesheet" href="../css/components/tags.css" />
+<link rel="stylesheet" href="../css/components/picker-kit.css" />
+<link rel="stylesheet" href="../css/components/roulette.css" />
+<link rel="stylesheet" href="../css/components/slot.css" />
+<link rel="stylesheet" href="../css/pages/contest-page.css" />
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../js/core/themeInit.js"></script>
+</head>
+<body class="contest-page">
+
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="loader-wipe is-covering" id="loader-wipe"></div>
+  <div class="loader-content" id="loader-content">
+    <div class="loader-center">
+      <div class="loader-icon" id="loader-icon"></div>
+      <span class="loader-loading-text">Loading</span>
+    </div>
+    <p class="loader-tip"><span class="loader-tip-tag">TIP</span> | <span id="loader-tip-text"></span><span class="loader-caret" aria-hidden="true"></span></p>
+  </div>
+</div>
+
+<header class="header">
+  <a class="header-logo-link" href="/" aria-label="메인 페이지로 이동">
+    <!-- 대회 전용 로고 에셋이 아직 없어 메인 로고를 임시로 씀 -->
+    <img class="header-logo" src="../offline_src/logo/MainLogo_Dark.png" data-light-src="../offline_src/logo/MainLogo_Dark.png" data-dark-src="../offline_src/logo/MainLogo_Light.png" alt="대회" />
+  </a>
+</header>
+
+<button type="button" class="sidebar-toggle-btn" aria-label="메뉴 열기">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+
+<aside class="sidebar">
+  <nav class="header-nav">
+    <div class="header-nav-primary">
+      <a href="/" class="header-nav-main">메인</a>
+      <a href="/notice" class="header-nav-changelog">공지사항</a>
+    </div>
+    <a href="/official">공식</a>
+    <a href="/translation">번역</a>
+    <a href="/novel">문학</a>
+    <a href="/series">시리즈</a>
+    <a href="/hof">명예관</a>
+    <a href="/contest" class="header-nav-strong">대회</a>
+    <button type="button" class="header-nav-settings" data-settings-trigger>
+      <svg class="header-nav-settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="header-nav-settings-label">설정</span>
+    </button>
+  </nav>
+</aside>
+
+<div class="hero-space" data-hero-space></div>
+
+<!-- /contest: 대회 카드 목록 · /contest?c=<id>: 대회 카드 + 참가작 그리드 (contestPage.js) -->
+<section class="contest-list" id="contest-list" hidden></section>
+<section class="contest-hero" id="contest-hero" hidden></section>
+
+<div class="series-toolbar">
+  <div class="series-toolbar-row">
+    <label class="series-search">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="#000000" stroke-width="1.5"/><line x1="11.5" y1="11.5" x2="15" y2="15" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input type="text" id="series-search-input" placeholder="참가작 제목으로 검색" autocomplete="off" />
+    </label>
+    <div class="series-filter">
+      <button type="button" class="series-filter-btn" id="series-filter-btn" aria-haspopup="true" aria-expanded="false" aria-label="태그 필터">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 3.5H17.5L11.5 10.3V16L8.5 14.3V10.3L2.5 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="series-filter-panel" id="series-filter-panel">
+        <div class="sfp-header">
+          <span>원하는 태그를 고르세요!</span>
+        </div>
+        <div class="sfp-options" id="series-filter-options"></div>
+      </div>
+    </div>
+    <button type="button" class="series-view-toggle-btn" id="series-view-toggle-btn" aria-pressed="false" aria-label="리스트로 보기">
+      <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="2" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="7.25" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="12.5" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+  </div>
+</div>
+
+<section class="series-grid" id="series-grid"></section>
+
+<footer class="site-footer">
+  <p class="site-footer-line">해당 페이지는 <strong>절대로</strong> 초! 카구야 공주의 공식이 아니며, 팬메이드 페이지임을 알립니다.</p>
+  <p class="site-footer-line">Copyright ⓒ 2026 - 2026 Cho Kaguya hime. All rights reserved.</p>
+  <p class="site-footer-line site-footer-contact">문의 : cpkg@cpkg.cloud</p>
+</footer>
+
+<script defer src="../js/core/pwa.js"></script>
+<script defer src="../js/config/cdnConfig.js"></script>
+<script defer src="../js/config/siteConfig.js"></script>
+<script defer src="../js/core/presence.js"></script>
+<script defer src="../js/config/libraryConfig.js"></script>
+<script defer src="../js/components/popoverKit.js"></script>
+<script defer src="../js/core/bookmarks.js"></script>
+<script defer src="../js/core/bookmarkLibrary.js"></script>
+<script defer src="../js/core/userData.js"></script>
+<script defer src="../js/components/bookmarkPicker.js"></script>
+<script defer src="../js/components/bumpButton.js"></script>
+<script defer src="../js/components/loading.js"></script>
+<script defer src="../js/core/theme.js"></script>
+<script defer src="../js/components/authModal.js"></script>
+<script defer src="../js/components/auth.js"></script>
+<script defer src="../js/components/sidebar.js"></script>
+<script defer src="../js/core/audioSettings.js"></script>
+<script defer src="../js/core/contentSettings.js"></script>
+<script defer src="../js/components/settingsModal.js"></script>
+<script defer src="../js/components/heroLogo.js"></script>
+<script defer src="../js/config/tagConfig.js"></script>
+<script defer src="../js/core/seriesUtil.js"></script>
+<script defer src="../js/components/postDetailSeries.js"></script>
+<script defer src="../js/pages/gridPage.js"></script>
+<script defer src="../js/pages/contestPage.js"></script>
+<script defer src="../js/components/pickerKit.js"></script>
+<script defer src="../js/components/bookmarkFab.js"></script>
+<script defer src="../js/components/rouletteModal.js"></script>
+<script defer src="../js/components/slotModal.js"></script>
+</body>
+</html>
