@@ -1,11 +1,30 @@
 [
   {
+    "id": "choeummundae",
+    "name": "초 카구야공주 캐릭터 음해 문학 대회",
+    "shortName": "초음문대",
+    "description": "초카구야 캐릭터를 자유롭게 음해하는 문학 대회",
+    "startDate": "2026-09-24",
+    "endDate": "2026-10-18",
+    "notices": [
+      { "label": "개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=319148&exception_mode=recommend&search_head=90&page=1" }
+    ],
+    "image": "../offline_src/contest/초음문대.png",
+    "imagePosition": "center 15%",
+    "characterImage": "",
+    "titleKeywords": ["초음문대"],
+    "posts": [321717, 321531, 321524, 321387, 319148]
+  },
+  {
     "id": "ilmundae",
     "name": "초카구야 1인칭 문학 대회",
     "shortName": "일문대",
     "description": "1인칭 시점으로 쓴 초카구야 문학 대회",
     "startDate": "2026-03-19",
     "endDate": "2026-03-29",
+    "notices": [
+      { "label": "개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=104212" }
+    ],
     "image": "",
     "characterImage": "",
     "titleKeywords": [],
@@ -30,7 +49,12 @@
     "description": "카문대 본선과 왕중왕전 참가작 모음",
     "startDate": "2026-02-15",
     "endDate": "2026-03-01",
-    "image": "",
+    "notices": [
+      { "label": "개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=43845" },
+      { "label": "왕중왕전 개최 글 보기", "url": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=59052" }
+    ],
+    "image": "../offline_src/contest/카문대.png",
+    "imagePosition": "center 25%",
     "characterImage": "",
     "titleKeywords": [],
     "posts": [71415, 70249, 67417, 59901, 59408, 59407, 59153, 59052, 58765, 58486, 56488, 56026, 55560, 53506, 53484, 53389, 52377, 51972, 51472, 51460, 50099, 50063, 49814, 49227, 49099, 48680, 48667, 48479, 47883, 46755, 46371, 45401, 45335, 44677, 44649, 44619, 44307, 44271, 44173, 44111, 44025]

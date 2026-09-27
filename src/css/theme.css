@@ -295,6 +295,31 @@ html.theme-transitioning *:after {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* 대회 홍보 카드(main-page.css) — 오디오 노벨 홍보 카드와 같은 처리. */
+[data-theme="dark"] .contest-promo {
+  background:
+    linear-gradient(135deg, rgba(0, 197, 193, 0.14), rgba(0, 197, 193, 0)),
+    var(--dark-surface);
+  border-color: rgba(0, 197, 193, 0.4);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .contest-promo:hover {
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .contest-promo-thumb {
+  background-color: #25272d;
+}
+[data-theme="dark"] .contest-promo-eyebrow,
+[data-theme="dark"] .contest-promo-cta {
+  color: #00C5C1;
+}
+[data-theme="dark"] .contest-promo-name {
+  color: var(--dark-text);
+}
+[data-theme="dark"] .contest-promo-desc {
+  color: rgba(255, 255, 255, 0.55);
+}
+
 /* ==========================================================================
    Tag Pills in Dark Mode (Soft, Muted, Non-glaring aesthetic)
    ========================================================================== */

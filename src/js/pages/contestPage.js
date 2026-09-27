@@ -9,13 +9,20 @@
 //   · shortName      : 약칭 (검색창 안내 문구와 탭 제목에 씀)
 //   · description    : 카드 설명 (Contest_Info)
 //   · startDate/endDate : "YYYY-MM-DD". 기간 옆에 D-day 나 종료 표시가 붙음
+//   · notices        : [{ label, url }] 개최·공지 글 링크. 상세 카드에 버튼으로
+//                      나란히 붙음 (목록 카드는 카드 전체가 링크라 넣지 않음).
+//                      label 을 비우면 "개최 글 보기"
 //   · image          : 카드 상단 배너 (Image). 비우면 참가작 중 첫 이미지를 씀
+//   · imagePosition  : 배너에서 보일 부분 (CSS background-position, 예:
+//                      "center 25%"). 비우면 가운데
 //   · characterImage : 카드 오른쪽 캐릭터 (Character_Image). 비우면 숨김
 //   · posts          : 참가작 게시글 번호 목록
 //   · titleKeywords  : 제목에 이 글자가 들어간 글도 참가작으로 침 (진행 중인
 //                      대회에서 posts 를 매번 갱신하지 않으려고 쓸 때만)
 // 이미지 경로는 다른 데이터와 같이 "../assets/Image/..." 로 적으면 R2 CDN
 // 으로 바뀝니다(cdnConfig.js). 새 이미지는 sync_to_r2.py 로 올려야 보입니다.
+// "../offline_src/..." 로 적으면 R2 를 거치지 않고 사이트에서 바로 받습니다
+// (대회 배너는 offline_src/contest/ 에 둠).
 //
 // [참가작] Novel.json(시리즈에 속하지 않은 단독 글)에서 골라냅니다. 시리즈
 // 회차로 들어간 글은 문학 탭과 마찬가지로 여기에도 나오지 않습니다.
@@ -111,6 +118,12 @@
     return items.filter(function (s) { return !CS.hasMatureTag(s.tags); });
   }
 
+  // offline_src/ 는 R2 가 아니라 오리진에서 서빙한다(theme.js 의 로고와 같은
+  // 예외). resolveAssetUrl 에 넘기면 R2 의 없는 주소로 바뀐다.
+  function isOriginPath(path) {
+    return /^(\.\.\/|\/)offline_src\//.test(path || '');
+  }
+
   function firstImage(items) {
     for (var i = 0; i < items.length; i++) {
       if (items[i].image) return items[i].image;
@@ -129,7 +142,12 @@
     banner.className = 'contest-card-banner';
     var bannerSrc = contest.image || firstImage(entries);
     if (bannerSrc) {
-      if (global.revealBackgroundProgressive) {
+      if (contest.image && contest.imagePosition) {
+        banner.style.backgroundPosition = contest.imagePosition;
+      }
+      if (isOriginPath(bannerSrc)) {
+        banner.style.backgroundImage = 'url("' + bannerSrc + '")';
+      } else if (global.revealBackgroundProgressive) {
         global.revealBackgroundProgressive(banner, bannerSrc);
       } else {
         banner.style.backgroundImage = 'url("' + bannerSrc + '")';
@@ -144,7 +162,7 @@
       character.className = 'contest-card-character';
       character.alt = '';
       character.loading = 'lazy';
-      character.src = global.resolveAssetUrl
+      character.src = global.resolveAssetUrl && !isOriginPath(contest.characterImage)
         ? global.resolveAssetUrl(contest.characterImage)
         : contest.characterImage;
       card.appendChild(character);
@@ -178,6 +196,23 @@
     count.className = 'contest-card-count';
     count.textContent = '참가작 ' + entries.length + '편';
     info.appendChild(count);
+
+    // 목록 카드는 <a> 라서 안에 링크를 또 넣을 수 없다. 상세 카드에만 단다.
+    var notices = (contest.notices || []).filter(function (n) { return n && n.url; });
+    if (!href && notices.length) {
+      var noticeRow = document.createElement('div');
+      noticeRow.className = 'contest-card-notices';
+      notices.forEach(function (n) {
+        var notice = document.createElement('a');
+        notice.className = 'contest-card-notice';
+        notice.href = n.url;
+        notice.target = '_blank';
+        notice.rel = 'noopener noreferrer';
+        notice.textContent = (n.label || '개최 글 보기') + ' ↗';
+        noticeRow.appendChild(notice);
+      });
+      info.appendChild(noticeRow);
+    }
 
     card.appendChild(info);
     return card;

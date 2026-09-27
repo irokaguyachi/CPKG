@@ -238,6 +238,8 @@
       card.classList.add('is-dismissing');
       // CSS 트랜지션(0.2s)이 끝난 뒤 DOM에서 제거 — series-card.css의 트랜지션
       // 관례와 같은 시간 감각으로 맞춤.
+      // 닫은 뒤 placeTopWidgets()가 다시 끼우지 않도록 놓아 준다.
+      if (audioPromoEl === card) audioPromoEl = null;
       setTimeout(function () {
         if (card.parentNode) card.parentNode.removeChild(card);
       }, 220);
@@ -456,42 +458,35 @@
     return banner;
   }
 
-  // 오디오 노벨 홍보 카드 — #content의 첫 자식으로 붙는다. Recent.json 쪽
-  // fetch가 응답하면 contentEl.innerHTML = '' 로 #content를 통째로 비우고
-  // 다시 채우는데, 이 배너가 그보다 먼저 붙어있었다면 함께 지워진다. 그래서
-  // 두 fetch 중 어느 쪽이 먼저 끝나든 항상 배너가 맨 위에 있도록, 만들어둔
-  // 배너를 audioPromoEl에 쥐고 있다가 필요한 시점마다 placeAudioPromo()로
-  // 다시 끼워 넣는다.
+  // #content 맨 위 위젯들. 각자 데이터가 오는 시점이 달라서, 예전처럼
+  // 붙을 때마다 첫 자식으로 끼우면 응답 순서에 따라 위아래가 뒤바뀌었다.
+  // 그래서 요소를 변수에 쥐고 있다가 placeTopWidgets()가 언제 불리든 아래
+  // 순서로 다시 맞춘다. Recent.json 응답이 contentEl.innerHTML = '' 로
+  // #content를 통째로 비울 때도 이 함수로 되살린다.
+  //   1. audioPromoEl  : 신규 기능 알림(오디오 노벨 홍보 카드). Official.json
+  //   2. bumpBannerEl  : 지금 끌올된 문학. bumpButton.js 폴링 상태
+  //   3. contestPromoEl: 진행 중인 대회 홍보. Contest.json
+  //   4. dailyGiftEl   : 오늘의 문학 / 번역 선물상자. 상자/애니메이션/카운트
+  //                      다운/그날의 뽑기는 dailyGift.js가 맡는다.
+  // 끌올 배너는 끌올이 없을 때 hidden 으로 자리만 지킨다.
   var audioPromoEl = null;
-  function placeAudioPromo() {
-    if (audioPromoEl && audioPromoEl.parentNode !== contentEl) {
-      contentEl.insertBefore(audioPromoEl, contentEl.firstChild);
-    }
-  }
-
-  // 오늘의 랜덤 문학 / 번역 선물상자 — #content 최상단에 둔다. Recent.json 응답이
-  // contentEl을 통째로 비우므로, audio promo와 같은 방식으로 요소를 쥐고
-  // 있다가 다시 끼운다. placeAudioPromo()보다 나중에 불러 항상 맨 위
-  // (첫 자식)에 오게 한다. 카드 마크업과 성인 태그 필터는 이 파일이 맡고,
-  // 상자/애니메이션/카운트다운/그날의 뽑기는 dailyGift.js가 맡는다.
-  var dailyGiftEl = null;
-  function placeDailyGift() {
-    if (dailyGiftEl && dailyGiftEl.parentNode !== contentEl) {
-      contentEl.insertBefore(dailyGiftEl, contentEl.firstChild);
-    }
-  }
-
-  // 끌올(부스트) 배너 — 로그인한 누군가 신청해 지금 끌올 중인 문학이
-  // 있으면 사이트 최상단(오늘의 문학보다도 위)에 보여준다. dailyGift와
-  // 같은 이유로 #content가 통째로 비워질 때마다(Recent.json 응답) 이 요소를
-  // 다시 끼워 넣어야 하고, placeDailyGift()보다 나중에 불러야 항상 맨 위에
-  // 온다. 상태 자체는 bumpButton.js가 20초마다 폴링해 'chokaguya:bump-change'
-  // 로 뿌려주는 걸 그대로 받아쓴다 — 이 배너가 따로 폴링을 돌리지 않는다.
   var bumpBannerEl = null;
-  function placeBumpBanner() {
-    if (bumpBannerEl && bumpBannerEl.parentNode !== contentEl) {
-      contentEl.insertBefore(bumpBannerEl, contentEl.firstChild);
-    }
+  var contestPromoEl = null;
+  var dailyGiftEl = null;
+
+  function placeTopWidgets() {
+    var widgets = [audioPromoEl, bumpBannerEl, contestPromoEl, dailyGiftEl]
+      .filter(Boolean);
+    // 이미 제자리에 있는 요소는 옮기지 않는다(옮기면 CSS 애니메이션이
+    // 처음부터 다시 돈다).
+    var ref = contentEl.firstChild;
+    widgets.forEach(function (el) {
+      if (el === ref) {
+        ref = ref.nextSibling;
+      } else {
+        contentEl.insertBefore(el, ref);
+      }
+    });
   }
 
   function createBumpBanner() {
@@ -586,6 +581,107 @@
     return section;
   }
 
+  // "2026-03-19" → 로컬 자정 Date (contestPage.js 와 같은 규칙).
+  function parseContestDate(str) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(str || '');
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+
+  // 오늘이 기간 안에 있는 대회만 고른다. 끝나는 날 자정까지는 진행 중으로 친다.
+  function ongoingContests(contests) {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return contests.filter(function (c) {
+      if (!c || !c.id) return false;
+      var start = parseContestDate(c.startDate);
+      var end = parseContestDate(c.endDate);
+      if (start && today < start) return false;
+      if (end && today > end) return false;
+      return !!(start || end);
+    });
+  }
+
+  function contestDdayText(contest) {
+    var end = parseContestDate(contest.endDate);
+    if (!end) return '진행 중';
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var left = Math.round((end - today) / 86400000);
+    return left === 0 ? '오늘 마감' : '마감 D-' + left;
+  }
+
+  // 진행 중인 대회 홍보 카드 — 오디오 노벨 홍보 카드와 같은 가로 배너 꼴.
+  // 누르면 그 대회 상세(/contest?c=<id>)로 간다.
+  function createContestPromoCard(contest) {
+    var card = document.createElement('a');
+    card.className = 'contest-promo';
+    card.href = '/contest?c=' + encodeURIComponent(contest.id);
+
+    var thumb = document.createElement('div');
+    thumb.className = 'contest-promo-thumb';
+    var src = contest.image;
+    if (src) {
+      if (contest.imagePosition) thumb.style.backgroundPosition = contest.imagePosition;
+      // offline_src/ 는 R2 가 아니라 오리진에서 서빙한다(contestPage.js 와 같은 예외).
+      if (/^(\.\.\/|\/)offline_src\//.test(src)) {
+        thumb.style.backgroundImage = 'url("' + src + '")';
+      } else if (global.lazyLoadBackground) {
+        global.lazyLoadBackground(thumb, src);
+      } else {
+        thumb.style.backgroundImage = 'url("' + (global.resolveAssetUrl ? global.resolveAssetUrl(src) : src) + '")';
+      }
+    } else {
+      thumb.classList.add('is-empty');
+    }
+    card.appendChild(thumb);
+
+    var body = document.createElement('div');
+    body.className = 'contest-promo-body';
+
+    var eyebrow = document.createElement('p');
+    eyebrow.className = 'contest-promo-eyebrow';
+    eyebrow.textContent = '🏆 진행 중인 대회 · ' + contestDdayText(contest);
+    body.appendChild(eyebrow);
+
+    var name = document.createElement('p');
+    name.className = 'contest-promo-name';
+    name.textContent = contest.name || contest.shortName || contest.id;
+    body.appendChild(name);
+
+    if (contest.description) {
+      var desc = document.createElement('p');
+      desc.className = 'contest-promo-desc';
+      desc.textContent = contest.description;
+      body.appendChild(desc);
+    }
+
+    var cta = document.createElement('span');
+    cta.className = 'contest-promo-cta';
+    var ctaLabel = document.createElement('span');
+    ctaLabel.textContent = '참가작 보러 가기';
+    cta.appendChild(ctaLabel);
+    var ctaArrow = document.createElement('span');
+    ctaArrow.className = 'content-heading-arrow';
+    ctaArrow.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    cta.appendChild(ctaArrow);
+    body.appendChild(cta);
+
+    card.appendChild(body);
+    return card;
+  }
+
+  fetchJson('../data/PageData/Contest.json')
+    .then(function (contests) {
+      var live = ongoingContests(Array.isArray(contests) ? contests : []);
+      if (!live.length) return; // 진행 중인 대회가 없으면 자리도 만들지 않는다
+      var wrap = document.createElement('div');
+      wrap.className = 'contest-promo-list';
+      live.forEach(function (c) { wrap.appendChild(createContestPromoCard(c)); });
+      contestPromoEl = wrap;
+      placeTopWidgets();
+    })
+    .catch(function () {});
+
   if (global.DailyGift) {
     dailyGiftEl = global.DailyGift.create({
       dataUrl: '../data/PageData/Novel.json',
@@ -597,13 +693,12 @@
       filterItems: filterMature,
       renderCard: function (item, favType) { return createCard(item, favType); }
     });
-    placeDailyGift();
+    placeTopWidgets();
   }
 
-  // dailyGift보다 나중에 만들고 배치해야 항상 맨 위(첫 자식)에 온다.
   if (global.BumpButton) {
     bumpBannerEl = createBumpBanner();
-    placeBumpBanner();
+    placeTopWidgets();
   }
 
   var audioPromoDismissed = false;
@@ -621,7 +716,7 @@
         if (!promoItem) return; // 아직 오디오 노벨이 붙은 작품이 없음 — 조용히 스킵
 
         audioPromoEl = createAudioPromoBanner(promoItem);
-        placeAudioPromo();
+        placeTopWidgets();
       })
       .catch(function () {}); // Official.json이 없거나 실패해도 나머지 페이지는 그대로
   }
@@ -647,9 +742,7 @@
       }
 
       contentEl.innerHTML = '';
-      placeAudioPromo(); // Official.json이 먼저 응답해 이미 붙어있던 배너를 방금 지웠다면 되살림
-      placeDailyGift();  // audio promo 뒤에 불러 항상 #content 맨 위에 오게 한다
-      placeBumpBanner(); // dailyGift보다도 나중에 불러 항상 최상단에 오게 한다
+      placeTopWidgets(); // 먼저 붙어 있던 위젯을 방금 지웠다면 정해진 순서로 되살림
 
       // 0. 야치요 생일 축하 배너 — pancakeCounter.js가 버튼에 클릭을 걸
       // 시점을 알 수 있도록, 배너가 실제로 DOM에 붙은 뒤 이벤트를 쏜다

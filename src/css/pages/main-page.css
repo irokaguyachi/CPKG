@@ -189,6 +189,133 @@ body.is-top .header-logo {
   }
 }
 
+/* 진행 중인 대회 홍보 카드 — mainPage.js 의 placeTopWidgets() 가 끌올 배너
+   아래, 오늘의 문학 위에 둔다. 오디오 노벨 홍보 카드와 같은 가로 배너
+   꼴이고, 색만 대회 탭(사이드바 hover)의 #00C5C1 로 맞춘다. 진행 중인
+   대회가 여럿이면 .contest-promo-list 안에 카드가 세로로 쌓인다. */
+.contest-promo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.contest-promo {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background:
+    linear-gradient(135deg, rgba(0, 197, 193, 0.2), rgba(0, 197, 193, 0.04)),
+    #eefbfb;
+  border: 1px solid rgba(0, 160, 157, 0.55);
+  border-radius: 15px;
+  box-shadow: 0 8px 22px rgba(0, 160, 157, 0.18);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.2s var(--ease-out-site), box-shadow 0.2s ease;
+}
+.contest-promo:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 26px rgba(0, 160, 157, 0.28);
+}
+
+.contest-promo-thumb {
+  flex-shrink: 0;
+  width: 220px;
+  min-height: 130px;
+  background-color: #dff3f2;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.contest-promo-thumb.is-empty {
+  background-image: linear-gradient(120deg, #fed571 0%, #fc937c 45%, #c88bff 100%);
+}
+
+.contest-promo-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 24px;
+}
+
+.contest-promo-eyebrow {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #00a09d;
+}
+
+.contest-promo-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #000000;
+  word-break: keep-all;
+}
+
+.contest-promo-desc {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.contest-promo-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #00a09d;
+}
+.contest-promo-cta .content-heading-arrow {
+  transition: transform 0.2s var(--ease-out-site);
+}
+.contest-promo:hover .contest-promo-cta .content-heading-arrow {
+  transform: translateX(4px);
+}
+
+@media (max-width: 768px) {
+  .contest-promo-thumb {
+    width: 140px;
+    min-height: 110px;
+  }
+  .contest-promo-body {
+    padding: 12px 16px;
+  }
+  .contest-promo-name {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 520px) {
+  .contest-promo-thumb {
+    width: 96px;
+    min-height: 96px;
+  }
+  .contest-promo-eyebrow,
+  .contest-promo-desc,
+  .contest-promo-cta {
+    font-size: 12px;
+  }
+  .contest-promo-name {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contest-promo,
+  .contest-promo:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
 .content-heading {
   display: inline-flex;
   align-items: center;

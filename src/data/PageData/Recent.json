@@ -1,97 +1,101 @@
 {
   "totals": {
-    "novel": 1347,
+    "novel": 1427,
     "series": 101
   },
   "novels": [
     {
-      "name": "[ 츠쿠요미 괴담 ] (치비치요)",
-      "image": "../assets/Image/크롤링사진/문학/2026-09-14/311288_1.jpg",
+      "name": "[ 이로하 길들이기 ]",
+      "image": "../assets/Image/크롤링사진/문학/2026-09-26/321943_1.jpg",
       "tags": [
+        "로맨스",
+        "일상"
+      ],
+      "charCount": "2,042자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 321943,
+          "title": "[ 이로하 길들이기 ]",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321943"
+        }
+      ]
+    },
+    {
+      "name": "짧문학)2040년 9월 26일 어제의 칭찬일기",
+      "image": "../assets/Image/크롤링사진/문학/2026-09-26/321922_1.png",
+      "tags": [
+        "짧문",
+        "일상"
+      ],
+      "charCount": "412자",
+      "author": "카구이로행복기원(user2698)",
+      "posts": [
+        {
+          "id": 321922,
+          "title": "짧문학)2040년 9월 26일 어제의 칭찬일기",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321922"
+        }
+      ]
+    },
+    {
+      "name": "욕주의) 야치요 솔직히 그정돈 아님ㅋㅋㅋㅋ",
+      "image": null,
+      "tags": [
+        "짧문",
+        "대회",
+        "코미디",
+        "글카스"
+      ],
+      "charCount": "423자",
+      "author": "8000세야치요할머니의별바다라스트댄스",
+      "posts": [
+        {
+          "id": 321717,
+          "title": "욕주의) 야치요 솔직히 그정돈 아님ㅋㅋㅋㅋ",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321717"
+        }
+      ]
+    },
+    {
+      "name": "[초음문대] 오늘 내 생일을 아무도 축하해 주지 않았어.",
+      "image": null,
+      "tags": [
+        "짧문",
+        "대회",
+        "코미디",
+        "글카스"
+      ],
+      "charCount": "665자",
+      "author": "첼구야",
+      "posts": [
+        {
+          "id": 321531,
+          "title": "[초음문대] 오늘 내 생일을 아무도 축하해 주지 않았어.",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321531"
+        }
+      ]
+    },
+    {
+      "name": "[초음문대] 호기심과 죄악",
+      "image": null,
+      "tags": [
+        "대회",
         "코미디",
         "일상"
       ],
-      "charCount": "1,571자",
-      "author": "별바다를불태우리(flock4442)",
+      "charCount": "1,753자",
+      "author": "ㅇㅇ",
       "posts": [
         {
-          "id": 311288,
-          "title": "[ 츠쿠요미 괴담 ] (치비치요)",
+          "id": 321524,
+          "title": "[초음문대] 호기심과 죄악",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311288"
-        }
-      ]
-    },
-    {
-      "name": "[ 중요 공지 ] 요즘 돌아다니는 「 츠쿠요미 이용 가이드 」에 대하여!",
-      "image": null,
-      "tags": [
-        "코미디",
-        "일상"
-      ],
-      "charCount": "1,185자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 311244,
-          "title": "[ 중요 공지 ] 요즘 돌아다니는 「 츠쿠요미 이용 가이드 」에 대하여!",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311244"
-        }
-      ]
-    },
-    {
-      "name": "「 츠쿠요미 이용 가이드 」( 필독 )",
-      "image": null,
-      "tags": [
-        "피폐",
-        "코미디"
-      ],
-      "charCount": "3,002자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 311235,
-          "title": "「 츠쿠요미 이용 가이드 」( 필독 )",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311235"
-        }
-      ]
-    },
-    {
-      "name": "《 이번 역은 달–, 달입니다. 》",
-      "image": null,
-      "tags": [
-        "소설",
-        "슬픔",
-        "감동"
-      ],
-      "charCount": "5,611자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 311087,
-          "title": "《 이번 역은 달–, 달입니다. 》",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=311087"
-        }
-      ]
-    },
-    {
-      "name": "카구야의 중세 견문록",
-      "image": null,
-      "tags": [
-        "일상",
-        "코미디"
-      ],
-      "charCount": "2,568자",
-      "author": "작가스즈(noisy7520)",
-      "posts": [
-        {
-          "id": 310747,
-          "title": "카구야의 중세 견문록",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=310747"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321524"
         }
       ]
     }
