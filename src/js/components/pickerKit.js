@@ -82,6 +82,23 @@
     return btn;
   }
 
+  // 팝업 대신 다른 페이지로 이동하는 링크형 버튼(북마크 등).
+  // opts: { href, iconHtml, label, ariaLabel, order, className, current }
+  // current 가 참이면 지금 보고 있는 페이지라는 표시(aria-current, .is-current)를
+  // 단다. 같은 페이지 링크 클릭은 loading.js 가 막아 준다.
+  function createFabLink(opts) {
+    var a = document.createElement('a');
+    a.href = opts.href;
+    a.className = 'pk-fab' + (opts.className ? ' ' + opts.className : '') + (opts.current ? ' is-current' : '');
+    a.setAttribute('aria-label', opts.ariaLabel || opts.label);
+    if (opts.current) a.setAttribute('aria-current', 'page');
+    a.style.order = String(opts.order || 0);
+    a.innerHTML = '<span class="pk-fab-icon">' + opts.iconHtml + '</span>' +
+      '<span class="pk-fab-label">' + opts.label + '</span>';
+    fabStack().appendChild(a);
+    return a;
+  }
+
   /* ---------- 팝업 ---------- */
 
   // postDetailSeries.js 와 같은 방식의 스크롤 잠금. 뽑기 팝업 위에 상세 팝업을
@@ -306,6 +323,7 @@
     reduceMotion: reduceMotion,
     randInt: randInt,
     createFab: createFab,
+    createFabLink: createFabLink,
     createModal: createModal,
     resultHtml: resultHtml,
     bindResult: bindResult,

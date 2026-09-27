@@ -80,6 +80,41 @@ body.pk-modal-open .pk-fab-stack {
   visibility: hidden;
 }
 
+/* 링크형 버튼(createFabLink) — <a> 라서 밑줄만 없앤다 */
+a.pk-fab {
+  text-decoration: none;
+}
+
+/* 북마크 바로가기(bookmarkFab.js). 사이드바에서 옮겨 온 링크라 버튼 묶음
+   맨 위에 놓인다. 마우스를 올리면 리본이 채워지며 살짝 올라가고, 북마크
+   페이지에서는 채워진 리본과 파란 테두리로 "지금 여기"를 표시한다. */
+.bm-fab-icon {
+  width: 26px;
+  height: 26px;
+  color: #16171b;
+  fill: transparent;
+  transition: fill 0.2s ease, color 0.2s ease, transform 0.25s var(--ease-out-site);
+}
+.bm-fab:hover .bm-fab-icon,
+.bm-fab:focus-visible .bm-fab-icon {
+  color: var(--accent);
+  fill: var(--accent);
+  transform: translateY(-2px);
+}
+.bm-fab.is-current .pk-fab-icon {
+  box-shadow: 0 0 0 2.5px var(--accent), 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+.bm-fab.is-current .bm-fab-icon {
+  color: var(--accent);
+  fill: var(--accent);
+}
+.bm-fab.is-current .pk-fab-label {
+  background: var(--accent);
+}
+.bm-fab.is-current {
+  cursor: default;
+}
+
 @media (max-width: 768px) {
   .pk-fab-stack {
     right: 16px;
@@ -90,6 +125,11 @@ body.pk-modal-open .pk-fab-stack {
      떠 있다. 검색을 펼치면 가로로 꽉 차므로 그 위로 올려 둔다. */
   body:has(.series-toolbar) .pk-fab-stack {
     bottom: 84px;
+  }
+  /* 오디오 노벨 리더의 하단 미니 플레이어(audio-novel-player.css, 아래 20px +
+     약 80px)도 모바일에서는 가로로 꽉 차므로 그 위로 올린다 */
+  body:has(.an-player) .pk-fab-stack {
+    bottom: 112px;
   }
   .pk-fab-icon {
     width: 54px;
@@ -359,6 +399,22 @@ body.pk-modal-open .pk-fab-stack {
 [data-theme="dark"] .pk-fab-label {
   background: var(--dark-text);
   color: #121316;
+}
+[data-theme="dark"] .bm-fab-icon {
+  color: var(--dark-text);
+}
+[data-theme="dark"] .bm-fab:hover .bm-fab-icon,
+[data-theme="dark"] .bm-fab:focus-visible .bm-fab-icon,
+[data-theme="dark"] .bm-fab.is-current .bm-fab-icon {
+  color: #5c9aff;
+  fill: #5c9aff;
+}
+[data-theme="dark"] .bm-fab.is-current .pk-fab-icon {
+  box-shadow: 0 0 0 2.5px #5c9aff, 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+[data-theme="dark"] .bm-fab.is-current .pk-fab-label {
+  background: #5c9aff;
+  color: #ffffff;
 }
 [data-theme="dark"] .pk-close {
   background: var(--dark-input-bg);
