@@ -481,7 +481,7 @@
     }
   }
 
-  // 끌올(부스트) 배너 — 로그인한 누군가 신청해 지금 활성 구간인 문학이
+  // 끌올(부스트) 배너 — 로그인한 누군가 신청해 지금 끌올 중인 문학이
   // 있으면 사이트 최상단(오늘의 문학보다도 위)에 보여준다. dailyGift와
   // 같은 이유로 #content가 통째로 비워질 때마다(Recent.json 응답) 이 요소를
   // 다시 끼워 넣어야 하고, placeDailyGift()보다 나중에 불러야 항상 맨 위에
@@ -526,14 +526,19 @@
       if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     }
 
+    // endAt은 다음 끌올로 교체되는 시각이다. 대기자가 없으면 null이고,
+    // 그동안은 끌올이 끝나지 않으므로 카운트다운을 비워 둔다.
     function startCountdown(endAt) {
       stopCountdown();
+      if (!endAt) { countdown.textContent = ''; return; }
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
       function tick() {
         var remain = endAt - Date.now();
         if (remain <= 0) { countdown.textContent = ''; stopCountdown(); return; }
-        var m = Math.floor(remain / 60000);
+        var h = Math.floor(remain / 3600000);
+        var m = Math.floor((remain % 3600000) / 60000);
         var s = Math.floor((remain % 60000) / 1000);
-        countdown.textContent = '종료까지 ' + m + ':' + (s < 10 ? '0' : '') + s;
+        countdown.textContent = '교체까지 ' + (h ? h + ':' + pad(m) : m) + ':' + pad(s);
       }
       tick();
       countdownTimer = setInterval(tick, 1000);

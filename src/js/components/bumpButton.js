@@ -2,11 +2,14 @@
  * ChoKaguya Bump Button (끌올)
  * - bookmarkPicker.js의 북마크 버튼 바로 옆에 붙는 버튼. 로그인한 계정이
  *   문학/시리즈/명예관/번역/공식 중 하나를 골라 사이트 맨 위(mainPage.js의
- *   끌올 배너)에 최대 1시간 동안 노출시켜 달라고 신청한다.
+ *   끌올 배너)에 노출시켜 달라고 신청한다.
  * - 한 번에 하나만 활성화되는 진짜 줄서기 큐다 — 서버(worker/
- *   favoritesShareWorker.js, D1 bumps 테이블)가 신청 순서대로 1시간씩 구간을
- *   내주고, 계정(personalCode)당 10분에 한 번만 신청할 수 있다. 이미
- *   활성/대기 중인 항목을 또 신청하면 거부된다.
+ *   favoritesShareWorker.js, D1 bumps 테이블)가 신청 순서대로 차례를 내주고,
+ *   끌올은 다음 신청이 들어오기 전까지 끝나지 않는다. 다음 신청이 들어오면
+ *   현재 끌올의 노출 시간에 따라 교체 시각이 정해지고, 그 시각이 status의
+ *   active.endAt으로 온다(대기자가 없으면 null). 계정(personalCode)당
+ *   10분에 한 번만 신청할 수 있고, 이미 활성/대기 중인 항목을 또 신청하면
+ *   거부된다.
  * - 상태 조회(POST /bump/get)는 20초마다 폴링해서 window에
  *   'chokaguya:bump-change' 커스텀 이벤트로 뿌린다 — 이 버튼들의 "지금
  *   끌올 중" 표시와 mainPage.js의 배너가 같은 폴링 하나를 공유한다
@@ -123,8 +126,12 @@
 
     function paint(status) {
       if (isItemActive(status, mySnapshot.type, mySnapshot.id)) {
-        var remain = minutesCeil(status.active.endAt - Date.now());
-        note.textContent = '지금 사이트 맨 위에 끌올 중이에요! (약 ' + remain + '분 남음)';
+        if (status.active.endAt) {
+          var remain = minutesCeil(status.active.endAt - Date.now());
+          note.textContent = '지금 사이트 맨 위에 끌올 중이에요! 약 ' + remain + '분 뒤에 다음 끌올로 교체돼요.';
+        } else {
+          note.textContent = '지금 사이트 맨 위에 끌올 중이에요! 다음 끌올 신청이 들어오기 전까지 계속 노출돼요.';
+        }
         actionBtn.style.display = 'none';
         return;
       }
@@ -134,7 +141,7 @@
 
       var lines = [];
       if (status.waitingCount) lines.push('현재 대기 중인 끌올 ' + status.waitingCount + '건.');
-      lines.push('신청하면 순서가 되는 대로 최대 1시간 동안 사이트 맨 위에 노출돼요.');
+      lines.push('신청하면 순서가 되는 대로 사이트 맨 위에 노출되고, 다음 끌올 신청이 들어오기 전까지 계속 유지돼요.');
       var cooldown = status.cooldownRemainingMs || 0;
       if (cooldown > 0) {
         lines.push('다음 신청까지 약 ' + minutesCeil(cooldown) + '분 남았어요.');
@@ -187,7 +194,7 @@
           if (isItemActive(status, mySnapshot.type, mySnapshot.id)) {
             note.textContent = '지금 바로 끌올됐어요! 사이트 맨 위에서 확인해보세요.';
           } else {
-            note.textContent = '끌올 신청 완료! 순서가 되면 최대 1시간 동안 노출돼요.';
+            note.textContent = '끌올 신청 완료! 순서가 되면 사이트 맨 위에 노출돼요.';
           }
           actionBtn.style.display = 'none';
         });

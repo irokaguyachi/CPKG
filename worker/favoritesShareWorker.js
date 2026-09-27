@@ -306,17 +306,36 @@ async function handleTagsVote(request, env) {
 
 // ---- 끌올(부스트) 대기열(/bump/*) ----
 // 로그인한 계정이 문학/시리즈/명예관/번역/공식 중 하나를 사이트 최상단에
-// 노출시키는 기능. 한 번에 하나만 활성화되는 진짜 줄서기 큐다 — 신청이
-// 들어오면 큐의 맨 끝(현재 끝나지 않은 행들 중 가장 늦은 종료 시각, 없으면
-// 지금)에 이어붙고 그때부터 정확히 1시간짜리 활성 구간을 얻는다. 활성/대기
-// 여부는 전부 D1(bumps 테이블, start_at/end_at) 조회로 계산하고, "다음
-// 차례를 활성으로 승격"하는 별도 배치 작업은 없다 — 구간이 서로 겹치지
-// 않도록 미리 잘라두기 때문에 필요 없다. 스키마는 worker/bump_schema.sql.
-const BUMP_DURATION_MS = 3600000; // 끌올 1건당 노출 시간(1시간)
+// 노출시키는 기능. 한 번에 하나만 활성화되는 진짜 줄서기 큐다.
+//
+// v0.5부터 끌올은 정해진 노출 시간 없이, 다음 신청이 들어오기 전까지 계속
+// 맨 위에 머문다. 다음 신청이 들어오면 그 순간 큐의 맨 끝 항목이 언제
+// 교체될지(bumpSwitchAt)가 정해지고, 새 항목은 바로 그 시각을 시작
+// 시각으로 받는다. 그래서 "지금 활성"은 start_at <= now 인 행 중 가장 늦게
+// 시작한 행이고, 대기 중은 start_at > now 인 행이다 — 교체 시각이 신청
+// 순간에 확정되므로 다음 차례를 승격하는 별도 배치 작업은 여전히 없다.
+//
+// end_at은 이 판정에 쓰지 않는다. 다음 신청이 교체 시각을 정하면 그 값으로
+// 갱신하고, 아직 정해지지 않은 맨 끝 행에는 시작 + 1시간을 임시로 넣어
+// 둔다(BUMP_OPEN_END_MS). 같은 D1을 쓰는 v0.4 이전 코드(아직 release에 있는
+// 1시간 고정 방식)가 이 행들을 읽어도 구간이 겹치거나 먼 미래로 밀리지
+// 않게 하려는 호환용 값이고, _worker.js의 7일 정리 기준이기도 하다.
+// 스키마는 worker/bump_schema.sql.
+const BUMP_OPEN_END_MS = 3600000; // 교체 시각이 아직 없는 행의 임시 end_at(시작 + 1시간)
 const BUMP_COOLDOWN_MS = 600000;  // 계정(personalCode)당 재신청 대기(10분)
+// 교체 규칙 — 대기자가 생긴 뒤 현재 끌올이 after만큼 노출됐으면 그 시점부터
+// delay 뒤에 교체한다. 여러 규칙 중 가장 이른 교체 시각을 쓴다(bumpSwitchAt).
+// 1시간 규칙은 1시간을 채우기 전에 대기자가 생겨도 1시간을 채운 다음부터
+// 센다 — 막 끌올된 항목도 최소 2시간은 노출된다.
+const BUMP_SWITCH_RULES = [
+  { after: 24 * 3600000, delay: 0 },       // 24시간 이상: 즉시
+  { after: 6 * 3600000,  delay: 600000 },  // 6시간 이상: 10분 뒤
+  { after: 3600000,      delay: 3600000 }  // 1시간 이상: 1시간 뒤
+];
 // 큐 최대 깊이(활성 포함) — 계정당 10분 쿨다운이 있어도 서로 다른 계정이
 // 계속 신청하면 대기 시간이 무한정 늘어날 수 있어, 최악의 경우에도
-// "몇 시간 뒤" 수준으로 막아두는 안전판이다(OWNER_MAX_PUBLISHED와 같은 취지).
+// "하루 안" 수준(대기 11건 × 최소 노출 2시간)으로 막아두는 안전판이다
+// (OWNER_MAX_PUBLISHED와 같은 취지).
 const BUMP_MAX_QUEUE_DEPTH = 12;
 const BUMP_ITEM_TYPES = LIBRARY_ITEM_TYPES; // novel/translation/series/hof/official 그대로 재사용
 
@@ -351,8 +370,26 @@ async function bumpRequesterHash(personalCode) {
   return sha256Hex('bump:' + personalCode);
 }
 
-function bumpPublicRow(row) {
-  return row ? { type: row.item_type, id: row.item_id, startAt: row.start_at, endAt: row.end_at } : null;
+// startAt에 시작한 끌올 뒤로 queuedAt에 대기자가 생겼을 때의 교체 시각.
+// 아직 시작 전인 항목 뒤에 붙는 경우(queuedAt < startAt)는 시작하는 순간
+// 대기자가 있었던 것으로 본다.
+function bumpSwitchAt(startAt, queuedAt) {
+  var since = Math.max(queuedAt, startAt);
+  var best = Infinity;
+  for (var i = 0; i < BUMP_SWITCH_RULES.length; i++) {
+    var rule = BUMP_SWITCH_RULES[i];
+    best = Math.min(best, Math.max(since, startAt + rule.after) + rule.delay);
+  }
+  return best;
+}
+
+// 지금 활성인 행 — 이미 시작한 행 중 가장 늦게 시작한 것. 같은 시각이면
+// 나중에 들어온 행(id)이 이긴다. 두 쿼리가 같은 판정을 쓰도록 SQL 조각으로 둔다.
+const BUMP_ACTIVE_ID_SQL = '(SELECT id FROM bumps WHERE start_at <= ? ORDER BY start_at DESC, id DESC LIMIT 1)';
+
+// endAt은 교체 시각(다음 대기 항목의 시작 시각)이고, 대기자가 없으면 null이다.
+function bumpPublicRow(row, nextStartAt) {
+  return row ? { type: row.item_type, id: row.item_id, startAt: row.start_at, endAt: nextStartAt || null } : null;
 }
 
 // 조회는 공개 정보(지금 활성인 항목/대기열 길이)라 레이트리밋을 걸지 않는다
@@ -372,14 +409,16 @@ async function handleBumpGet(request, env) {
   var now = Date.now();
   try {
     var active = await env.TAGS_DB.prepare(
-      'SELECT item_type, item_id, start_at, end_at FROM bumps WHERE start_at <= ? AND end_at > ? ORDER BY start_at DESC LIMIT 1'
-    ).bind(now, now).first();
-
-    var totalRow = await env.TAGS_DB.prepare(
-      'SELECT COUNT(*) AS n FROM bumps WHERE end_at > ?'
+      'SELECT item_type, item_id, start_at FROM bumps WHERE id = ' + BUMP_ACTIVE_ID_SQL
     ).bind(now).first();
-    var total = (totalRow && totalRow.n) || 0;
-    var waitingCount = Math.max(0, total - (active ? 1 : 0));
+
+    // 대기 중인 행은 전부 지금 이후에 시작하므로, 가장 먼저 시작하는 행의
+    // 시작 시각이 곧 현재 끌올의 교체 시각이다.
+    var waitingRow = await env.TAGS_DB.prepare(
+      'SELECT COUNT(*) AS n, MIN(start_at) AS next_start FROM bumps WHERE start_at > ?'
+    ).bind(now).first();
+    var waitingCount = (waitingRow && waitingRow.n) || 0;
+    var nextStartAt = waitingCount ? waitingRow.next_start : null;
 
     var cooldownRemainingMs = 0;
     if (personalCode) {
@@ -391,7 +430,7 @@ async function handleBumpGet(request, env) {
     }
 
     return jsonResponse(request, {
-      active: bumpPublicRow(active),
+      active: bumpPublicRow(active, nextStartAt),
       waitingCount: waitingCount,
       cooldownRemainingMs: cooldownRemainingMs
     });
@@ -403,10 +442,13 @@ async function handleBumpGet(request, env) {
 }
 
 // 신청: 로그인(personalCode) 필수 + 계정당 10분 쿨다운 + 같은 항목 중복 신청
-// 거부 + 큐 만석 거부. 쿨다운/중복/만석 세 조건과 큐 꼬리 계산을 전부
-// INSERT...SELECT...WHERE 한 문장 안에 넣는다 — handleTagsVote와 같은 이유로,
-// 따로 읽고 나서 쓰면 거의 동시에 들어온 두 요청이 같은 시작 시각을 계산해
-// 활성 구간이 겹치거나, 둘 다 사전 검사를 통과해 대기열 상한을 넘길 수 있다.
+// 거부 + 큐 만석 거부. 교체 규칙이 min/max 계산이라 새 시작 시각은 큐의 맨
+// 끝 행을 먼저 읽어 JS(bumpSwitchAt)에서 구한다. 대신 읽은 뒤 다른 신청이
+// 끼어들지 않았는지(그 사이 새 행이 생기지 않았는지)를 쿨다운/중복/만석과
+// 함께 INSERT...SELECT...WHERE 조건에 넣고, 맨 끝 행의 end_at 갱신까지
+// batch(한 트랜잭션)로 묶는다 — handleTagsVote와 같은 이유로, 따로 읽고
+// 나서 쓰면 거의 동시에 들어온 두 요청이 같은 시작 시각을 받거나 둘 다
+// 대기열 상한을 통과할 수 있다. 끼어들기에 밀린 경우만 처음부터 다시 읽는다.
 async function handleBumpRequest(request, env) {
   var parsed = await readUserBody(request, env, env.RL_BUMP_WRITE);
   if (parsed.error) return parsed.error;
@@ -429,25 +471,47 @@ async function handleBumpRequest(request, env) {
   var cooldownFloor = now - BUMP_COOLDOWN_MS;
 
   try {
-    var inserted = await env.TAGS_DB.prepare(
-      'INSERT INTO bumps (item_type, item_id, requester_hash, requested_at, start_at, end_at) ' +
-      'SELECT ?, ?, ?, ?, ' +
-      '  COALESCE((SELECT MAX(end_at) FROM bumps WHERE end_at > ?), ?), ' +
-      '  COALESCE((SELECT MAX(end_at) FROM bumps WHERE end_at > ?), ?) + ? ' +
-      'WHERE NOT EXISTS (SELECT 1 FROM bumps WHERE requester_hash = ? AND requested_at > ?) ' +
-      '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND end_at > ?) ' +
-      '  AND (SELECT COUNT(*) FROM bumps WHERE end_at > ?) < ?'
-    ).bind(
-      type, id, hash, now,
-      now, now,
-      now, now,
-      BUMP_DURATION_MS,
-      hash, cooldownFloor,
-      type, id, now,
-      now, BUMP_MAX_QUEUE_DEPTH
-    ).run();
+    for (var attempt = 0; attempt < 3; attempt++) {
+      // 큐의 맨 끝 = 가장 늦게 시작하는(또는 시작한) 행. max_id는 이 읽기
+      // 이후에 다른 신청이 끼어들었는지 확인하는 기준값이다.
+      var tail = await env.TAGS_DB.prepare(
+        'SELECT id, start_at, (SELECT MAX(id) FROM bumps) AS max_id FROM bumps ORDER BY start_at DESC, id DESC LIMIT 1'
+      ).first();
+      var maxId = tail ? tail.max_id : 0;
+      var startAt = tail ? Math.max(now, bumpSwitchAt(tail.start_at, now)) : now;
 
-    if (!inserted.meta || inserted.meta.changes === 0) {
+      var statements = [
+        env.TAGS_DB.prepare(
+          'INSERT INTO bumps (item_type, item_id, requester_hash, requested_at, start_at, end_at) ' +
+          'SELECT ?, ?, ?, ?, ?, ? ' +
+          'WHERE NOT EXISTS (SELECT 1 FROM bumps WHERE id > ?) ' +
+          '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE requester_hash = ? AND requested_at > ?) ' +
+          '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND (start_at > ? OR id = ' + BUMP_ACTIVE_ID_SQL + ')) ' +
+          '  AND (SELECT COUNT(*) FROM bumps WHERE start_at > ?) + 1 < ?'
+        ).bind(
+          type, id, hash, now, startAt, startAt + BUMP_OPEN_END_MS,
+          maxId,
+          hash, cooldownFloor,
+          type, id, now, now,
+          now, BUMP_MAX_QUEUE_DEPTH
+        )
+      ];
+      if (tail) {
+        // 방금 넣은 행이 있을 때만 맨 끝 행의 교체 시각을 확정한다. 쿨다운
+        // 때문에 같은 계정이 같은 시각에 두 행을 넣을 수 없어서
+        // requester_hash + requested_at으로 방금 넣은 행을 찾을 수 있다.
+        statements.push(env.TAGS_DB.prepare(
+          'UPDATE bumps SET end_at = ? WHERE id = ? ' +
+          '  AND EXISTS (SELECT 1 FROM bumps WHERE id > ? AND requester_hash = ? AND requested_at = ?)'
+        ).bind(startAt, tail.id, maxId, hash, now));
+      }
+      var results = await env.TAGS_DB.batch(statements);
+      var inserted = results[0];
+
+      if (inserted.meta && inserted.meta.changes > 0) {
+        return jsonResponse(request, { ok: true, startAt: startAt, endAt: null }, 201);
+      }
+
       // 삽입 자체가 실패했으니 아래 조회들은 경합에 안전하다(상태를 바꾸지
       // 않는 읽기일 뿐) — 어떤 조건에 걸렸는지 확인해 구체적인 메시지를 준다.
       var lastReq = await env.TAGS_DB.prepare(
@@ -460,16 +524,18 @@ async function handleBumpRequest(request, env) {
         }, 429);
       }
       var dup = await env.TAGS_DB.prepare(
-        'SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND end_at > ? LIMIT 1'
-      ).bind(type, id, now).first();
+        'SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND (start_at > ? OR id = ' + BUMP_ACTIVE_ID_SQL + ') LIMIT 1'
+      ).bind(type, id, now, now).first();
       if (dup) return jsonResponse(request, { error: '이미 끌올되어 있어요.' }, 409);
-      return jsonResponse(request, { error: '지금 대기열이 가득 찼어요. 잠시 후 다시 시도해주세요.' }, 409);
+      var waiting = await env.TAGS_DB.prepare(
+        'SELECT COUNT(*) AS n FROM bumps WHERE start_at > ?'
+      ).bind(now).first();
+      if (waiting && waiting.n + 1 >= BUMP_MAX_QUEUE_DEPTH) {
+        return jsonResponse(request, { error: '지금 대기열이 가득 찼어요. 잠시 후 다시 시도해주세요.' }, 409);
+      }
+      // 세 조건 모두 아니면 읽은 뒤 다른 신청이 끼어든 것 — 다시 읽는다.
     }
-
-    var row = await env.TAGS_DB.prepare(
-      'SELECT start_at, end_at FROM bumps WHERE id = ?'
-    ).bind(inserted.meta.last_row_id).first();
-    return jsonResponse(request, { ok: true, startAt: row.start_at, endAt: row.end_at }, 201);
+    return jsonResponse(request, { error: '신청이 몰리고 있어요. 잠시 후 다시 시도해주세요.' }, 409);
   } catch (e) {
     return jsonResponse(request, { error: 'bump failed, try again' }, 500);
   }

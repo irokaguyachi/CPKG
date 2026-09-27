@@ -172,14 +172,20 @@ async function recordTagSnapshot(env) {
   }
 }
 
-// 5분마다 끌올(bump) 큐의 오래된 행을 걷어낸다. 활성/대기 판정은 항상
-// end_at > now 로만 걸러 읽으므로 이 정리를 걸러도 기능 자체는 멀쩡하다 —
-// D1 용량이 무한정 쌓이지 않도록 하는 하우스키핑일 뿐이다.
+// 5분마다 끌올(bump) 큐의 오래된 행을 걷어낸다. D1 용량이 무한정 쌓이지
+// 않도록 하는 하우스키핑일 뿐이다. 다만 v0.5부터 끌올은 다음 신청이 올
+// 때까지 끝나지 않으므로, end_at(교체 시각이 없으면 시작 + 1시간인 임시
+// 값)이 오래됐더라도 지금 활성인 행(이미 시작한 행 중 가장 늦게 시작한
+// 것)은 남긴다 — favoritesShareWorker.js의 BUMP_ACTIVE_ID_SQL과 같은 판정.
 async function cleanupBumps(env) {
   try {
     if (!env.TAGS_DB) return;
-    var cutoff = Date.now() - 7 * 86400000; // 7일 지난 기록만 정리
-    await env.TAGS_DB.prepare('DELETE FROM bumps WHERE end_at < ?').bind(cutoff).run();
+    var now = Date.now();
+    var cutoff = now - 7 * 86400000; // 7일 지난 기록만 정리
+    await env.TAGS_DB.prepare(
+      'DELETE FROM bumps WHERE end_at < ? AND id <> ' +
+      'COALESCE((SELECT id FROM bumps WHERE start_at <= ? ORDER BY start_at DESC, id DESC LIMIT 1), -1)'
+    ).bind(cutoff, now).run();
   } catch (e) {
     // 스키마 미적용 등 — 다음 5분 뒤에 다시 시도된다.
   }
