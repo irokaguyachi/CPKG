@@ -19,7 +19,8 @@ window.addEventListener('DOMContentLoaded', function () {
   var chapterParam = new URLSearchParams(location.search).get('chapter') || '1';
   var chapter = AN_CHAPTERS[chapterParam] || AN_CHAPTERS['1'];
 
-  document.title = '오디오 노벨 — ' + chapter.title.slice(chapter.title.length - 2);
+  // HTML <title>("초카공 문학&번역 • 오디오 노벨") 뒤에 몇 장인지 붙인다
+  document.title += ' — ' + chapter.title.slice(chapter.title.length - 2);
   document.getElementById('an-header-title').textContent = chapter.title;
 
   var link = document.getElementById('an-source-link-a');
