@@ -504,9 +504,10 @@
         var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(data.imageUrl) : data.imageUrl;
         image.style.backgroundImage = 'url("' + finalImg + '")';
       }
-    } else if (window.TagConfig && window.TagConfig.applyTagGlow) {
-      // 이미지가 없는 작품은 카드와 같은 태그 색 그라데이션으로 채운다.
-      window.TagConfig.applyTagGlow(image, data.tags);
+    } else if (window.TagConfig && window.TagConfig.applyTextCover) {
+      // 이미지가 없는 작품은 카드 표지와 같은 색·이모지로 채운다. 제목은
+      // 모달이 이 자리 위에 따로 올리므로 표지 글씨는 넣지 않는다.
+      window.TagConfig.applyTextCover(image, { tags: data.tags, text: false });
     }
 
     var imageEffect = document.createElement('div');

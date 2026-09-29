@@ -3,12 +3,11 @@
   background-color: var(--tag-bg, #efefef);
 }
 
-/* 이미지가 없는 작품의 썸네일 자리에 퍼지는 태그 색 그라데이션
-   (series-card.css .is-tag-glow)용 색. rgba() 안에서 투명도만 바꿔 쓰도록
-   "R, G, B" 로 둔다. 알약 배경(--tag-bg)은 너무 옅어서 그라데이션으로
-   번지면 색이 안 보이므로, 다크 모드 테두리 색과 같은 계열의 진한 색을
-   쓴다. 이름은 tagConfig.js 의 applyTagGlow() 가 --tag-glow-<태그> 로
-   찾는다. */
+/* 이미지가 없는 작품의 책 표지(series-card.css .text-cover)에 쓰는 대표
+   태그 색. rgba() 안에서 투명도만 바꿔 쓰도록 "R, G, B" 로 둔다. 알약
+   배경(--tag-bg)은 너무 옅어서 표지 색으로 깔면 색이 안 보이므로, 다크
+   모드 테두리 색과 같은 계열의 진한 색을 쓴다. 이름은 tagConfig.js 의
+   applyTextCover() 가 --tag-glow-<태그> 로 찾는다. */
 :root {
   --tag-glow-default: 140, 150, 175;
   --tag-glow-일상: 70, 185, 175;

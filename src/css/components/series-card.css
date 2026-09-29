@@ -473,29 +473,151 @@
   100% { background-position: 30% 100%, 80% 0%, 20% 60%; }
 }
 
-/* 이미지가 없는 작품 — tagConfig.js 의 applyTagGlow() 가 태그 색 셋을
-   --glow-1~3 에 넣고 붙인다(색은 tags.css 의 --tag-glow-<태그>). 칸의
-   세 모서리에서 태그 색이 은은하게 퍼져 가운데서 섞인다. 로딩 표시와
-   헷갈리지 않고, 목록에 수십 장이 한꺼번에 떠 있어도 계속 다시 그리지
-   않도록 움직이지 않게 둔다. 색 진하기는 --tag-glow-alpha 로 조절하고
-   theme.css 에서 다크 모드용으로 바꾼다. */
+/* 이미지가 없는 작품의 책 표지 — tagConfig.js 의 applyTextCover() 가
+   붙인다. 대표 태그 색(--cover-color, tags.css 의 --tag-glow-<태그>)을
+   옅게 깔고, 왼쪽에 책등 같은 색 띠, 오른쪽 위에 대표 태그 이모지를 크게
+   흐리게(오른쪽 위 북마크·끌올 버튼에 가리지 않게 그 아래로), 아래에
+   제목과 일부 가린 작가 이름을 올린다. 평소에는 움직이지
+   않아 로딩 표시(.is-img-loading)와 헷갈리지 않고, 카드에 마우스를 올린
+   동안에만 그 색의 빛이 천천히 흐른다(transform 만 움직여 다시 그리는
+   부담이 없다). 카드 버튼(북마크·끌올, z-index 2)은 표지 위에 그대로
+   뜬다. 바탕·글씨 색은 theme.css 에서 다크 모드용으로 바꾼다. */
 :root {
-  --tag-glow-base: #f6f7fa;
-  --tag-glow-alpha: 0.42;
+  --cover-base: #f7f7f9;
+  --cover-tint: 0.13;
+  --cover-ink: rgba(0, 0, 0, 0.8);
 }
 
-.is-tag-glow {
-  background-color: var(--tag-glow-base) !important;
-  background-image:
-    radial-gradient(ellipse 75% 95% at 12% 18%, rgba(var(--glow-1), var(--tag-glow-alpha)), transparent 70%),
-    radial-gradient(ellipse 70% 90% at 90% 30%, rgba(var(--glow-2), calc(var(--tag-glow-alpha) * 0.85)), transparent 70%),
-    radial-gradient(ellipse 85% 80% at 50% 110%, rgba(var(--glow-3), calc(var(--tag-glow-alpha) * 0.75)), transparent 72%) !important;
-  background-size: cover !important;
-  background-repeat: no-repeat !important;
+.text-cover {
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(var(--cover-color), var(--cover-tint)), rgba(var(--cover-color), 0.03)),
+    var(--cover-base) !important;
+}
+
+.text-cover-spine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: rgba(var(--cover-color), 0.75);
+}
+
+.text-cover-emoji {
+  position: absolute;
+  top: 34px;
+  right: 10px;
+  font-size: 96px;
+  line-height: 1;
+  opacity: 0.2;
+  transform: rotate(-10deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+.text-cover-glow {
+  position: absolute;
+  inset: -40%;
+  opacity: 0;
+  background: radial-gradient(closest-side, rgba(var(--cover-color), 0.22), transparent);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.series-card:hover .text-cover-glow,
+.post-row:hover .text-cover-glow {
+  opacity: 1;
+  animation: text-cover-drift 5s ease-in-out infinite alternate;
+}
+@keyframes text-cover-drift {
+  from { transform: translate(-18%, -10%); }
+  to { transform: translate(18%, 12%); }
+}
+
+.text-cover-text {
+  position: absolute;
+  right: 22px;
+  bottom: 16px;
+  left: 26px;
+}
+
+.text-cover-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--cover-ink);
+  word-break: keep-all;
+}
+
+.text-cover-author {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cover-ink);
+  opacity: 0.55;
+}
+
+/* 상세 모달의 큰 이미지 자리 — 글씨 없이 색과 이모지만 두므로 이모지를
+   자리 크기에 맞게 키운다. */
+.pds-image .text-cover-emoji {
+  top: 12px;
+  right: 20px;
+  font-size: 200px;
+  opacity: 0.16;
+}
+
+@media (max-width: 768px) {
+  .post-row-image .text-cover-text {
+    right: 12px;
+    bottom: 10px;
+    left: 16px;
+  }
+  .post-row-image .text-cover-title {
+    font-size: 14px;
+  }
+  .post-row-image .text-cover-author {
+    font-size: 11px;
+  }
+  .post-row-image .text-cover-emoji {
+    font-size: 64px;
+  }
+}
+
+@media (max-width: 600px) {
+  .series-card-image .text-cover-title {
+    font-size: 16px;
+  }
+  .series-card-image .text-cover-emoji {
+    font-size: 80px;
+  }
+}
+
+/* 96px 정사각 썸네일에는 글씨가 들어갈 자리가 없어 이모지만 둔다. 위쪽은
+   북마크·끌올 버튼이 차지하므로 아래 가운데에 둔다. */
+@media (max-width: 520px) {
+  .post-row-image .text-cover-text {
+    display: none;
+  }
+  .post-row-image .text-cover-emoji {
+    top: auto;
+    right: auto;
+    bottom: 8px;
+    left: 50%;
+    font-size: 34px;
+    opacity: 0.85;
+    transform: translateX(-50%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .is-img-loading {
+  .is-img-loading,
+  .series-card:hover .text-cover-glow,
+  .post-row:hover .text-cover-glow {
     animation: none;
   }
 }

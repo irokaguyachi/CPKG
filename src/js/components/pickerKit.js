@@ -282,7 +282,9 @@
 
     resultEl.querySelector('.pk-card-title').textContent = s.name;
     var meta = [];
-    if (s.author) meta.push(s.author);
+    // 작가 이름은 친목 방지를 위해 일부만 보여 준다(tagConfig.js maskAuthor).
+    var author = TC && TC.maskAuthor ? TC.maskAuthor(s.author) : '';
+    if (author) meta.push(author);
     var count = global.SeriesUtil ? global.SeriesUtil.countLine(s) : s.charCount;
     if (count) meta.push(count);
     resultEl.querySelector('.pk-card-meta').textContent = meta.join(' · ');

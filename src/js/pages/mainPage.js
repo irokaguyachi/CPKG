@@ -87,7 +87,8 @@
     var image = document.createElement('div');
     image.className = 'post-row-image';
     var imageTarget = image;
-    if (options.blurPhoto) {
+    // 흐림은 사진에만 건다 — 이미지가 없으면 표지 글씨까지 흐려진다.
+    if (options.blurPhoto && item.image) {
       image.classList.add('is-photo-blurred');
       imageTarget = document.createElement('div');
       imageTarget.className = 'post-row-image-bg';
@@ -100,9 +101,13 @@
         var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
         imageTarget.style.backgroundImage = 'url("' + finalImg + '")';
       }
-    } else if (global.TagConfig.applyTagGlow) {
-      // 이미지가 없는 작품은 태그 색 그라데이션으로 자리를 채운다.
-      global.TagConfig.applyTagGlow(imageTarget, (item.tags && item.tags.length) ? item.tags : item.popularUserTags);
+    } else if (global.TagConfig.applyTextCover) {
+      // 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로 자리를 채운다.
+      global.TagConfig.applyTextCover(image, {
+        name: item.name,
+        author: item.author,
+        tags: (item.tags && item.tags.length) ? item.tags : item.popularUserTags
+      });
     }
     var favId = item.posts && item.posts[0] && item.posts[0].id;
     if (favId != null && global.BookmarkPicker) {

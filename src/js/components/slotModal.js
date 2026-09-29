@@ -93,10 +93,13 @@
     title.className = 'sl-cell-title';
     title.textContent = s.name;
     cell.appendChild(title);
-    if (s.author) {
+    // 작가 이름은 친목 방지를 위해 일부만 보여 준다(tagConfig.js maskAuthor).
+    var maskedAuthor = global.TagConfig && global.TagConfig.maskAuthor
+      ? global.TagConfig.maskAuthor(s.author) : '';
+    if (maskedAuthor) {
       var author = document.createElement('p');
       author.className = 'sl-cell-author';
-      author.textContent = s.author;
+      author.textContent = maskedAuthor;
       cell.appendChild(author);
     }
     return cell;

@@ -212,7 +212,7 @@ html.theme-transitioning *:after {
 }
 
 /* 이미지 로딩 표시(series-card.css .is-img-loading)와 이미지 없는 작품의
-   태그 색 그라데이션(.is-tag-glow) — 어두운 카드 바탕에 맞춘 색. 제미나이
+   책 표지(.text-cover) — 어두운 카드 바탕에 맞춘 색. 로딩 표시는 제미나이
    첫 화면처럼 거의 검은 바탕에서 깊은 남색·보라빛이 번지게 한다. */
 [data-theme="dark"] {
   --img-loading-base: #121419;
@@ -220,8 +220,9 @@ html.theme-transitioning *:after {
   --img-loading-2: 120, 70, 215;
   --img-loading-3: 0, 170, 165;
   --img-loading-alpha: 0.5;
-  --tag-glow-base: #1a1c21;
-  --tag-glow-alpha: 0.46;
+  --cover-base: #1c1e24;
+  --cover-tint: 0.16;
+  --cover-ink: rgba(255, 255, 255, 0.88);
 }
 
 [data-theme="dark"] .series-card-image {

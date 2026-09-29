@@ -614,9 +614,13 @@
           var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(s.image) : s.image;
           image.style.backgroundImage = 'url("' + finalImg + '")';
         }
-      } else if (global.TagConfig.applyTagGlow) {
-        // 이미지가 없는 작품은 태그 색 그라데이션으로 자리를 채운다.
-        global.TagConfig.applyTagGlow(image, (s.tags && s.tags.length) ? s.tags : s.popularUserTags);
+      } else if (global.TagConfig.applyTextCover) {
+        // 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로 자리를 채운다.
+        global.TagConfig.applyTextCover(image, {
+          name: s.name,
+          author: s.author,
+          tags: (s.tags && s.tags.length) ? s.tags : s.popularUserTags
+        });
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
@@ -696,9 +700,13 @@
           var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(s.image) : s.image;
           image.style.backgroundImage = 'url("' + finalImg + '")';
         }
-      } else if (global.TagConfig.applyTagGlow) {
-        // 이미지가 없는 작품은 태그 색 그라데이션으로 자리를 채운다.
-        global.TagConfig.applyTagGlow(image, (s.tags && s.tags.length) ? s.tags : s.popularUserTags);
+      } else if (global.TagConfig.applyTextCover) {
+        // 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로 자리를 채운다.
+        global.TagConfig.applyTextCover(image, {
+          name: s.name,
+          author: s.author,
+          tags: (s.tags && s.tags.length) ? s.tags : s.popularUserTags
+        });
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
