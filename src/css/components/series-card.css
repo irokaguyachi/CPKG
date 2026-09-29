@@ -434,3 +434,38 @@
   flex-direction: column;
   gap: 16px;
 }
+
+/* 이미지 로딩 표시 — cdnConfig.js 의 lazyLoadBackground()/
+   revealBackgroundProgressive() 가 이미지를 칠하기 전까지 붙여 둔다.
+   카드 썸네일, 상세 모달, 대회 배너 등 이미지가 들어갈 자리 어디에나
+   붙으므로 특정 카드 클래스에 묶지 않는다. 각 자리의 background-size:
+   cover 와 다크 모드 규칙(theme.css)보다 이겨야 해서 !important 를 쓰고,
+   흐름은 background-position 애니메이션이 맡는다(인라인으로 지정된
+   imagePosition 도 로딩 중에만 덮고, 클래스가 빠지면 원래대로 돌아온다).
+   색은 theme.css 에서 다크 모드용으로 바꾼다. */
+:root {
+  --img-shimmer-base: #dfe1e5;
+  --img-shimmer-highlight: #f1f3f5;
+}
+
+.is-img-loading {
+  background-image: linear-gradient(
+    100deg,
+    var(--img-shimmer-base) 20%,
+    var(--img-shimmer-highlight) 50%,
+    var(--img-shimmer-base) 80%
+  ) !important;
+  background-size: 300% 100% !important;
+  animation: img-shimmer 2.2s ease-in-out infinite;
+}
+
+@keyframes img-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-img-loading {
+    animation: none;
+  }
+}

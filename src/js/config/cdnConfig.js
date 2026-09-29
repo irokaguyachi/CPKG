@@ -93,21 +93,39 @@
   // rootMargin preloads a bit early so images are ready by the time they're
   // actually visible instead of popping in.
   var lazyObserver = null;
+
+  // 이미지가 도착하기 전까지 자리에 잔잔한 그라데이션이 흐르게 하는 표시
+  // (series-card.css 의 .is-img-loading). 배경을 칠하는 순간 떼어낸다.
+  var LOADING_CLASS = 'is-img-loading';
+
+  function paintBackground(target, url) {
+    target.style.backgroundImage = 'url("' + url + '")';
+    target.classList.remove(LOADING_CLASS);
+  }
+
+  // 받아지는 동안에는 로딩 표시를 유지하고, 끝나면(실패해도) 칠한다.
+  function paintWhenLoaded(target, url) {
+    var probe = new Image();
+    probe.onload = probe.onerror = function () { paintBackground(target, url); };
+    probe.src = url;
+  }
+
   function revealBackground(target, rawPath) {
     var thumb = resolveThumbUrl(rawPath);
     var full = resolveAssetUrl(rawPath);
+    target.classList.add(LOADING_CLASS);
     if (thumb === full) {
-      target.style.backgroundImage = 'url("' + full + '")';
+      paintWhenLoaded(target, full);
       return;
     }
     // fall back to the original if a thumbnail was never generated (e.g. a new
     // image was added to the page data without re-running 6_build_thumbnails.py)
     var probe = new Image();
     probe.onload = function () {
-      target.style.backgroundImage = 'url("' + thumb + '")';
+      paintBackground(target, thumb);
     };
     probe.onerror = function () {
-      target.style.backgroundImage = 'url("' + full + '")';
+      paintWhenLoaded(target, full);
     };
     probe.src = thumb;
   }
@@ -126,8 +144,9 @@
     var thumb = resolveThumbUrl(rawPath);
     var mid = resolveMidUrl(rawPath);
     var full = resolveAssetUrl(rawPath);
+    target.classList.add(LOADING_CLASS);
     if (thumb === full) {
-      target.style.backgroundImage = 'url("' + full + '")';
+      paintWhenLoaded(target, full);
       return;
     }
 
@@ -140,7 +159,7 @@
     function paint(rank, url) {
       if (rank < painted) return;
       painted = rank;
-      target.style.backgroundImage = 'url("' + url + '")';
+      paintBackground(target, url);
     }
 
     var thumbProbe = new Image();
@@ -156,7 +175,8 @@
       fullProbe.onload = function () { paint(RANK.full, full); };
       fullProbe.onerror = function () {
         // 원본도 404 — 썸네일 프로브가 이미 채워놨을 수도, 아닐 수도 있는
-        // 상태 그대로 둔다.
+        // 상태 그대로 두되, 로딩 표시가 끝없이 돌지 않게 떼어낸다.
+        target.classList.remove(LOADING_CLASS);
       };
       fullProbe.src = full;
     };
@@ -181,6 +201,9 @@
       }, { rootMargin: '300px 0px' });
     }
     el.dataset.lazyBg = rawPath;
+    // 화면 근처에 오기 전(아직 요청을 보내지 않은 상태)에도 이미지가 올
+    // 자리라는 걸 보여 주도록 로딩 표시를 먼저 붙인다.
+    el.classList.add(LOADING_CLASS);
     lazyObserver.observe(el);
   }
 

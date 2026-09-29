@@ -11,6 +11,7 @@
     ],
     "image": "../offlineSrc/contest/초음문대.png",
     "imagePosition": "center 15%",
+    "heroImagePosition": "center 26%",
     "characterImage": "",
     "titleKeywords": ["초음문대"],
     "posts": [321717, 321531, 321524, 321387, 319148]

@@ -211,6 +211,13 @@ html.theme-transitioning *:after {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
+/* 이미지 로딩 표시(series-card.css .is-img-loading) — 어두운 카드 바탕에
+   맞춘 색. 밝은 쪽을 크게 띄우면 번쩍여 보여서 차이를 작게 둔다. */
+[data-theme="dark"] {
+  --img-shimmer-base: #25272d;
+  --img-shimmer-highlight: #32353d;
+}
+
 [data-theme="dark"] .series-card-image {
   background-color: #25272d;
   background-position: center;
@@ -271,53 +278,69 @@ html.theme-transitioning *:after {
   background: transparent;
 }
 
-/* main-page.css의 .audio-novel-promo 배경과 같은 이유로 다크 배경을
-   여기서 덮어써야 한다. 라이트 모드에서 민트빛 그림자를 준 base 규칙이
-   다크에서도 새 나오지 않도록, .post-row/.daily-gift-reveal 다크와 같은
-   불투명 그림자로 되돌린다. */
-[data-theme="dark"] .audio-novel-promo {
-  background:
-    linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(0, 255, 204, 0)),
-    var(--dark-surface);
-  border-color: rgba(0, 255, 204, 0.4);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+/* 메인 상단 가로 배너(main-page.css .main-hero)는 원래 어두운 바탕이라
+   색은 그대로 두고, 어두운 페이지 위에서 경계만 보이도록 테두리를 준다. */
+[data-theme="dark"] .main-hero {
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
-[data-theme="dark"] .audio-novel-promo:hover {
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
-}
-[data-theme="dark"] .audio-novel-promo-desc {
-  color: var(--dark-text);
-}
-[data-theme="dark"] .audio-novel-promo-close {
-  background: rgba(255, 255, 255, 0.15);
-}
-[data-theme="dark"] .audio-novel-promo-close:hover {
-  background: rgba(255, 255, 255, 0.3);
+[data-theme="dark"] .main-hero:hover {
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-/* 대회 홍보 카드(main-page.css) — 오디오 노벨 홍보 카드와 같은 처리. */
-[data-theme="dark"] .contest-promo {
-  background:
-    linear-gradient(135deg, rgba(0, 197, 193, 0.14), rgba(0, 197, 193, 0)),
-    var(--dark-surface);
-  border-color: rgba(0, 197, 193, 0.4);
+/* 최근 공지사항 위젯(main-page.css .notice-board) */
+[data-theme="dark"] .notice-board-card {
+  background: var(--dark-surface);
+  border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
 }
-[data-theme="dark"] .contest-promo:hover {
+[data-theme="dark"] .notice-board-now:hover {
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6);
 }
-[data-theme="dark"] .contest-promo-thumb {
-  background-color: #25272d;
+[data-theme="dark"] .notice-board-title,
+[data-theme="dark"] .notice-board-now-title {
+  color: var(--dark-emphasis);
 }
-[data-theme="dark"] .contest-promo-eyebrow,
-[data-theme="dark"] .contest-promo-cta {
+[data-theme="dark"] .notice-board-title:hover {
   color: #00C5C1;
 }
-[data-theme="dark"] .contest-promo-name {
+[data-theme="dark"] .notice-board-pager,
+[data-theme="dark"] .notice-board-page-btn + .notice-board-page-btn {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .notice-board-page-btn {
+  color: rgba(255, 255, 255, 0.75);
+}
+[data-theme="dark"] .notice-board-page-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dark-emphasis);
+}
+[data-theme="dark"] .notice-board-rows li + li {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .notice-board-tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+[data-theme="dark"] .notice-board-text {
   color: var(--dark-text);
 }
-[data-theme="dark"] .contest-promo-desc {
-  color: rgba(255, 255, 255, 0.55);
+[data-theme="dark"] .notice-board-row:hover .notice-board-text {
+  color: #00C5C1;
+}
+[data-theme="dark"] .notice-board-date {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .notice-board-now-thumb {
+  background:
+    radial-gradient(circle at 25% 20%, rgba(0, 255, 204, 0.45), transparent 60%),
+    radial-gradient(circle at 85% 90%, rgba(0, 191, 194, 0.35), transparent 55%),
+    #25272d;
+}
+[data-theme="dark"] .notice-board-now-eyebrow {
+  color: #00e6b8;
+}
+[data-theme="dark"] .notice-board-now-desc {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 /* ==========================================================================

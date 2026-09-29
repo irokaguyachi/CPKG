@@ -50,267 +50,438 @@ body.is-top .header-logo {
   margin-bottom: 24px;
 }
 
-/* 오디오 노벨 기능 홍보 카드 — #content(위 .content, flex column)의 첫
-   자식으로 mainPage.js가 붙인다. 부모가 이미 max-width/가운데 정렬을
-   맡고 있어 여기선 그냥 flex 자식으로만 둔다.
-   라이트 모드에서 거의 흰색이던 배경이 흰 페이지에 묻혀 잘 안 보였다 —
-   daily-gift.css의 .daily-gift-reveal과 같은 처리로, 옅은 민트 지면 +
-   또렷한 민트/그린 테두리 + 민트빛 그림자를 줘서 "특별한 칸"으로
-   읽히게 한다(그래서 series-card.css의 .series-card.is-audio-novel과는
-   이제 배경/보더 값이 일부러 다르다 — 그쪽은 흰 여백 위가 아니라
-   그리드 카드 맥락이라 이 대비 문제가 없다). */
-.audio-novel-promo {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  margin-bottom: 24px;
-  background:
-    linear-gradient(135deg, rgba(0, 255, 204, 0.22), rgba(0, 255, 204, 0.05)),
-    #ecfdf7;
-  border: 1px solid rgba(0, 179, 133, 0.6);
-  border-radius: 15px;
-  box-shadow: 0 8px 22px rgba(0, 179, 133, 0.20);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease, opacity 0.2s ease;
-}
-.audio-novel-promo:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 26px rgba(0, 179, 133, 0.30);
-}
-.audio-novel-promo.is-dismissing {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.audio-novel-promo-thumb {
-  position: relative;
-  flex-shrink: 0;
-  width: 220px;
-  min-height: 130px;
-  background-color: #d9d9d9;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-}
-
-.audio-novel-promo-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 16px 48px 16px 24px;
-}
-
-.audio-novel-promo-eyebrow {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--mint-hover);
-}
-
-.audio-novel-promo-desc {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #000000;
-}
-
-.audio-novel-promo-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--mint-hover);
-}
-.audio-novel-promo-cta .content-heading-arrow {
-  transition: transform 0.2s var(--ease-out-site);
-}
-.audio-novel-promo:hover .audio-novel-promo-cta .content-heading-arrow {
-  transform: translateX(4px);
-}
-
-/* 닫기 버튼 — 카드 클릭(상세 모달 열기)과 겹치지 않도록 우상단에 고정.
-   mainPage.js가 closest()로 카드 클릭 핸들러에서 제외한다
-   (.bkm-heart-btn과 같은 방식). */
-.audio-novel-promo-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
-  color: #ffffff;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.audio-novel-promo-close:hover {
-  background: rgba(0, 0, 0, 0.55);
-}
-
-@media (max-width: 768px) {
-  .audio-novel-promo-thumb {
-    width: 140px;
-    min-height: 110px;
-  }
-  .audio-novel-promo-body {
-    padding: 12px 40px 12px 16px;
-  }
-  .audio-novel-promo-desc {
-    font-size: 15px;
-  }
-}
-
-@media (max-width: 520px) {
-  .audio-novel-promo-thumb {
-    width: 96px;
-    min-height: 96px;
-  }
-  .audio-novel-promo-eyebrow {
-    font-size: 12px;
-  }
-  .audio-novel-promo-desc {
-    font-size: 13px;
-  }
-  .audio-novel-promo-cta {
-    font-size: 12px;
-  }
-}
-
-/* 진행 중인 대회 홍보 카드 — mainPage.js 의 placeTopWidgets() 가 끌올 배너
-   아래, 오늘의 문학 위에 둔다. 오디오 노벨 홍보 카드와 같은 가로 배너
-   꼴이고, 색만 대회 탭(사이드바 hover)의 #00C5C1 로 맞춘다. 진행 중인
-   대회가 여럿이면 .contest-promo-list 안에 카드가 세로로 쌓인다. */
-.contest-promo-list {
+/* 메인 상단 가로 배너 — 진행 중인 대회 홍보(.is-contest)와 신규 기능
+   알림(.is-audio, 오디오 노벨)이 같은 꼴을 쓴다. mainPage.js 의
+   createHeroBanner() 가 그린다. 왼쪽엔 D-day·제목·두 줄 설명·버튼,
+   오른쪽엔 그림을 깔고 왼쪽으로 갈수록 배경색에 녹아들게 한다.
+   그림 위에 흰 글씨를 올리는 배너라 라이트 모드에서도 어두운 바탕을
+   그대로 쓴다. 색은 --hero-accent(글씨·버튼)와 --hero-glow(그림 뒤
+   은은한 빛, 투명 PNG 캐릭터 그림일 때 바탕 역할)만 갈라 쓴다. */
+.main-hero-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 24px;
 }
+.content > .main-hero {
+  margin-bottom: 24px;
+}
 
-.contest-promo {
+.main-hero {
+  --hero-accent: #00c5c1;
+  --hero-accent-text: #04201f;
+  --hero-glow: rgba(0, 197, 193, 0.28);
   position: relative;
-  display: flex;
-  align-items: stretch;
-  background:
-    linear-gradient(135deg, rgba(0, 197, 193, 0.2), rgba(0, 197, 193, 0.04)),
-    #eefbfb;
-  border: 1px solid rgba(0, 160, 157, 0.55);
-  border-radius: 15px;
-  box-shadow: 0 8px 22px rgba(0, 160, 157, 0.18);
+  display: block;
+  min-height: 205px;
+  border-radius: 16px;
   overflow: hidden;
-  color: inherit;
+  isolation: isolate;
+  background: #17181c;
+  color: #ffffff;
   text-decoration: none;
-  transition: transform 0.2s var(--ease-out-site), box-shadow 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease, opacity 0.2s ease;
 }
-.contest-promo:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 26px rgba(0, 160, 157, 0.28);
+.main-hero:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.26);
+}
+.main-hero.is-dismissing {
+  opacity: 0;
+  pointer-events: none;
+}
+.main-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(55% 130% at 72% 45%, var(--hero-glow), transparent 70%);
 }
 
-.contest-promo-thumb {
-  flex-shrink: 0;
-  width: 220px;
-  min-height: 130px;
-  background-color: #dff3f2;
+.main-hero.is-audio {
+  --hero-accent: #00e6b8;
+  --hero-accent-text: #032a21;
+  --hero-glow: rgba(0, 255, 204, 0.22);
+}
+
+.main-hero-art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 68%;
+  z-index: 0;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000000 45%);
+  mask-image: linear-gradient(to right, transparent 0%, #000000 45%);
 }
-.contest-promo-thumb.is-empty {
-  background-image: linear-gradient(120deg, #fed571 0%, #fc937c 45%, #c88bff 100%);
+/* 오디오 노벨 배너 그림은 불투명한 작품 썸네일이라 조금 눌러 줘야 글씨와
+   버튼이 묻히지 않는다. */
+.main-hero.is-audio .main-hero-art {
+  filter: brightness(0.72);
 }
 
-.contest-promo-body {
-  flex: 1;
-  min-width: 0;
+.main-hero-body {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding: 16px 24px;
+  align-items: flex-start;
+  max-width: 420px;
+  padding: 26px 28px;
 }
 
-.contest-promo-eyebrow {
+.main-hero-eyebrow {
   margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: #00a09d;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--hero-accent);
 }
 
-.contest-promo-name {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #000000;
+.main-hero-title {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #ffffff;
   word-break: keep-all;
 }
 
-.contest-promo-desc {
-  margin: 0;
-  font-size: 14px;
-  color: rgba(0, 0, 0, 0.55);
+.main-hero-desc {
+  margin: 10px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
+  word-break: keep-all;
 }
 
-.contest-promo-cta {
-  display: inline-flex;
+.main-hero-cta {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  justify-content: center;
+  width: 290px;
+  max-width: 100%;
+  height: 42px;
+  margin-top: 18px;
+  border-radius: 12px;
+  background: var(--hero-accent);
+  color: var(--hero-accent-text);
   font-size: 14px;
-  font-weight: 600;
-  color: #00a09d;
+  font-weight: 700;
+  transition: filter 0.2s ease;
 }
-.contest-promo-cta .content-heading-arrow {
-  transition: transform 0.2s var(--ease-out-site);
-}
-.contest-promo:hover .contest-promo-cta .content-heading-arrow {
-  transform: translateX(4px);
+.main-hero:hover .main-hero-cta {
+  filter: brightness(1.08);
 }
 
-@media (max-width: 768px) {
-  .contest-promo-thumb {
-    width: 140px;
-    min-height: 110px;
+/* 닫기 버튼 — 배너 클릭(상세 모달 열기)과 겹치지 않도록 우상단에 고정.
+   mainPage.js가 closest()로 배너 클릭 핸들러에서 제외한다
+   (.bkm-heart-btn과 같은 방식). */
+.main-hero-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.main-hero-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 520px) {
+  .main-hero {
+    min-height: 190px;
   }
-  .contest-promo-body {
-    padding: 12px 16px;
+  /* 좁은 화면에선 그림을 글씨 뒤로 깔고 더 옅게 둔다. */
+  .main-hero-art {
+    width: 100%;
+    opacity: 0.55;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000000 70%);
+    mask-image: linear-gradient(to right, transparent 0%, #000000 70%);
   }
-  .contest-promo-name {
-    font-size: 15px;
+  .main-hero-body {
+    max-width: none;
+    padding: 20px;
+  }
+  .main-hero-title {
+    font-size: 18px;
+  }
+  .main-hero-desc {
+    font-size: 13px;
+  }
+  .main-hero-cta {
+    width: 100%;
+  }
+}
+
+/* 최근 공지사항 위젯 — 왼쪽은 공지사항·업데이트 로그를 섞은 목록(한 쪽에
+   3개, 화살표로 넘김), 오른쪽은 가장 최근 업데이트 로그 카드. mainPage.js
+   의 placeTopWidgets() 가 대회 배너 아래, 오늘의 문학 위에 둔다. */
+.notice-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.notice-board.is-list-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.notice-board-card {
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.notice-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.notice-board-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #000000;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.notice-board-title:hover {
+  color: #00bfc2;
+}
+
+.notice-board-pager {
+  display: inline-flex;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.notice-board-pager[hidden] {
+  display: none;
+}
+.notice-board-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.notice-board-page-btn + .notice-board-page-btn {
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+}
+.notice-board-page-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  color: #000000;
+}
+.notice-board-page-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* 마지막 쪽에 항목이 3개보다 적어도 카드 높이가 흔들리지 않게 세 줄
+   높이를 미리 잡아 둔다. */
+.notice-board-rows {
+  min-height: 138px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notice-board-rows li + li {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.notice-board-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 46px;
+  padding: 0 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.notice-board-tag {
+  flex-shrink: 0;
+  min-width: 58px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.notice-board-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111111;
+  transition: color 0.2s ease;
+}
+.notice-board-row:hover .notice-board-text {
+  color: #00a8ab;
+}
+
+.notice-board-date {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.notice-board-now {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease;
+}
+.notice-board-now:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.notice-board-now-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.notice-board-now-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 84px;
+  height: 52px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 25% 20%, rgba(0, 255, 204, 0.45), transparent 60%),
+    radial-gradient(circle at 85% 90%, rgba(0, 191, 194, 0.35), transparent 55%),
+    #17181c;
+  color: #00ffcc;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.notice-board-now-heading {
+  min-width: 0;
+}
+
+.notice-board-now-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #00979a;
+}
+
+.notice-board-now-title {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #000000;
+}
+
+.notice-board-now-desc {
+  flex: 1;
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.7);
+}
+.notice-board-now-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-board-now-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  margin-top: 16px;
+  border-radius: 12px;
+  background: #00e6b8;
+  color: #032a21;
+  font-size: 14px;
+  font-weight: 700;
+  transition: filter 0.2s ease;
+}
+.notice-board-now:hover .notice-board-now-cta {
+  filter: brightness(1.06);
+}
+
+@media (max-width: 900px) {
+  .notice-board {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 520px) {
-  .contest-promo-thumb {
-    width: 96px;
-    min-height: 96px;
+  .notice-board-card {
+    padding: 18px;
   }
-  .contest-promo-eyebrow,
-  .contest-promo-desc,
-  .contest-promo-cta {
+  .notice-board-row {
+    gap: 10px;
+  }
+  .notice-board-tag {
+    min-width: 50px;
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .notice-board-text {
+    font-size: 14px;
+  }
+  .notice-board-date {
     font-size: 12px;
-  }
-  .contest-promo-name {
-    font-size: 13px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .contest-promo,
-  .contest-promo:hover {
+  .main-hero,
+  .main-hero:hover,
+  .notice-board-now,
+  .notice-board-now:hover {
     transition: none;
     transform: none;
   }

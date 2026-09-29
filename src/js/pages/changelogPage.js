@@ -444,8 +444,18 @@
   function renderCurrentView() {
     var params = new URLSearchParams(global.location.search);
     var kindKey = params.get('tab') === 'notice' ? 'notice' : 'changelog';
+    var openFile = params.get('open');
     loadIndex(kindKey).then(function (entries) {
       renderList(kindKey, entries);
+      // 메인 화면 공지사항 위젯이 ?open=<파일명> 으로 특정 항목을 바로 연다.
+      // 새로고침이나 뒤로가기로 모달이 다시 뜨지 않도록 열고 나서 파라미터를 지운다.
+      if (!openFile) return;
+      params.delete('open');
+      var qs = params.toString();
+      global.history.replaceState(null, '', global.location.pathname + (qs ? '?' + qs : ''));
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].file === openFile) { openDetail(KINDS[kindKey], entries[i]); break; }
+      }
     });
   }
 

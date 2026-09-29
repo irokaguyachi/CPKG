@@ -168,61 +168,92 @@
     return card;
   }
 
-  // 메인페이지 최상단 오디오 노벨 홍보 카드 — 특정 작품명을 문구에 박아두지
-  // 않고 범용 소개로 두었기 때문에, 실제로 보여줄 작품(썸네일/클릭 시 열릴
-  // 상세 모달)은 Official.json에서 오디오 노벨이 연결된 첫 항목을 찾아 쓴다.
-  // 나중에 다른 작품에도 오디오 노벨이 붙어도 이 함수는 손댈 필요가 없다.
-  function createAudioPromoBanner(item) {
-    var card = document.createElement('article');
-    card.className = 'audio-novel-promo';
+  // 메인 상단 가로 배너(대회 홍보·신규 기능 알림 공용). 왼쪽엔 한 줄
+  // 머리말 / 제목 / 두 줄 설명 / 알약 버튼, 오른쪽엔 이미지를 깔고 왼쪽으로
+  // 갈수록 배경색에 녹아들게 한다. 색은 .is-contest / .is-audio 에서
+  // --hero-accent 로 갈라 쓴다.
+  //   opts.tag     : 'a'(링크 배너) 또는 'article'(클릭 핸들러를 직접 거는 배너)
+  //   opts.image   : 배너 오른쪽 그림. offlineSrc/ 는 오리진에서 바로 읽는다
+  //   opts.descLines: 설명 줄 배열(최대 두 줄)
+  function createHeroBanner(opts) {
+    var card = document.createElement(opts.tag || 'a');
+    card.className = 'main-hero ' + (opts.className || '');
+    if (opts.href) card.href = opts.href;
 
-    var thumb = document.createElement('div');
-    thumb.className = 'audio-novel-promo-thumb';
-    if (item.image) {
-      if (global.lazyLoadBackground) {
-        global.lazyLoadBackground(thumb, item.image);
+    var art = document.createElement('div');
+    art.className = 'main-hero-art';
+    art.setAttribute('aria-hidden', 'true');
+    var src = opts.image;
+    if (src) {
+      if (opts.imagePosition) art.style.backgroundPosition = opts.imagePosition;
+      // offlineSrc/ 는 R2 가 아니라 오리진에서 서빙한다(contestPage.js 와 같은 예외).
+      if (/^(\.\.\/|\/)offlineSrc\//.test(src)) {
+        art.style.backgroundImage = 'url("' + src + '")';
+      } else if (global.lazyLoadBackground) {
+        global.lazyLoadBackground(art, src);
       } else {
-        var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
-        thumb.style.backgroundImage = 'url("' + finalImg + '")';
+        art.style.backgroundImage = 'url("' + (global.resolveThumbUrl ? global.resolveThumbUrl(src) : src) + '")';
       }
     }
-    card.appendChild(thumb);
+    card.appendChild(art);
 
     var body = document.createElement('div');
-    body.className = 'audio-novel-promo-body';
+    body.className = 'main-hero-body';
 
     var eyebrow = document.createElement('p');
-    eyebrow.className = 'audio-novel-promo-eyebrow';
-    eyebrow.textContent = '🎧 오디오 노벨';
+    eyebrow.className = 'main-hero-eyebrow';
+    eyebrow.textContent = opts.eyebrow;
     body.appendChild(eyebrow);
 
-    var desc = document.createElement('p');
-    desc.className = 'audio-novel-promo-desc';
-    desc.textContent = '이제 소설을 눈이 아니라 귀로도 즐길 수 있어요';
-    body.appendChild(desc);
+    var title = document.createElement('p');
+    title.className = 'main-hero-title';
+    title.textContent = opts.title;
+    body.appendChild(title);
+
+    var lines = (opts.descLines || []).filter(Boolean);
+    if (lines.length) {
+      var desc = document.createElement('p');
+      desc.className = 'main-hero-desc';
+      lines.forEach(function (line, i) {
+        if (i) desc.appendChild(document.createElement('br'));
+        desc.appendChild(document.createTextNode(line));
+      });
+      body.appendChild(desc);
+    }
 
     var cta = document.createElement('span');
-    cta.className = 'audio-novel-promo-cta';
-    var ctaLabel = document.createElement('span');
-    ctaLabel.textContent = '더 알아보기';
-    cta.appendChild(ctaLabel);
-    var ctaArrow = document.createElement('span');
-    ctaArrow.className = 'content-heading-arrow';
-    ctaArrow.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    cta.appendChild(ctaArrow);
+    cta.className = 'main-hero-cta';
+    cta.textContent = opts.cta;
     body.appendChild(cta);
 
     card.appendChild(body);
+    return card;
+  }
+
+  // 메인페이지 최상단 오디오 노벨 홍보 배너 — 특정 작품명을 문구에 박아두지
+  // 않고 범용 소개로 두었기 때문에, 실제로 보여줄 작품(배너 그림/클릭 시 열릴
+  // 상세 모달)은 Official.json에서 오디오 노벨이 연결된 첫 항목을 찾아 쓴다.
+  // 나중에 다른 작품에도 오디오 노벨이 붙어도 이 함수는 손댈 필요가 없다.
+  function createAudioPromoBanner(item) {
+    var card = createHeroBanner({
+      tag: 'article',
+      className: 'is-audio',
+      image: item.image,
+      eyebrow: 'NEW',
+      title: '🎧 오디오 노벨',
+      descLines: ['이제 소설을 눈이 아니라', '귀로도 즐길 수 있어요'],
+      cta: '더 알아보기'
+    });
 
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.className = 'audio-novel-promo-close';
+    closeBtn.className = 'main-hero-close';
     closeBtn.setAttribute('aria-label', '닫기');
     closeBtn.textContent = '×';
     card.appendChild(closeBtn);
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.audio-novel-promo-close')) return;
+      if (e.target.closest('.main-hero-close')) return;
       if (!global.PostDetailSeries) return;
 
       PostDetailSeries.open({
@@ -466,16 +497,19 @@
   //   1. audioPromoEl  : 신규 기능 알림(오디오 노벨 홍보 카드). Official.json
   //   2. bumpBannerEl  : 지금 끌올된 문학. bumpButton.js 폴링 상태
   //   3. contestPromoEl: 진행 중인 대회 홍보. Contest.json
-  //   4. dailyGiftEl   : 오늘의 문학 / 번역 선물상자. 상자/애니메이션/카운트
+  //   4. noticeBoardEl : 최근 공지사항 목록 + 최신 업데이트 카드.
+  //                      notice/index.json, changelog/index.json
+  //   5. dailyGiftEl   : 오늘의 문학 / 번역 선물상자. 상자/애니메이션/카운트
   //                      다운/그날의 뽑기는 dailyGift.js가 맡는다.
   // 끌올 배너는 끌올이 없을 때 hidden 으로 자리만 지킨다.
   var audioPromoEl = null;
   var bumpBannerEl = null;
   var contestPromoEl = null;
+  var noticeBoardEl = null;
   var dailyGiftEl = null;
 
   function placeTopWidgets() {
-    var widgets = [audioPromoEl, bumpBannerEl, contestPromoEl, dailyGiftEl]
+    var widgets = [audioPromoEl, bumpBannerEl, contestPromoEl, noticeBoardEl, dailyGiftEl]
       .filter(Boolean);
     // 이미 제자리에 있는 요소는 옮기지 않는다(옮기면 CSS 애니메이션이
     // 처음부터 다시 돈다).
@@ -607,75 +641,244 @@
     var now = new Date();
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var left = Math.round((end - today) / 86400000);
-    return left === 0 ? '오늘 마감' : '마감 D-' + left;
+    return left === 0 ? 'D-DAY' : 'D-' + left;
   }
 
-  // 진행 중인 대회 홍보 카드 — 오디오 노벨 홍보 카드와 같은 가로 배너 꼴.
-  // 누르면 그 대회 상세(/contest?c=<id>)로 간다.
+  // "2026-09-24" → "9월 24일"
+  function formatContestDay(str) {
+    var d = parseContestDate(str);
+    return d ? (d.getMonth() + 1) + '월 ' + d.getDate() + '일' : '';
+  }
+
+  function contestPeriodText(contest) {
+    var start = formatContestDay(contest.startDate);
+    var end = formatContestDay(contest.endDate);
+    if (start && end) return start + ' ~ ' + end;
+    return end ? end + ' 마감' : start + '부터';
+  }
+
+  // 진행 중인 대회 홍보 배너. 누르면 그 대회 상세(/contest?c=<id>)로 간다.
   function createContestPromoCard(contest) {
-    var card = document.createElement('a');
-    card.className = 'contest-promo';
-    card.href = '/contest?c=' + encodeURIComponent(contest.id);
+    return createHeroBanner({
+      className: 'is-contest',
+      href: '/contest?c=' + encodeURIComponent(contest.id),
+      image: contest.image,
+      // 배너는 대회 탭 카드와 비율이 달라 보일 부분도 다르다. 배너 전용
+      // heroImagePosition 이 있으면 그것을, 없으면 imagePosition 을 쓴다.
+      imagePosition: contest.heroImagePosition || contest.imagePosition,
+      eyebrow: contestDdayText(contest),
+      title: contest.name || contest.shortName || contest.id,
+      descLines: [contest.description, contestPeriodText(contest)],
+      cta: '참가작 보러 가기'
+    });
+  }
 
-    var thumb = document.createElement('div');
-    thumb.className = 'contest-promo-thumb';
-    var src = contest.image;
-    if (src) {
-      if (contest.imagePosition) thumb.style.backgroundPosition = contest.imagePosition;
-      // offlineSrc/ 는 R2 가 아니라 오리진에서 서빙한다(contestPage.js 와 같은 예외).
-      if (/^(\.\.\/|\/)offlineSrc\//.test(src)) {
-        thumb.style.backgroundImage = 'url("' + src + '")';
-      } else if (global.lazyLoadBackground) {
-        global.lazyLoadBackground(thumb, src);
-      } else {
-        thumb.style.backgroundImage = 'url("' + (global.resolveAssetUrl ? global.resolveAssetUrl(src) : src) + '")';
-      }
-    } else {
-      thumb.classList.add('is-empty');
+  // ---- 최근 공지사항 위젯 ----
+  // 왼쪽 카드는 공지사항과 업데이트 로그를 날짜순으로 섞어 한 쪽에 3개씩
+  // 보여 주고, 오른쪽 카드는 가장 최근 업데이트 로그 하나를 크게 보여 준다.
+  // 항목을 누르면 /notice 의 해당 탭에서 그 글의 상세 모달이 바로 열린다
+  // (changelogPage.js 의 ?open=<파일명>).
+  var NOTICE_PAGE_SIZE = 3;
+
+  // "2026-09-27" → "2026.09.27"
+  function formatNoticeDate(str) {
+    return String(str || '').replace(/-/g, '.');
+  }
+
+  function noticeHref(tab, file) {
+    var q = tab === 'notice' ? '?tab=notice&open=' : '?open=';
+    return '/notice' + q + encodeURIComponent(file);
+  }
+
+  function createPagerButton(dir) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'notice-board-page-btn';
+    btn.setAttribute('aria-label', dir < 0 ? '이전 공지' : '다음 공지');
+    btn.innerHTML = dir < 0
+      ? '<svg width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="M6.5 1L1.5 6L6.5 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      : '<svg width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="M1.5 1L6.5 6L1.5 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return btn;
+  }
+
+  function createNoticeListCard(entries) {
+    var card = document.createElement('div');
+    card.className = 'notice-board-card notice-board-list';
+
+    var head = document.createElement('div');
+    head.className = 'notice-board-head';
+    var title = document.createElement('a');
+    title.className = 'notice-board-title';
+    title.href = '/notice?tab=notice';
+    title.textContent = '공지사항';
+    head.appendChild(title);
+
+    var pager = document.createElement('div');
+    pager.className = 'notice-board-pager';
+    var prevBtn = createPagerButton(-1);
+    var nextBtn = createPagerButton(1);
+    pager.appendChild(prevBtn);
+    pager.appendChild(nextBtn);
+    head.appendChild(pager);
+    card.appendChild(head);
+
+    var list = document.createElement('ul');
+    list.className = 'notice-board-rows';
+    card.appendChild(list);
+
+    var pageCount = Math.max(1, Math.ceil(entries.length / NOTICE_PAGE_SIZE));
+    var page = 0;
+    pager.hidden = pageCount < 2;
+
+    function render() {
+      list.innerHTML = '';
+      entries.slice(page * NOTICE_PAGE_SIZE, (page + 1) * NOTICE_PAGE_SIZE).forEach(function (entry) {
+        var li = document.createElement('li');
+        var row = document.createElement('a');
+        row.className = 'notice-board-row';
+        row.href = entry.href;
+
+        var tag = document.createElement('span');
+        tag.className = 'notice-board-tag';
+        tag.textContent = entry.tag;
+        row.appendChild(tag);
+
+        var text = document.createElement('span');
+        text.className = 'notice-board-text';
+        text.textContent = entry.title;
+        row.appendChild(text);
+
+        var date = document.createElement('span');
+        date.className = 'notice-board-date';
+        date.textContent = formatNoticeDate(entry.date);
+        row.appendChild(date);
+
+        li.appendChild(row);
+        list.appendChild(li);
+      });
+      prevBtn.disabled = page === 0;
+      nextBtn.disabled = page >= pageCount - 1;
     }
-    card.appendChild(thumb);
 
-    var body = document.createElement('div');
-    body.className = 'contest-promo-body';
+    prevBtn.addEventListener('click', function () {
+      if (page > 0) { page--; render(); }
+    });
+    nextBtn.addEventListener('click', function () {
+      if (page < pageCount - 1) { page++; render(); }
+    });
 
-    var eyebrow = document.createElement('p');
-    eyebrow.className = 'contest-promo-eyebrow';
-    eyebrow.textContent = '🏆 진행 중인 대회 · ' + contestDdayText(contest);
-    body.appendChild(eyebrow);
-
-    var name = document.createElement('p');
-    name.className = 'contest-promo-name';
-    name.textContent = contest.name || contest.shortName || contest.id;
-    body.appendChild(name);
-
-    if (contest.description) {
-      var desc = document.createElement('p');
-      desc.className = 'contest-promo-desc';
-      desc.textContent = contest.description;
-      body.appendChild(desc);
-    }
-
-    var cta = document.createElement('span');
-    cta.className = 'contest-promo-cta';
-    var ctaLabel = document.createElement('span');
-    ctaLabel.textContent = '참가작 보러 가기';
-    cta.appendChild(ctaLabel);
-    var ctaArrow = document.createElement('span');
-    ctaArrow.className = 'content-heading-arrow';
-    ctaArrow.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    cta.appendChild(ctaArrow);
-    body.appendChild(cta);
-
-    card.appendChild(body);
+    render();
     return card;
   }
+
+  // 오른쪽 "NOW" 카드 — 가장 최근 업데이트 로그. 두 번째 설명 줄은 그
+  // 로그 .md 의 "## " 소제목을 모아 채운다(본문 파일을 받아야 알 수 있어서
+  // 받기 전에는 한 줄로 두었다가 채운다).
+  function createLatestUpdateCard(entry) {
+    var card = document.createElement('a');
+    card.className = 'notice-board-card notice-board-now';
+    card.href = noticeHref('changelog', entry.file);
+
+    var top = document.createElement('div');
+    top.className = 'notice-board-now-top';
+
+    var thumb = document.createElement('div');
+    thumb.className = 'notice-board-now-thumb';
+    thumb.setAttribute('aria-hidden', 'true');
+    thumb.textContent = entry.version;
+    top.appendChild(thumb);
+
+    var heading = document.createElement('div');
+    heading.className = 'notice-board-now-heading';
+    var eyebrow = document.createElement('p');
+    eyebrow.className = 'notice-board-now-eyebrow';
+    eyebrow.textContent = 'NOW';
+    heading.appendChild(eyebrow);
+    var title = document.createElement('p');
+    title.className = 'notice-board-now-title';
+    title.textContent = entry.version + ' 업데이트';
+    heading.appendChild(title);
+    top.appendChild(heading);
+    card.appendChild(top);
+
+    // 줄마다 따로 말줄임하도록 줄 단위 span 으로 쌓는다.
+    var desc = document.createElement('p');
+    desc.className = 'notice-board-now-desc';
+    function addDescLine(text) {
+      var line = document.createElement('span');
+      line.className = 'notice-board-now-line';
+      line.textContent = text;
+      desc.appendChild(line);
+    }
+    addDescLine(entry.title);
+    card.appendChild(desc);
+
+    var cta = document.createElement('span');
+    cta.className = 'notice-board-now-cta';
+    cta.textContent = '업데이트 안내 보기';
+    card.appendChild(cta);
+
+    fetch(DATA('../data/changelog/' + entry.file))
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (md) {
+        var sections = [];
+        String(md).split('\n').forEach(function (line) {
+          var m = /^##\s+(.+?)\s*$/.exec(line);
+          if (m) sections.push(m[1]);
+        });
+        if (!sections.length) return;
+        var summary = sections.slice(0, 3).join(' · ');
+        summary += sections.length > 3 ? ' 외 ' + (sections.length - 3) + '가지' : ' 포함';
+        addDescLine(summary);
+      })
+      .catch(function () {});
+
+    return card;
+  }
+
+  function loadIndexList(dir) {
+    return fetch(DATA('../data/' + dir + '/index.json'))
+      .then(function (r) { return r.json(); })
+      .then(function (entries) { return Array.isArray(entries) ? entries : []; })
+      .catch(function () { return []; });
+  }
+
+  Promise.all([loadIndexList('notice'), loadIndexList('changelog')])
+    .then(function (results) {
+      var notices = results[0];
+      var changelogs = results[1];
+      var merged = notices.map(function (e) {
+        return { tag: e.category || '공지', title: e.title, date: e.date, href: noticeHref('notice', e.file) };
+      }).concat(changelogs.map(function (e) {
+        return { tag: '업데이트', title: e.version + ' ' + e.title, date: e.date, href: noticeHref('changelog', e.file) };
+      }));
+      if (!merged.length) return;
+      // 같은 날짜면 원래 index.json 순서(최신 먼저)를 유지한다.
+      merged.forEach(function (e, i) { e.order = i; });
+      merged.sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+        return a.order - b.order;
+      });
+
+      var board = document.createElement('section');
+      board.className = 'notice-board';
+      board.setAttribute('aria-label', '최근 공지사항');
+      board.appendChild(createNoticeListCard(merged));
+      if (changelogs.length) {
+        board.appendChild(createLatestUpdateCard(changelogs[0]));
+      } else {
+        board.classList.add('is-list-only');
+      }
+      noticeBoardEl = board;
+      placeTopWidgets();
+    });
 
   fetchJson('../data/pageData/Contest.json')
     .then(function (contests) {
       var live = ongoingContests(Array.isArray(contests) ? contests : []);
       if (!live.length) return; // 진행 중인 대회가 없으면 자리도 만들지 않는다
       var wrap = document.createElement('div');
-      wrap.className = 'contest-promo-list';
+      wrap.className = 'main-hero-list';
       live.forEach(function (c) { wrap.appendChild(createContestPromoCard(c)); });
       contestPromoEl = wrap;
       placeTopWidgets();
