@@ -8,25 +8,7 @@
  *   보고 화수, 아니면 글자 수) 을 씁니다.
  */
 (function (global) {
-  var TOP_THRESHOLD = 10;
-
-  // hero-state header: collapses out of the oversized landing layout as soon
-  // as the visitor scrolls at all
-  (function () {
-    function onScroll() {
-      if (global.scrollY > TOP_THRESHOLD) {
-        document.body.classList.remove('is-top');
-        global.removeEventListener('scroll', onScroll);
-      }
-    }
-    if (global.scrollY <= TOP_THRESHOLD) {
-      document.body.classList.add('is-top');
-      global.addEventListener('scroll', onScroll, { passive: true });
-    } else {
-      document.body.classList.remove('is-top');
-    }
-  })();
-
+  var t = global.I18n.t;
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   // 태그 색상/이모지/정렬 — tagConfig.js(mainPage.js와 공유하는 단일 소스)로 옮김
@@ -79,7 +61,7 @@
     icon.textContent = '🎧';
     var label = document.createElement('span');
     label.className = 'audio-novel-ribbon-label';
-    label.textContent = '오디오노벨';
+    label.textContent = t('오디오노벨');
     ribbon.appendChild(icon);
     ribbon.appendChild(label);
     return ribbon;
@@ -362,7 +344,7 @@
     function paintPoolToggle() {
       if (!poolToggleBtn) return;
       // 지금 보고 있는 모드를 그대로 표시한다(누르면 바뀔 모드가 아니라).
-      poolToggleBtn.textContent = activePool === 'official' ? '공식 태그' : '유저 태그';
+      poolToggleBtn.textContent = activePool === 'official' ? t('공식 태그') : t('유저 태그');
     }
 
     function renderFilterOptions() {
@@ -376,8 +358,8 @@
         var empty = document.createElement('div');
         empty.className = 'sfp-empty';
         empty.textContent = activePool === 'user'
-          ? '아직 투표된 유저 태그가 없어요'
-          : '일치하는 옵션이 없어요';
+          ? t('아직 투표된 유저 태그가 없어요')
+          : t('일치하는 옵션이 없어요');
         optionsEl.appendChild(empty);
         return;
       }
@@ -470,8 +452,8 @@
         var toList = viewMode === 'grid';
         viewToggleBtn.innerHTML = toList ? LIST_ICON : GRID_ICON;
         viewToggleBtn.setAttribute('aria-pressed', viewMode === 'list' ? 'true' : 'false');
-        viewToggleBtn.setAttribute('aria-label', toList ? '리스트로 보기' : '그리드로 보기');
-        viewToggleBtn.title = toList ? '리스트로 보기' : '그리드로 보기';
+        viewToggleBtn.setAttribute('aria-label', toList ? t('리스트로 보기') : t('그리드로 보기'));
+        viewToggleBtn.title = toList ? t('리스트로 보기') : t('그리드로 보기');
       }
       global.localStorage.setItem(VIEW_MODE_KEY, viewMode);
 
@@ -632,6 +614,9 @@
           var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(s.image) : s.image;
           image.style.backgroundImage = 'url("' + finalImg + '")';
         }
+      } else if (global.TagConfig.applyTagGlow) {
+        // 이미지가 없는 작품은 태그 색 그라데이션으로 자리를 채운다.
+        global.TagConfig.applyTagGlow(image, (s.tags && s.tags.length) ? s.tags : s.popularUserTags);
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
@@ -685,7 +670,7 @@
               dcId: post.id,
               link: post.link,
               reader: post.reader,
-              episodeLabel: post.episode + ' 화'
+              episodeLabel: t('{n} 화', { n: post.episode })
             };
           })
         });
@@ -711,6 +696,9 @@
           var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(s.image) : s.image;
           image.style.backgroundImage = 'url("' + finalImg + '")';
         }
+      } else if (global.TagConfig.applyTagGlow) {
+        // 이미지가 없는 작품은 태그 색 그라데이션으로 자리를 채운다.
+        global.TagConfig.applyTagGlow(image, (s.tags && s.tags.length) ? s.tags : s.popularUserTags);
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
       if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
@@ -766,7 +754,7 @@
               dcId: post.id,
               link: post.link,
               reader: post.reader,
-              episodeLabel: post.episode + ' 화'
+              episodeLabel: t('{n} 화', { n: post.episode })
             };
           })
         });

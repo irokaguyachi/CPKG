@@ -3,6 +3,31 @@
   background-color: var(--tag-bg, #efefef);
 }
 
+/* 이미지가 없는 작품의 썸네일 자리에 퍼지는 태그 색 그라데이션
+   (series-card.css .is-tag-glow)용 색. rgba() 안에서 투명도만 바꿔 쓰도록
+   "R, G, B" 로 둔다. 알약 배경(--tag-bg)은 너무 옅어서 그라데이션으로
+   번지면 색이 안 보이므로, 다크 모드 테두리 색과 같은 계열의 진한 색을
+   쓴다. 이름은 tagConfig.js 의 applyTagGlow() 가 --tag-glow-<태그> 로
+   찾는다. */
+:root {
+  --tag-glow-default: 140, 150, 175;
+  --tag-glow-일상: 70, 185, 175;
+  --tag-glow-소설: 215, 150, 105;
+  --tag-glow-장편: 105, 195, 90;
+  --tag-glow-로맨스: 235, 105, 145;
+  --tag-glow-슬픔: 105, 140, 225;
+  --tag-glow-코미디: 225, 185, 50;
+  --tag-glow-피폐: 215, 85, 95;
+  --tag-glow-후방주의: 235, 80, 80;
+  --tag-glow-짧문: 215, 100, 200;
+  --tag-glow-단편: 160, 115, 225;
+  --tag-glow-감동: 225, 160, 80;
+  --tag-glow-명예관: 235, 180, 60;
+  --tag-glow-대회: 90, 155, 235;
+  --tag-glow-로카: 240, 130, 150;
+  --tag-glow-글카스: 145, 150, 160;
+}
+
 [data-tag="일상"] { --tag-bg: #e2f4f2; }
 [data-tag="소설"] { --tag-bg: #f3ebe4; }
 [data-tag="장편"] { --tag-bg: #e6f4df; }

@@ -88,7 +88,7 @@ test('daily gift includes one daily literature and one daily translation', () =>
   assert.match(main, /renderCard:\s*function \(item, favType\)/);
   assert.match(dailyGift, /오늘의 랜덤 문학 \/ 번역!/);
   assert.match(dailyGift, /Promise\.all\(\[loadItems\(opts\.dataUrl\), loadItems\(opts\.secondaryDataUrl\)\]\)/);
-  assert.match(dailyGift, /opts\.secondaryLabel \|\| '오늘의 번역'/);
+  assert.match(dailyGift, /opts\.secondaryLabel \|\| t\('오늘의 번역'\)/);
 });
 
 test('translation page exposes the requested warning before its toolbar', () => {

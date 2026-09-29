@@ -31,6 +31,7 @@
  *   publishedCode만의 시각을 따로 둬서 이 필드끼리만 최신순으로 비교한다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var STORAGE_KEY = 'chokaguya_bookmarks';
   // worker/favoritesShareWorker.js의 USER_DATA_VERSION과 맞물린 값 —
   // 한쪽만 올리면 동기화가 조용히 어긋나므로 반드시 같이 올릴 것
@@ -203,7 +204,7 @@
 
   function createBookmark(name) {
     var store = readAll();
-    var clean = (name || '').trim() || '새 북마크';
+    var clean = (name || '').trim() || t('새 북마크');
     var now = Date.now();
     var bookmark = { id: genId(), name: clean, createdAt: now, updatedAt: now, items: [], removedItems: [], publishedCode: null, publishedCodeUpdatedAt: 0 };
     store.bookmarks.push(bookmark);

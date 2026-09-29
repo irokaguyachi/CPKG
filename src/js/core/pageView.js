@@ -17,6 +17,7 @@
  */
 (function () {
   'use strict';
+  var t = window.I18n.t;
 
   var ENDPOINT = '/api/pageview';
   var SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -62,7 +63,7 @@
     box.className = 'human-check';
     var caption = document.createElement('p');
     caption.className = 'human-check-caption';
-    caption.textContent = '사람인지 잠깐 확인할게요';
+    caption.textContent = t('사람인지 잠깐 확인할게요');
     var slot = document.createElement('div');
     box.appendChild(caption);
     box.appendChild(slot);

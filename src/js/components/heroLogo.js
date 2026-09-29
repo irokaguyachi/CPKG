@@ -1,4 +1,6 @@
 (function () {
+  // 메인 페이지(mainPage.html)에서만 불러온다. 다른 페이지는 로고가 처음부터
+  // 헤더 제자리에 고정돼 있도록 이 스크립트와 [data-hero-space] 를 두지 않는다.
   var TOP_THRESHOLD = 10;
 
   // .header-logo 는 position:fixed 라 히어로 상태(body.is-top)로 확대돼도

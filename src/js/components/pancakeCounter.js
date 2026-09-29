@@ -11,6 +11,7 @@
  */
 (function () {
   'use strict';
+  var t = window.I18n.t;
   var GET_URL = '/pancake';
   var ADD_URL = '/pancake/add';
   var IDLE_MS = 5000;
@@ -71,7 +72,7 @@
     var idleTimer = null;
 
     function render() {
-      countEl.textContent = '지금까지 ' + formatCount(baseCount + pending) + '개';
+      countEl.textContent = t('지금까지 {n}개', { n: formatCount(baseCount + pending) });
     }
 
     // 다른 사람이 준 팬케이크도 화면에 반영되도록, 서버 값을 주기적으로

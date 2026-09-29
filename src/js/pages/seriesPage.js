@@ -3,6 +3,6 @@
 window.GridPage.create({
   dataUrl: '../data/pageData/Series.json',
   favType: 'series',
-  countText: function (n) { return n + '개의 시리즈가 있습니다!'; },
-  emptyText: '조건에 맞는 시리즈가 없어요.'
+  countText: function (n) { return I18n.t('{n}개의 시리즈가 있습니다!', { n: n }); },
+  emptyText: I18n.t('조건에 맞는 시리즈가 없어요.')
 });

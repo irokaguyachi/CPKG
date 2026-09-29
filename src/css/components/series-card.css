@@ -438,30 +438,60 @@
 /* 이미지 로딩 표시 — cdnConfig.js 의 lazyLoadBackground()/
    revealBackgroundProgressive() 가 이미지를 칠하기 전까지 붙여 둔다.
    카드 썸네일, 상세 모달, 대회 배너 등 이미지가 들어갈 자리 어디에나
-   붙으므로 특정 카드 클래스에 묶지 않는다. 각 자리의 background-size:
-   cover 와 다크 모드 규칙(theme.css)보다 이겨야 해서 !important 를 쓰고,
-   흐름은 background-position 애니메이션이 맡는다(인라인으로 지정된
-   imagePosition 도 로딩 중에만 덮고, 클래스가 빠지면 원래대로 돌아온다).
-   색은 theme.css 에서 다크 모드용으로 바꾼다. */
+   붙으므로 특정 카드 클래스에 묶지 않는다.
+   제미나이 첫 화면처럼 파랑·보라·민트빛 덩어리 셋이 어두운(라이트
+   모드에선 밝은) 바탕 뒤에서 서로 다른 경로로 천천히 떠다닌다. 덩어리마다
+   크기를 칸보다 크게 잡고 background-position 만 움직여서, 칸 안에서는
+   빛이 번졌다가 옮겨 가는 것처럼 보인다.
+   각 자리의 background-size: cover 와 다크 모드 규칙(theme.css)보다
+   이겨야 해서 !important 를 쓴다. background-position 은 애니메이션이
+   맡는다(인라인 imagePosition 은 로딩 중에만 덮이고, 클래스가 빠지면
+   원래대로 돌아온다). 색은 theme.css 에서 다크 모드용으로 바꾼다. */
 :root {
-  --img-shimmer-base: #dfe1e5;
-  --img-shimmer-highlight: #f1f3f5;
+  --img-loading-base: #eef1f8;
+  --img-loading-1: 90, 130, 255;
+  --img-loading-2: 165, 120, 255;
+  --img-loading-3: 0, 200, 190;
+  --img-loading-alpha: 0.38;
 }
 
 .is-img-loading {
-  background-image: linear-gradient(
-    100deg,
-    var(--img-shimmer-base) 20%,
-    var(--img-shimmer-highlight) 50%,
-    var(--img-shimmer-base) 80%
-  ) !important;
-  background-size: 300% 100% !important;
-  animation: img-shimmer 2.2s ease-in-out infinite;
+  background-color: var(--img-loading-base) !important;
+  background-image:
+    radial-gradient(closest-side, rgba(var(--img-loading-1), var(--img-loading-alpha)), transparent),
+    radial-gradient(closest-side, rgba(var(--img-loading-2), calc(var(--img-loading-alpha) * 0.8)), transparent),
+    radial-gradient(closest-side, rgba(var(--img-loading-3), calc(var(--img-loading-alpha) * 0.55)), transparent) !important;
+  background-size: 120% 190%, 100% 170%, 140% 210% !important;
+  background-repeat: no-repeat !important;
+  animation: img-loading-drift 7s ease-in-out infinite alternate;
 }
 
-@keyframes img-shimmer {
-  from { background-position: 100% 0; }
-  to { background-position: 0% 0; }
+@keyframes img-loading-drift {
+  0%   { background-position: 0% 30%, 100% 100%, 60% 0%; }
+  35%  { background-position: 70% 0%, 20% 70%, 0% 90%; }
+  70%  { background-position: 100% 80%, 0% 10%, 90% 40%; }
+  100% { background-position: 30% 100%, 80% 0%, 20% 60%; }
+}
+
+/* 이미지가 없는 작품 — tagConfig.js 의 applyTagGlow() 가 태그 색 셋을
+   --glow-1~3 에 넣고 붙인다(색은 tags.css 의 --tag-glow-<태그>). 칸의
+   세 모서리에서 태그 색이 은은하게 퍼져 가운데서 섞인다. 로딩 표시와
+   헷갈리지 않고, 목록에 수십 장이 한꺼번에 떠 있어도 계속 다시 그리지
+   않도록 움직이지 않게 둔다. 색 진하기는 --tag-glow-alpha 로 조절하고
+   theme.css 에서 다크 모드용으로 바꾼다. */
+:root {
+  --tag-glow-base: #f6f7fa;
+  --tag-glow-alpha: 0.42;
+}
+
+.is-tag-glow {
+  background-color: var(--tag-glow-base) !important;
+  background-image:
+    radial-gradient(ellipse 75% 95% at 12% 18%, rgba(var(--glow-1), var(--tag-glow-alpha)), transparent 70%),
+    radial-gradient(ellipse 70% 90% at 90% 30%, rgba(var(--glow-2), calc(var(--tag-glow-alpha) * 0.85)), transparent 70%),
+    radial-gradient(ellipse 85% 80% at 50% 110%, rgba(var(--glow-3), calc(var(--tag-glow-alpha) * 0.75)), transparent 72%) !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

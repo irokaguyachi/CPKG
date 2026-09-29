@@ -6,6 +6,8 @@
  * - Series / HOF / Official / Novel / 즐겨찾기 페이지가 모두 이 규칙을 씁니다.
  */
 (function (global) {
+  var t = global.I18n.t;
+
   function postCount(s) {
     return (s && s.posts ? s.posts.length : 0);
   }
@@ -16,13 +18,22 @@
 
   // 카드 한 줄 요약: 시리즈면 화수, 단독 글이면 크롤링된 글자 수
   function countLine(s) {
-    if (isSeries(s)) return postCount(s) + '화';
-    return (s && s.charCount) || (postCount(s) + '화');
+    if (isSeries(s)) return t('{n}화', { n: postCount(s) });
+    return charLabel(s && s.charCount) || t('{n}화', { n: postCount(s) });
+  }
+
+  // 데이터의 charCount 는 "2,042자" 처럼 한국어 단위가 붙은 문자열이다 —
+  // 숫자만 떼어 지금 언어의 단위로 다시 붙인다.
+  function charLabel(text) {
+    if (!text) return text;
+    var m = /^([\d,]+)자$/.exec(text);
+    return m ? t('{n}자', { n: m[1] }) : text;
   }
 
   global.SeriesUtil = {
     postCount: postCount,
     isSeries: isSeries,
-    countLine: countLine
+    countLine: countLine,
+    charLabel: charLabel
   };
 })(window);

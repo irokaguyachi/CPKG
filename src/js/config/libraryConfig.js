@@ -11,14 +11,15 @@
  *    반드시 다른 쪽도 같이 확인할 것.
  */
 (function (global) {
+  var t = global.I18n.t;
   var MAX_NAME_LENGTH = 20; // worker: LIBRARY_MAX_NAME
 
   var TYPE_LABELS = {
-    novel: '문학',
-    translation: '번역',
-    series: '시리즈',
-    hof: '명예관',
-    official: '공식'
+    novel: t('문학'),
+    translation: t('번역'),
+    series: t('시리즈'),
+    hof: t('명예관'),
+    official: t('공식')
   }; // 키 목록이 worker: LIBRARY_ITEM_TYPES 와 일치해야 함
 
   global.LibraryConfig = {

@@ -1,5 +1,6 @@
 (function (global) {
   'use strict';
+  var t = global.I18n.t;
 
   // 오늘의 랜덤 문학 / 번역 — 메인 페이지 최상단의 선물상자.
   //
@@ -101,18 +102,18 @@
     wrap.className = 'daily-gift';
     wrap.setAttribute('data-state', 'closed');
     wrap.innerHTML =
-      '<button type="button" class="daily-gift-box" aria-label="오늘의 랜덤 문학 / 번역 열기">' +
+      '<button type="button" class="daily-gift-box" aria-label="' + t('오늘의 랜덤 문학 / 번역 열기') + '">' +
         '<span class="daily-gift-lid" aria-hidden="true"></span>' +
         '<span class="daily-gift-ribbon-v" aria-hidden="true"></span>' +
         '<span class="daily-gift-ribbon-h" aria-hidden="true"></span>' +
         '<span class="daily-gift-bow" aria-hidden="true">🎀</span>' +
-        '<span class="daily-gift-box-label">오늘의 랜덤 문학 / 번역</span>' +
-        '<span class="daily-gift-box-cta">탭하여 오픈</span>' +
+        '<span class="daily-gift-box-label">' + t('오늘의 랜덤 문학 / 번역') + '</span>' +
+        '<span class="daily-gift-box-cta">' + t('탭하여 오픈') + '</span>' +
       '</button>' +
       '<div class="daily-gift-reveal" hidden>' +
         '<div class="daily-gift-header">' +
-          '<p class="daily-gift-title">🎁 오늘의 랜덤 문학 / 번역!</p>' +
-          '<p class="daily-gift-countdown">다음 문학 / 번역까지<time class="daily-gift-countdown-time">00:00:00</time></p>' +
+          '<p class="daily-gift-title">' + t('🎁 오늘의 랜덤 문학 / 번역!') + '</p>' +
+          '<p class="daily-gift-countdown">' + t('다음 문학 / 번역까지') + '<time class="daily-gift-countdown-time">00:00:00</time></p>' +
         '</div>' +
         '<div class="daily-gift-card-slot"></div>' +
       '</div>';
@@ -227,8 +228,8 @@
         var item = pickDailyItem(items);
         var secondaryItem = pickDailyItem(secondaryItems);
         var rendered = 0;
-        rendered += appendCard(item, opts.favType, opts.primaryLabel || '오늘의 문학') ? 1 : 0;
-        rendered += appendCard(secondaryItem, opts.secondaryFavType, opts.secondaryLabel || '오늘의 번역') ? 1 : 0;
+        rendered += appendCard(item, opts.favType, opts.primaryLabel || t('오늘의 문학')) ? 1 : 0;
+        rendered += appendCard(secondaryItem, opts.secondaryFavType, opts.secondaryLabel || t('오늘의 번역')) ? 1 : 0;
         if (!rendered) { wrap.remove(); return; }
 
         // 오늘 이미 열어 본 방문자는 애니메이션 없이 곧장 열린 상태로.

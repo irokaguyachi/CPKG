@@ -19,6 +19,7 @@
  *   다음 신청해야, 어차피 막힐 신청을 눌러보고서야 아는 일이 없다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var BUMP_ICON = '🔥';
   var POLL_INTERVAL_MS = 20000;
   var GET_URL = '/bump/get';
@@ -46,7 +47,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(function (res) {
-      if (!res.ok) throw new Error('상태를 불러오지 못했어요.');
+      if (!res.ok) throw new Error(t('상태를 불러오지 못했어요.'));
       return res.json();
     });
   }
@@ -111,7 +112,7 @@
 
   function render() {
     popoverEl.innerHTML = '';
-    popoverEl.appendChild(global.PopoverKit.header(BUMP_ICON + ' 끌올'));
+    popoverEl.appendChild(global.PopoverKit.header(BUMP_ICON + ' ' + t('끌올')));
 
     // bkm-share-note — bookmarksPage.js의 공개 패널이 쓰는 것과 같은 안내
     // 문구 스타일(밝기/다크 모드 색이 이미 theme.css에 있음)을 재사용한다.
@@ -119,7 +120,7 @@
     note.className = 'bkm-share-note';
     popoverEl.appendChild(note);
 
-    var actionBtn = global.PopoverKit.button('이 문학 끌올하기', 'is-primary');
+    var actionBtn = global.PopoverKit.button(t('이 문학 끌올하기'), 'is-primary');
     popoverEl.appendChild(actionBtn);
 
     var mySnapshot = state; // 응답이 늦게 와서 그 사이 팝오버가 닫히거나 다른 카드로 옮겨갔는지 확인용
@@ -128,29 +129,29 @@
       if (isItemActive(status, mySnapshot.type, mySnapshot.id)) {
         if (status.active.endAt) {
           var remain = minutesCeil(status.active.endAt - Date.now());
-          note.textContent = '지금 사이트 맨 위에 끌올 중이에요! 약 ' + remain + '분 뒤에 다음 끌올로 교체돼요.';
+          note.textContent = t('지금 사이트 맨 위에 끌올 중이에요! 약 {n}분 뒤에 다음 끌올로 교체돼요.', { n: remain });
         } else {
-          note.textContent = '지금 사이트 맨 위에 끌올 중이에요! 다음 끌올 신청이 들어오기 전까지 계속 노출돼요.';
+          note.textContent = t('지금 사이트 맨 위에 끌올 중이에요! 다음 끌올 신청이 들어오기 전까지 계속 노출돼요.');
         }
         actionBtn.style.display = 'none';
         return;
       }
       actionBtn.style.display = '';
       actionBtn.disabled = false;
-      actionBtn.textContent = '이 문학 끌올하기';
+      actionBtn.textContent = t('이 문학 끌올하기');
 
       var lines = [];
-      if (status.waitingCount) lines.push('현재 대기 중인 끌올 ' + status.waitingCount + '건.');
-      lines.push('신청하면 순서가 되는 대로 사이트 맨 위에 노출되고, 다음 끌올 신청이 들어오기 전까지 계속 유지돼요.');
+      if (status.waitingCount) lines.push(t('현재 대기 중인 끌올 {n}건.', { n: status.waitingCount }));
+      lines.push(t('신청하면 순서가 되는 대로 사이트 맨 위에 노출되고, 다음 끌올 신청이 들어오기 전까지 계속 유지돼요.'));
       var cooldown = status.cooldownRemainingMs || 0;
       if (cooldown > 0) {
-        lines.push('다음 신청까지 약 ' + minutesCeil(cooldown) + '분 남았어요.');
+        lines.push(t('다음 신청까지 약 {n}분 남았어요.', { n: minutesCeil(cooldown) }));
         actionBtn.disabled = true;
       }
       note.textContent = lines.join(' ');
     }
 
-    note.textContent = '불러오는 중...';
+    note.textContent = t('불러오는 중...');
     actionBtn.style.display = 'none';
 
     var personalCode = global.BookmarkLibrary.getPersonalCode();
@@ -161,12 +162,12 @@
       paint(status);
     }).catch(function () {
       if (state !== mySnapshot) return;
-      note.textContent = '상태를 불러오지 못했어요.';
+      note.textContent = t('상태를 불러오지 못했어요.');
     });
 
     actionBtn.addEventListener('click', function () {
       actionBtn.disabled = true;
-      actionBtn.textContent = '신청 중...';
+      actionBtn.textContent = t('신청 중...');
 
       fetch(REQUEST_URL, {
         method: 'POST',
@@ -179,9 +180,9 @@
       }).then(function (result) {
         if (!result.ok) {
           if (state !== mySnapshot) return;
-          note.textContent = result.data.error || '신청하지 못했어요.';
+          note.textContent = (result.data.error && t(result.data.error)) || t('신청하지 못했어요.');
           actionBtn.disabled = false;
-          actionBtn.textContent = '이 문학 끌올하기';
+          actionBtn.textContent = t('이 문학 끌올하기');
           return;
         }
         // 즉시 활성인지 대기열에 붙었는지는 startAt/endAt만으로 알 수
@@ -192,17 +193,17 @@
           broadcast();
           if (state !== mySnapshot) return;
           if (isItemActive(status, mySnapshot.type, mySnapshot.id)) {
-            note.textContent = '지금 바로 끌올됐어요! 사이트 맨 위에서 확인해보세요.';
+            note.textContent = t('지금 바로 끌올됐어요! 사이트 맨 위에서 확인해보세요.');
           } else {
-            note.textContent = '끌올 신청 완료! 순서가 되면 사이트 맨 위에 노출돼요.';
+            note.textContent = t('끌올 신청 완료! 순서가 되면 사이트 맨 위에 노출돼요.');
           }
           actionBtn.style.display = 'none';
         });
       }).catch(function () {
         if (state !== mySnapshot) return;
-        note.textContent = '신청하지 못했어요. 다시 시도해주세요.';
+        note.textContent = t('신청하지 못했어요. 다시 시도해주세요.');
         actionBtn.disabled = false;
-        actionBtn.textContent = '이 문학 끌올하기';
+        actionBtn.textContent = t('이 문학 끌올하기');
       });
     });
   }
@@ -245,7 +246,7 @@
     btn.type = 'button';
     btn.className = 'series-card-bump bkm-bump-btn';
     btn.textContent = BUMP_ICON;
-    btn.setAttribute('aria-label', '끌올 신청');
+    btn.setAttribute('aria-label', t('끌올 신청'));
     btn._bumpSync = function () {
       btn.classList.toggle('is-bumped', isItemActive(lastStatus, type, id));
     };
@@ -259,7 +260,7 @@
       // 그대로 이어서 연다).
       if (!isLoggedIn()) {
         global.AuthModal.requireLogin({
-          reason: '끌올 신청은 로그인이 필요해요',
+          reason: t('끌올 신청은 로그인이 필요해요'),
           onSuccess: function () { open(btn, type, id, name); }
         });
         return;

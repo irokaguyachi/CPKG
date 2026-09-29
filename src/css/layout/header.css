@@ -38,7 +38,9 @@
 }
 
 /* top-of-page state: logo breaks out of the header and blows up into a hero mark.
-   it's decorative here, not a nav target, so clicks pass straight through */
+   it's decorative here, not a nav target, so clicks pass straight through
+   body.is-top 은 메인 페이지의 heroLogo.js 만 붙인다 — 다른 페이지 로고는
+   처음부터 헤더 제자리에 고정된다. */
 body.is-top .header-logo {
   transform: translateY(-50%) translate(calc(50vw - 50px - 50%), 200px) scale(3.2);
   pointer-events: none;

@@ -11,6 +11,7 @@
  * - 의존: pickerKit.js, seriesUtil.js, bookmarkPicker.js, postDetailSeries.js
  */
 (function (global) {
+  var t = global.I18n.t;
   var PK = global.PickerKit;
   if (!PK || !document.body) return;
 
@@ -44,8 +45,8 @@
   var MACHINE_HTML =
     '<header class="pk-head">' +
       '<p class="pk-eyebrow">RANDOM TRANSLATION</p>' +
-      '<h2 class="pk-title" id="sl-title">번역 슬롯</h2>' +
-      '<p class="pk-sub">번역은 태그가 없어서, 레버를 당기면 전체 번역 중 한 편을 바로 뽑아 드려요.</p>' +
+      '<h2 class="pk-title" id="sl-title">' + t('번역 슬롯') + '</h2>' +
+      '<p class="pk-sub">' + t('번역은 태그가 없어서, 레버를 당기면 전체 번역 중 한 편을 바로 뽑아 드려요.') + '</p>' +
     '</header>' +
     '<div class="sl-cabinet">' +
       '<div class="sl-body">' +
@@ -55,9 +56,9 @@
           '<span class="sl-payline sl-payline-left" aria-hidden="true"></span>' +
           '<span class="sl-payline sl-payline-right" aria-hidden="true"></span>' +
         '</div>' +
-        '<p class="sl-status" aria-live="polite">번역 목록을 불러오는 중…</p>' +
+        '<p class="sl-status" aria-live="polite">' + t('번역 목록을 불러오는 중…') + '</p>' +
       '</div>' +
-      '<button type="button" class="sl-lever" aria-label="레버 당겨서 번역 뽑기" disabled>' +
+      '<button type="button" class="sl-lever" aria-label="' + t('레버 당겨서 번역 뽑기') + '" disabled>' +
         '<span class="sl-lever-slot" aria-hidden="true"></span>' +
         '<span class="sl-lever-arm" aria-hidden="true"></span>' +
         '<span class="sl-lever-pivot" aria-hidden="true"></span>' +
@@ -65,13 +66,13 @@
         '<span class="sl-lever-hint" aria-hidden="true">PULL</span>' +
       '</button>' +
     '</div>' +
-    '<p class="sl-note">⚠️ 번역은 태그를 지원하지 않아 선정적인 작품이 나올 수 있어요.</p>' +
+    '<p class="sl-note">' + t('⚠️ 번역은 태그를 지원하지 않아 선정적인 작품이 나올 수 있어요.') + '</p>' +
     '<svg class="sl-defs" width="0" height="0" aria-hidden="true" focusable="false">' +
       '<filter id="sl-motion-blur" x="0" y="-20%" width="100%" height="140%">' +
         '<feGaussianBlur in="SourceGraphic" stdDeviation="0 0" />' +
       '</filter>' +
     '</svg>' +
-    PK.resultHtml('다시 돌리기');
+    PK.resultHtml(t('다시 돌리기'));
 
   var fabEl = null;
   var modal = null;
@@ -139,7 +140,7 @@
       // 지금 보이는 칸에서 이어서 돌도록 첫 칸은 현재 칸, 마지막 칸은 당첨작
       stripEl.innerHTML = '';
       stripEl.style.transform = '';
-      stripEl.appendChild(shownItem ? cellFor(shownItem) : cellFor({ name: '레버를 당겨 보세요' }, true));
+      stripEl.appendChild(shownItem ? cellFor(shownItem) : cellFor({ name: t('레버를 당겨 보세요') }, true));
       var prev = shownItem;
       for (var i = 1; i < CELL_COUNT - 1; i++) {
         var filler;
@@ -222,7 +223,7 @@
       .then(function () { return spinStrip(winner); })
       .then(function () {
         currentItem = winner;
-        statusEl.textContent = '당첨!';
+        statusEl.textContent = t('당첨!');
         cabinetEl.classList.add('is-win');
         PK.renderResult(resultEl, winner, {
           favType: FAV_TYPE,
@@ -237,10 +238,10 @@
     PK.hideResult(resultEl);
     cabinetEl.classList.remove('is-win');
     if (items.length) {
-      showGuide('레버를 당겨 보세요');
-      statusEl.textContent = 'READY · 번역 ' + items.length + '편';
+      showGuide(t('레버를 당겨 보세요'));
+      statusEl.textContent = 'READY · ' + t('번역 {n}편', { n: items.length });
     } else {
-      showGuide('뽑을 번역이 없어요');
+      showGuide(t('뽑을 번역이 없어요'));
       statusEl.textContent = 'EMPTY';
     }
     leverEl.disabled = !items.length;
@@ -252,7 +253,7 @@
     modal = PK.createModal({
       machineClass: 'sl-machine',
       labelledBy: 'sl-title',
-      closeLabel: '슬롯 닫기',
+      closeLabel: t('슬롯 닫기'),
       html: MACHINE_HTML,
       fab: fabEl,
       onOpen: loadData,
@@ -276,7 +277,7 @@
     PK.bindResult(resultEl, function () { return currentItem; }, FAV_TYPE);
 
     buildLights();
-    showGuide('잠시만 기다려 주세요');
+    showGuide(t('잠시만 기다려 주세요'));
   }
 
   var loadPromise = null;
@@ -292,7 +293,7 @@
       .catch(function () {
         // 다음에 팝업을 다시 열면 한 번 더 시도한다
         loadPromise = null;
-        showGuide('번역 목록을 불러오지 못했어요');
+        showGuide(t('번역 목록을 불러오지 못했어요'));
         statusEl.textContent = 'ERROR';
       });
     return loadPromise;
@@ -300,8 +301,8 @@
 
   fabEl = PK.createFab({
     iconHtml: FAB_ICON,
-    label: '번역 룰렛',
-    ariaLabel: '번역 룰렛 열기',
+    label: t('번역 룰렛'),
+    ariaLabel: t('번역 룰렛 열기'),
     order: 1,
     className: 'sl-fab',
     // 평소 3.2초에 한 바퀴, 마우스를 올리면 약 2.7배(1.2초)까지 가속

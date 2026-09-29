@@ -24,6 +24,7 @@
  *   서버에 못 올린 변경이 있으면 사라진다는 뜻이라 먼저 확인을 받습니다.
  */
 (function (global) {
+  var t = global.I18n.t;
   // bookmarkLibrary.js 와 같은 이유로 상대 경로를 쓴다 — API가 같은
   // Worker(cpkg)에 합쳐져 있으므로 같은 오리진 호출이면 충분하다.
   var WORKER_BASE = '';
@@ -94,10 +95,10 @@
   }
 
   function messageForStatus(code) {
-    if (code === 429) return '요청이 너무 잦아요. 잠시 후 다시 시도해주세요.';
-    if (code === 404) return '이 코드로 만들어진 계정을 찾을 수 없어요. 코드를 다시 확인해주세요.';
-    if (code === 400) return '코드 형식이 올바르지 않아요.';
-    return '서버와 통신하지 못했어요 (' + code + ')';
+    if (code === 429) return t('요청이 너무 잦아요. 잠시 후 다시 시도해주세요.');
+    if (code === 404) return t('이 코드로 만들어진 계정을 찾을 수 없어요. 코드를 다시 확인해주세요.');
+    if (code === 400) return t('코드 형식이 올바르지 않아요.');
+    return t('서버와 통신하지 못했어요 ({code})', { code: code });
   }
 
   function failWith(res) {
@@ -388,7 +389,7 @@
     var l = lib();
     var code = l.normalizePersonalCode(rawCode);
     if (code.length < 16) {
-      return Promise.reject(new Error('개인 코드 형식이 올바르지 않아요. 20자리 코드를 정확히 입력해주세요.'));
+      return Promise.reject(new Error(t('개인 코드 형식이 올바르지 않아요. 20자리 코드를 정확히 입력해주세요.')));
     }
     return postJson(GET_URL, { personalCode: code }).then(function (res) {
       if (!res.ok) return failWith(res);
@@ -460,7 +461,7 @@
     if (dirty) {
       var proceed = false;
       try {
-        proceed = global.confirm('아직 서버에 저장하지 않은 변경사항이 있어요. 지금 불러오면 그 변경사항은 사라져요. 그래도 서버에 저장된 내용을 불러올까요?');
+        proceed = global.confirm(t('아직 서버에 저장하지 않은 변경사항이 있어요. 지금 불러오면 그 변경사항은 사라져요. 그래도 서버에 저장된 내용을 불러올까요?'));
       } catch (e) {}
       if (!proceed) return Promise.resolve({ ok: false, reason: 'cancelled' });
     }

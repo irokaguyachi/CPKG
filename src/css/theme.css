@@ -211,11 +211,17 @@ html.theme-transitioning *:after {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-/* 이미지 로딩 표시(series-card.css .is-img-loading) — 어두운 카드 바탕에
-   맞춘 색. 밝은 쪽을 크게 띄우면 번쩍여 보여서 차이를 작게 둔다. */
+/* 이미지 로딩 표시(series-card.css .is-img-loading)와 이미지 없는 작품의
+   태그 색 그라데이션(.is-tag-glow) — 어두운 카드 바탕에 맞춘 색. 제미나이
+   첫 화면처럼 거의 검은 바탕에서 깊은 남색·보라빛이 번지게 한다. */
 [data-theme="dark"] {
-  --img-shimmer-base: #25272d;
-  --img-shimmer-highlight: #32353d;
+  --img-loading-base: #121419;
+  --img-loading-1: 45, 85, 220;
+  --img-loading-2: 120, 70, 215;
+  --img-loading-3: 0, 170, 165;
+  --img-loading-alpha: 0.5;
+  --tag-glow-base: #1a1c21;
+  --tag-glow-alpha: 0.46;
 }
 
 [data-theme="dark"] .series-card-image {
@@ -829,6 +835,12 @@ html.theme-transitioning *:after {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.35);
   color: var(--dark-emphasis);
+}
+[data-theme="dark"] .settings-lang-btn.is-active,
+[data-theme="dark"] .settings-lang-btn.is-active:hover {
+  color: #000000;
+  background: var(--mint);
+  border-color: transparent;
 }
 [data-theme="dark"] .settings-desc {
   color: rgba(255, 255, 255, 0.6);

@@ -1,7 +1,7 @@
 {
   "totals": {
-    "novel": 1427,
-    "series": 101
+    "novel": 1370,
+    "series": 106
   },
   "novels": [
     {
@@ -19,24 +19,6 @@
           "title": "[ 이로하 길들이기 ]",
           "episode": 1,
           "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321943"
-        }
-      ]
-    },
-    {
-      "name": "짧문학)2040년 9월 26일 어제의 칭찬일기",
-      "image": "../assets/image/크롤링사진/문학/2026-09-26/321922_1.png",
-      "tags": [
-        "짧문",
-        "일상"
-      ],
-      "charCount": "412자",
-      "author": "카구이로행복기원(user2698)",
-      "posts": [
-        {
-          "id": 321922,
-          "title": "짧문학)2040년 9월 26일 어제의 칭찬일기",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321922"
         }
       ]
     },
@@ -96,6 +78,25 @@
           "title": "[초음문대] 호기심과 죄악",
           "episode": 1,
           "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321524"
+        }
+      ]
+    },
+    {
+      "name": "[초음문대] 19) 떨어진 갈대 꽃, 진정한 열매를 맺는가",
+      "image": null,
+      "tags": [
+        "소설",
+        "대회",
+        "후방주의"
+      ],
+      "charCount": "5,123자",
+      "author": "솜방망이",
+      "posts": [
+        {
+          "id": 321387,
+          "title": "[초음문대] 19) 떨어진 갈대 꽃, 진정한 열매를 맺는가",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321387"
         }
       ]
     }

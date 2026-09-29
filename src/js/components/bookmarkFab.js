@@ -8,6 +8,7 @@
  * - 의존: pickerKit.js
  */
 (function (global) {
+  var t = global.I18n.t;
   var PK = global.PickerKit;
   if (!PK || !document.body) return;
 
@@ -24,8 +25,8 @@
   PK.createFabLink({
     href: '/bookmarks',
     iconHtml: ICON,
-    label: '북마크',
-    ariaLabel: onBookmarksPage ? '북마크 (현재 페이지)' : '북마크로 이동',
+    label: t('북마크'),
+    ariaLabel: onBookmarksPage ? t('북마크 (현재 페이지)') : t('북마크로 이동'),
     order: 0,
     className: 'bm-fab',
     current: onBookmarksPage

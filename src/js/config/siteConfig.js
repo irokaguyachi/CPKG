@@ -13,6 +13,7 @@
  *   이 로딩 프라미스를 window.SiteConfig.ready로 공유한다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var CONFIG_URL = '../data/config/SiteConfig.json';
 
   var ready = fetch(global.dataUrl ? global.dataUrl(CONFIG_URL) : CONFIG_URL)
@@ -22,7 +23,7 @@
   function applyToDom(config) {
     if (config.contactEmail) {
       document.querySelectorAll('.site-footer-contact').forEach(function (el) {
-        el.textContent = '문의 : ' + config.contactEmail;
+        el.textContent = t('문의') + ' : ' + config.contactEmail;
       });
     }
     if (config.shortAppName) {

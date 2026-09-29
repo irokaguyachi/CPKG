@@ -21,6 +21,7 @@
  * - 서버 라우트와 저장 형식은 worker/favoritesShareWorker.js 참고.
  */
 (function (global) {
+  var t = global.I18n.t;
   // API가 이제 이 사이트와 같은 Worker(cpkg)에 합쳐져 있어서, 같은 오리진에
   // 상대 경로로 호출하면 된다 — 별도 도메인을 안 거치니 CORS 프리플라이트도
   // 필요 없다. src/_worker.js, src/wrangler.toml 참고.
@@ -178,12 +179,20 @@
     return entry ? { editToken: entry.editToken, bookmarkId: entry.bookmarkId } : null;
   }
 
+  // 메시지는 지금 언어로 번역돼 있어서 문구로 원인을 가릴 수 없다 — 호출부가
+  // 상태 코드로 판단할 수 있게 err.status 를 같이 싣는다.
+  function httpError(message, status) {
+    var err = new Error(message);
+    err.status = status;
+    return err;
+  }
+
   function parseError(res) {
     return res.json().catch(function () { return {}; }).then(function (data) {
-      if (res.status === 429) throw new Error('요청이 너무 잦아요. 잠시 후 다시 시도해주세요.');
-      if (res.status === 403) throw new Error('이 북마크를 수정할 권한이 없어요 (이 브라우저와 연결되어 있지 않아요).');
-      if (res.status === 404) throw new Error('존재하지 않거나 이미 삭제된 북마크예요.');
-      throw new Error((data && data.error) || ('요청에 실패했어요 (' + res.status + ')'));
+      if (res.status === 429) throw httpError(t('요청이 너무 잦아요. 잠시 후 다시 시도해주세요.'), 429);
+      if (res.status === 403) throw httpError(t('이 북마크를 수정할 권한이 없어요 (이 브라우저와 연결되어 있지 않아요).'), 403);
+      if (res.status === 404) throw httpError(t('존재하지 않거나 이미 삭제된 북마크예요.'), 404);
+      throw httpError((data && data.error && t(data.error)) || t('요청에 실패했어요 ({code})', { code: res.status }), res.status);
     });
   }
 
@@ -272,7 +281,7 @@
   function linkToPersonalCode(code, editToken) {
     var personalCode = getPersonalCode();
     if (!personalCode) {
-      return Promise.reject(new Error('로그인이 필요해요.'));
+      return Promise.reject(new Error(t('로그인이 필요해요.')));
     }
     return fetch(LIBRARY_URL + '/' + encodeURIComponent(code) + '/claim-owner', {
       method: 'POST',
@@ -293,15 +302,15 @@
     code = (code || '').trim();
     editToken = (editToken || '').trim();
     if (!code || !editToken) {
-      return Promise.reject(new Error('공유 코드와 관리 코드를 모두 입력해주세요.'));
+      return Promise.reject(new Error(t('공유 코드와 관리 코드를 모두 입력해주세요.')));
     }
     return fetch(LIBRARY_URL + '/' + encodeURIComponent(code), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ editToken: editToken })
     }).then(function (res) {
-      if (res.status === 403) throw new Error('관리 코드가 이 공유 코드와 맞지 않아요.');
-      if (res.status === 404) throw new Error('존재하지 않는 공유 코드예요.');
+      if (res.status === 403) throw new Error(t('관리 코드가 이 공유 코드와 맞지 않아요.'));
+      if (res.status === 404) throw new Error(t('존재하지 않는 공유 코드예요.'));
       if (!res.ok) return parseError(res);
       return res.json();
     }).then(function (data) {
@@ -322,7 +331,7 @@
   function claimAllByPersonalCode(rawCode) {
     var personalCode = normalizePersonalCode(rawCode);
     if (personalCode.length < 16) {
-      return Promise.reject(new Error('개인 코드 형식이 올바르지 않아요. 20자리 코드를 정확히 입력해주세요.'));
+      return Promise.reject(new Error(t('개인 코드 형식이 올바르지 않아요. 20자리 코드를 정확히 입력해주세요.')));
     }
     return fetch(OWNER_LOOKUP_URL, {
       method: 'POST',
@@ -353,14 +362,14 @@
   // 반복 호출해도 중복 폴더가 안 생기게 한다.
   function restorePublishedToLocal(code) {
     if (typeof global.Bookmarks === 'undefined') {
-      return Promise.reject(new Error('이 페이지에서는 로컬 북마크를 지원하지 않아요.'));
+      return Promise.reject(new Error(t('이 페이지에서는 로컬 북마크를 지원하지 않아요.')));
     }
     var link = getLocalLinkForCode(code);
     if (link && link.bookmarkId && global.Bookmarks.getBookmark(link.bookmarkId)) {
       return Promise.resolve(link.bookmarkId);
     }
     return getOne(code).then(function (pub) {
-      var newId = global.Bookmarks.createBookmark(pub.name || '되찾은 북마크');
+      var newId = global.Bookmarks.createBookmark(pub.name || t('되찾은 북마크'));
       (pub.items || []).forEach(function (it) {
         global.Bookmarks.addItemToBookmark(newId, it.type, it.id);
       });

@@ -8,6 +8,7 @@
  * 스타일은 css/components/picker-kit.css.
  */
 (function (global) {
+  var t = global.I18n.t;
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 
   var reduceMotion = !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -134,7 +135,7 @@
     overlay.innerHTML =
       '<section class="pk-machine ' + (opts.machineClass || '') + '" role="dialog" aria-modal="true"' +
         (opts.labelledBy ? ' aria-labelledby="' + opts.labelledBy + '"' : '') + '>' +
-        '<button type="button" class="pk-close" aria-label="' + (opts.closeLabel || '닫기') + '">' + ICON_CLOSE + '</button>' +
+        '<button type="button" class="pk-close" aria-label="' + (opts.closeLabel || t('닫기')) + '">' + ICON_CLOSE + '</button>' +
         opts.html +
       '</section>';
     document.body.appendChild(overlay);
@@ -190,7 +191,7 @@
           '</div>' +
         '</article>' +
         '<div class="pk-actions">' +
-          '<button type="button" class="pk-btn pk-btn-primary" data-pk-open>작품 보기</button>' +
+          '<button type="button" class="pk-btn pk-btn-primary" data-pk-open>' + t('작품 보기') + '</button>' +
           '<button type="button" class="pk-btn" data-pk-reroll>' + rerollLabel + '</button>' +
         '</div>' +
       '</div>';
@@ -214,7 +215,7 @@
           dcId: post.id,
           link: post.link,
           reader: post.reader,
-          episodeLabel: post.episode + ' 화'
+          episodeLabel: t('{n} 화', { n: post.episode })
         };
       })
     });

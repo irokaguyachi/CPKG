@@ -9,6 +9,7 @@
  *   오버레이 자체 클릭이나 Escape 로 닫힌다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var HAMBURGER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
   var CLOSE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
 
@@ -33,7 +34,7 @@
     var btn = document.querySelector('.sidebar-toggle-btn');
     if (!btn) return;
     btn.innerHTML = isOpen ? CLOSE_ICON : HAMBURGER_ICON;
-    btn.setAttribute('aria-label', isOpen ? '메뉴 닫기' : '메뉴 열기');
+    btn.setAttribute('aria-label', isOpen ? t('메뉴 닫기') : t('메뉴 열기'));
   }
 
   function open() {

@@ -1,5 +1,6 @@
 (function () {
   'use strict';
+  var t = window.I18n.t;
 
   // Local-only easter egg. Click the locked "번역" nav link — cumulative
   // clicks (persisted in localStorage) hit three milestones, each popping
@@ -18,7 +19,7 @@
   var TYPE_MS = 40;
   // 야치요 그림 출처 — showYachiyo()가 그림 위에 항상 이 링크를 띄운다.
   var IMAGE_SOURCE_URL = 'https://x.com/TERURU_sakura/status/2057038861575008490?s=20';
-  var IMAGE_SOURCE_LABEL = '출처: X(@TERURU_sakura)';
+  var IMAGE_SOURCE_LABEL = t('출처') + ': X(@TERURU_sakura)';
 
   // isLoop: 마지막 항목 — 여기 도달하면 카운터를 0으로 되돌려 처음부터
   // 다시 30/60/90 순서로 반복되게 한다.
@@ -63,7 +64,7 @@
     wrap.innerHTML =
       '<div class="yachiyo-event-bubble"></div>' +
       '<div class="yachiyo-event-img-wrap">' +
-        '<img class="yachiyo-event-img" src="../offlineSrc/forEvent/yachiyo.png" alt="야치요" />' +
+        '<img class="yachiyo-event-img" src="../offlineSrc/forEvent/yachiyo.png" alt="' + t('야치요') + '" />' +
         '<a class="yachiyo-event-credit" href="' + IMAGE_SOURCE_URL + '" target="_blank" rel="noopener noreferrer">' + IMAGE_SOURCE_LABEL + '</a>' +
       '</div>';
     var bubble = wrap.querySelector('.yachiyo-event-bubble');

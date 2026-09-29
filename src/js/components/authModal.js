@@ -10,6 +10,7 @@
  *   반영(CSS: src/css/components/auth.css 의 .auth-* 규칙).
  */
 (function (global) {
+  var t = global.I18n.t;
   var overlayEl = null;
   // 회원가입 확인 화면(발급된 개인 코드를 보여주는 단계)은 코드를 못 보고
   // 나가버리면 되돌릴 수 없으니, 바깥 클릭/Escape/X 로 못 닫게 잠근다 —
@@ -47,7 +48,7 @@
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pds-close';
-    btn.setAttribute('aria-label', '닫기');
+    btn.setAttribute('aria-label', t('닫기'));
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
     btn.addEventListener('click', close);
     return btn;
@@ -63,13 +64,13 @@
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'auth-input-toggle';
-    btn.setAttribute('aria-label', '입력한 코드 표시');
+    btn.setAttribute('aria-label', t('입력한 코드 표시'));
     btn.innerHTML = EYE_OPEN_ICON;
     btn.addEventListener('click', function () {
       var isRevealed = inputEl.type === 'text';
       inputEl.type = isRevealed ? 'password' : 'text';
       btn.innerHTML = isRevealed ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
-      btn.setAttribute('aria-label', isRevealed ? '입력한 코드 표시' : '입력한 코드 숨기기');
+      btn.setAttribute('aria-label', isRevealed ? t('입력한 코드 표시') : t('입력한 코드 숨기기'));
       inputEl.focus();
     });
     return btn;
@@ -82,7 +83,7 @@
     dismissible = true;
     card.innerHTML = '';
     card.appendChild(closeButton());
-    card.appendChild(el('h2', 'auth-title', '로그인'));
+    card.appendChild(el('h2', 'auth-title', t('로그인')));
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
@@ -99,14 +100,14 @@
     input.type = 'password';
     input.name = 'password';
     input.className = 'auth-input';
-    input.placeholder = '로그인 코드 입력창';
+    input.placeholder = t('로그인 코드 입력창');
     input.autocomplete = 'current-password';
     inputWrap.appendChild(input);
     inputWrap.appendChild(createRevealToggle(input));
     var submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
     submitBtn.className = 'auth-btn';
-    submitBtn.textContent = '로그인';
+    submitBtn.textContent = t('로그인');
     row.appendChild(inputWrap);
     row.appendChild(submitBtn);
     card.appendChild(row);
@@ -126,12 +127,12 @@
       var raw = input.value;
       var normalized = global.BookmarkLibrary.normalizePersonalCode(raw);
       if (normalized.length < 16) {
-        showError('개인 코드 형식이 올바르지 않아요. 20자리 코드를 정확히 입력해주세요.');
+        showError(t('개인 코드 형식이 올바르지 않아요. 20자리 코드를 정확히 입력해주세요.'));
         return;
       }
       errorEl.hidden = true;
       submitBtn.disabled = true;
-      submitBtn.textContent = '확인하는 중...';
+      submitBtn.textContent = t('확인하는 중...');
 
       // 서버에 계정이 있으면 북마크가 0개여도 로그인 성공이다. 예전엔 공개한
       // 게시물 목록이 비어 있으면 실패로 돌렸는데, 그게 갓 가입한 사람이 다른
@@ -143,8 +144,8 @@
         })
         .catch(function (err) {
           submitBtn.disabled = false;
-          submitBtn.textContent = '로그인';
-          showError(err.message || '로그인에 실패했어요.');
+          submitBtn.textContent = t('로그인');
+          showError(err.message || t('로그인에 실패했어요.'));
         });
     }
 
@@ -153,11 +154,11 @@
       submit();
     });
 
-    var switchRow = el('p', 'auth-switch', '로그인 코드가 없으신가요? ');
+    var switchRow = el('p', 'auth-switch', t('로그인 코드가 없으신가요?') + ' ');
     var switchLink = document.createElement('button');
     switchLink.type = 'button';
     switchLink.className = 'auth-switch-link';
-    switchLink.textContent = '새로 발급받으세요!';
+    switchLink.textContent = t('새로 발급받으세요!');
     switchLink.addEventListener('click', function () { renderSignUp(card, opts); });
     switchRow.appendChild(switchLink);
     card.appendChild(switchRow);
@@ -176,8 +177,8 @@
     dismissible = true; // 가입 시도 중에는 자유롭게 닫을 수 있다
     card.innerHTML = '';
     card.appendChild(closeButton());
-    card.appendChild(el('h2', 'auth-title is-small', '계정을 만드는 중...'));
-    card.appendChild(el('p', 'auth-desc', '잠시만 기다려주세요.'));
+    card.appendChild(el('h2', 'auth-title is-small', t('계정을 만드는 중...')));
+    card.appendChild(el('p', 'auth-desc', t('잠시만 기다려주세요.')));
 
     var code = global.BookmarkLibrary.issueNewPersonalCode();
 
@@ -186,7 +187,7 @@
         renderSignUpCode(card, opts, code);
       })
       .catch(function (err) {
-        renderSignIn(card, opts, err.message || '계정을 만들지 못했어요. 인터넷 연결을 확인해주세요.');
+        renderSignIn(card, opts, err.message || t('계정을 만들지 못했어요. 인터넷 연결을 확인해주세요.'));
       });
   }
 
@@ -197,8 +198,8 @@
     // 나가버리는 일이 없도록, "확인" 버튼을 눌러야만 닫히게 한다.
     dismissible = false;
     card.innerHTML = '';
-    card.appendChild(el('h2', 'auth-title is-small', '잊어버리지 마세요!'));
-    card.appendChild(el('p', 'auth-desc', '해당 코드를 잃어버릴시 앞으로 로그인이 힘들수도 있으니 미리 다른곳에 해당 코드를 적어두세요'));
+    card.appendChild(el('h2', 'auth-title is-small', t('잊어버리지 마세요!')));
+    card.appendChild(el('p', 'auth-desc', t('해당 코드를 잃어버릴시 앞으로 로그인이 힘들수도 있으니 미리 다른곳에 해당 코드를 적어두세요')));
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
@@ -227,7 +228,7 @@
     var confirmBtn = document.createElement('button');
     confirmBtn.type = 'submit';
     confirmBtn.className = 'auth-btn';
-    confirmBtn.textContent = '확인';
+    confirmBtn.textContent = t('확인');
     form.appendChild(confirmBtn);
 
     form.addEventListener('submit', function (e) {

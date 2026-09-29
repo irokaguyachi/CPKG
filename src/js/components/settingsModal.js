@@ -11,6 +11,7 @@
  *   위임한다 — 로그인 상태 판정/동기화 버튼 로직을 여기서 중복하지 않는다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var overlayEl = null;
   var railEls = {};
   var railIndicator = null;
@@ -19,10 +20,10 @@
   var paneFadeTimer = null;
 
   var TABS = [
-    { id: 'general', label: '일반' },
-    { id: 'account', label: '계정' },
-    { id: 'audio', label: '오디오 문학' },
-    { id: 'info', label: '정보' }
+    { id: 'general', label: t('일반') },
+    { id: 'account', label: t('계정') },
+    { id: 'audio', label: t('오디오 문학') },
+    { id: 'info', label: t('정보') }
   ];
 
   function el(tag, className, text) {
@@ -36,7 +37,7 @@
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pds-close';
-    btn.setAttribute('aria-label', '닫기');
+    btn.setAttribute('aria-label', t('닫기'));
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
     btn.addEventListener('click', close);
     return btn;
@@ -129,17 +130,19 @@
   var MOON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
 
   function renderGeneralPane(pane) {
-    pane.appendChild(el('h3', 'settings-pane-title', '일반'));
+    pane.appendChild(el('h3', 'settings-pane-title', t('일반')));
+
+    pane.appendChild(languageRow());
 
     var row = el('div', 'settings-row');
-    row.appendChild(el('p', 'settings-row-label', '라이트 모드/다크 모드'));
+    row.appendChild(el('p', 'settings-row-label', t('라이트 모드/다크 모드')));
 
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'settings-mode-btn';
     function paint() {
       var isDark = (global.ThemeManager ? global.ThemeManager.getTheme() : 'light') === 'dark';
-      btn.innerHTML = (isDark ? SUN_ICON : MOON_ICON) + '<span>' + (isDark ? '라이트 모드' : '다크 모드') + '</span>';
+      btn.innerHTML = (isDark ? SUN_ICON : MOON_ICON) + '<span>' + (isDark ? t('라이트 모드') : t('다크 모드')) + '</span>';
     }
     paint();
     btn.addEventListener('click', function () {
@@ -156,8 +159,8 @@
     // 마주치는 상황을 막기 위함.
     var matureRow = el('div', 'settings-row');
     var matureText = el('div', 'settings-row-text');
-    matureText.appendChild(el('p', 'settings-row-label', '🔞 후방주의 태그 문학 표시'));
-    matureText.appendChild(el('p', 'settings-row-desc', '성인 서사가 중심인 후방주의 태그 문학을 목록과 상세 화면에 노출합니다'));
+    matureText.appendChild(el('p', 'settings-row-label', t('🔞 후방주의 태그 문학 표시')));
+    matureText.appendChild(el('p', 'settings-row-desc', t('성인 서사가 중심인 후방주의 태그 문학을 목록과 상세 화면에 노출합니다')));
     matureRow.appendChild(matureText);
 
     var matureToggle = document.createElement('button');
@@ -177,9 +180,43 @@
     pane.appendChild(matureRow);
   }
 
+  // 사이트 UI 언어 선택. 언어를 바꾸면 I18n.setLanguage() 가 사전을 받아
+  // 저장한 뒤 페이지를 새로고침한다(이미 그려진 문구를 전부 다시 그리는
+  // 것보다 확실하다). 라벨에 영어를 함께 적어 한국어를 못 읽는 방문자도
+  // 이 줄을 찾을 수 있게 한다.
+  function languageRow() {
+    var row = el('div', 'settings-row settings-lang-row');
+    row.appendChild(el('p', 'settings-row-label', t('🌐 언어 · Language')));
+
+    var group = el('div', 'settings-lang-group');
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-label', 'Language');
+    var i18n = global.I18n;
+    i18n.LANGUAGES.forEach(function (lang) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      var isCurrent = lang.code === i18n.lang;
+      btn.className = 'settings-mode-btn settings-lang-btn' + (isCurrent ? ' is-active' : '');
+      btn.setAttribute('role', 'radio');
+      btn.setAttribute('aria-checked', String(isCurrent));
+      btn.setAttribute('lang', lang.htmlLang);
+      btn.textContent = lang.label;
+      btn.addEventListener('click', function () {
+        if (lang.code === i18n.lang || group.classList.contains('is-busy')) return;
+        group.classList.add('is-busy');
+        i18n.setLanguage(lang.code).catch(function () {
+          group.classList.remove('is-busy');
+        });
+      });
+      group.appendChild(btn);
+    });
+    row.appendChild(group);
+    return row;
+  }
+
   // ---- 계정 탭 ----
   function renderAccountPane(pane) {
-    pane.appendChild(el('h3', 'settings-pane-title', '계정'));
+    pane.appendChild(el('h3', 'settings-pane-title', t('계정')));
     var container = el('div', 'settings-account-container');
     pane.appendChild(container);
     if (global.AuthUI) global.AuthUI.renderAccountSettings(container);
@@ -189,14 +226,14 @@
   // 일반 탭과 같은 "왼쪽 라벨 / 오른쪽 컨트롤 + 아래 구분선" 행 구조
   // (.settings-row)를 그대로 쓴다.
   function renderAudioPane(pane) {
-    pane.appendChild(el('h3', 'settings-pane-title', '오디오 문학'));
+    pane.appendChild(el('h3', 'settings-pane-title', t('오디오 문학')));
 
     var settings = global.AudioSettings ? global.AudioSettings.get() : { autoplay: true, volume: 1 };
 
     var autoplayRow = el('div', 'settings-row');
     var autoplayText = el('div', 'settings-row-text');
-    autoplayText.appendChild(el('p', 'settings-row-label', '자동재생'));
-    autoplayText.appendChild(el('p', 'settings-row-desc', '스크롤로 구간에 들어오면 배경음악을 자동으로 재생'));
+    autoplayText.appendChild(el('p', 'settings-row-label', t('자동재생')));
+    autoplayText.appendChild(el('p', 'settings-row-desc', t('스크롤로 구간에 들어오면 배경음악을 자동으로 재생')));
     autoplayRow.appendChild(autoplayText);
 
     var toggle = document.createElement('button');
@@ -215,7 +252,7 @@
     pane.appendChild(autoplayRow);
 
     var volumeRow = el('div', 'settings-row');
-    volumeRow.appendChild(el('p', 'settings-row-label', '음량'));
+    volumeRow.appendChild(el('p', 'settings-row-label', t('음량')));
 
     var volumeControl = el('div', 'settings-volume-control');
     var slider = document.createElement('input');
@@ -246,14 +283,20 @@
   var DC_POST_URL = 'https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=';
 
   function formatCount(n) {
-    return Number(n || 0).toLocaleString('ko-KR');
+    return Number(n || 0).toLocaleString(global.I18n.locale);
   }
 
   // 글자 수는 자릿수가 커서 그대로 쓰면 타일에 안 들어간다 — 만 단위로 줄인다.
+  // 영어에는 만 단위가 없으므로 천(k)·백만(M) 단위로 줄인다.
   function formatChars(n) {
     n = Number(n || 0);
-    if (n < 10000) return { value: formatCount(n), unit: '자' };
-    return { value: formatCount(Math.round(n / 10000)), unit: '만 자' };
+    if (global.I18n.lang === 'en') {
+      if (n < 1000) return { value: formatCount(n), unit: 'chars' };
+      if (n < 1000000) return { value: formatCount(Math.round(n / 1000)), unit: 'k chars' };
+      return { value: (n / 1000000).toFixed(1), unit: 'M chars' };
+    }
+    if (n < 10000) return { value: formatCount(n), unit: t('자') };
+    return { value: formatCount(Math.round(n / 10000)), unit: t('만 자') };
   }
 
   function statTile(label, value, unit, sub) {
@@ -269,9 +312,9 @@
   function lastPostRow(post) {
     var row = el('div', 'settings-row');
     var text = el('div', 'settings-row-text');
-    text.appendChild(el('p', 'settings-row-label', '마지막으로 수집한 글'));
+    text.appendChild(el('p', 'settings-row-label', t('마지막으로 수집한 글')));
     var desc = el('p', 'settings-row-desc');
-    var link = el('a', 'settings-stat-link', formatCount(post.id) + '번 · ' + post.title);
+    var link = el('a', 'settings-stat-link', t('{n}번', { n: formatCount(post.id) }) + ' · ' + post.title);
     link.href = DC_POST_URL + post.id;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
@@ -286,37 +329,37 @@
     var tr = stats.translation || {};
 
     if (stats.updatedAt) {
-      box.appendChild(el('p', 'settings-desc', stats.updatedAt + ' 기준 · 갤러리 글을 주기적으로 모아 반영하므로 최근 글은 다음 수집 때 추가됩니다.'));
+      box.appendChild(el('p', 'settings-desc', t('{date} 기준 · 갤러리 글을 주기적으로 모아 반영하므로 최근 글은 다음 수집 때 추가됩니다.', { date: stats.updatedAt })));
     }
 
-    box.appendChild(el('p', 'settings-field-label', '문학'));
+    box.appendChild(el('p', 'settings-field-label', t('문학')));
     var litGrid = el('div', 'settings-stat-grid');
     var litChars = formatChars(lit.chars);
-    litGrid.appendChild(statTile('작품', formatCount(lit.posts), '편'));
-    litGrid.appendChild(statTile('작가', formatCount(lit.authors), '명'));
-    litGrid.appendChild(statTile('글자 수', litChars.value, litChars.unit));
-    litGrid.appendChild(statTile('시리즈', formatCount(lit.series), '개', lit.seriesEpisodes ? '총 ' + formatCount(lit.seriesEpisodes) + '화' : ''));
-    litGrid.appendChild(statTile('대회 출품작', formatCount(lit.contest), '편'));
-    litGrid.appendChild(statTile('명예관', formatCount(lit.hof), '편'));
+    litGrid.appendChild(statTile(t('작품'), formatCount(lit.posts), t('편')));
+    litGrid.appendChild(statTile(t('작가'), formatCount(lit.authors), t('명')));
+    litGrid.appendChild(statTile(t('글자 수'), litChars.value, litChars.unit));
+    litGrid.appendChild(statTile(t('시리즈'), formatCount(lit.series), t('개'), lit.seriesEpisodes ? t('총 {n}화', { n: formatCount(lit.seriesEpisodes) }) : ''));
+    litGrid.appendChild(statTile(t('대회 출품작'), formatCount(lit.contest), t('편')));
+    litGrid.appendChild(statTile(t('명예관'), formatCount(lit.hof), t('편')));
     box.appendChild(litGrid);
     if (lit.lastPost) box.appendChild(lastPostRow(lit.lastPost));
 
-    box.appendChild(el('p', 'settings-field-label', '번역'));
+    box.appendChild(el('p', 'settings-field-label', t('번역')));
     var trGrid = el('div', 'settings-stat-grid');
     var trChars = formatChars(tr.chars);
-    trGrid.appendChild(statTile('번역글', formatCount(tr.posts), '편'));
-    trGrid.appendChild(statTile('역자', formatCount(tr.translators), '명'));
-    trGrid.appendChild(statTile('글자 수', trChars.value, trChars.unit));
+    trGrid.appendChild(statTile(t('번역글'), formatCount(tr.posts), t('편')));
+    trGrid.appendChild(statTile(t('역자'), formatCount(tr.translators), t('명')));
+    trGrid.appendChild(statTile(t('글자 수'), trChars.value, trChars.unit));
     box.appendChild(trGrid);
     if (tr.lastPost) box.appendChild(lastPostRow(tr.lastPost));
 
-    box.appendChild(el('p', 'settings-stat-note', '끌올·잡담·소재 요청처럼 작품이 아닌 글은 집계에서 뺐고, 여러 곳에 함께 실린 글은 한 번만 셌습니다.'));
+    box.appendChild(el('p', 'settings-stat-note', t('끌올·잡담·소재 요청처럼 작품이 아닌 글은 집계에서 뺐고, 여러 곳에 함께 실린 글은 한 번만 셌습니다.')));
   }
 
   function renderInfoPane(pane) {
-    pane.appendChild(el('h3', 'settings-pane-title', '정보'));
+    pane.appendChild(el('h3', 'settings-pane-title', t('정보')));
     var box = el('div', 'settings-info');
-    box.appendChild(el('p', 'settings-desc', '수집 현황을 불러오는 중…'));
+    box.appendChild(el('p', 'settings-desc', t('수집 현황을 불러오는 중…')));
     pane.appendChild(box);
 
     var load = global.fetchJsonCached
@@ -330,7 +373,7 @@
     }).catch(function () {
       if (!box.isConnected) return;
       box.innerHTML = '';
-      box.appendChild(el('p', 'settings-desc', '수집 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'));
+      box.appendChild(el('p', 'settings-desc', t('수집 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.')));
     });
   }
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>초카공 문학&amp;번역 • 공식</title>
+<title data-i18n>초카공 문학&amp;번역 • 공식</title>
 <link rel="icon" type="image/png" href="../offlineSrc/favicon.png" />
 <link rel="manifest" href="../manifest.webmanifest" />
 <meta name="theme-color" content="#ffffff" />
@@ -48,54 +48,52 @@
 </div>
 
 <header class="header">
-  <a class="header-logo-link" href="/" aria-label="메인 페이지로 이동">
-    <img class="header-logo" src="../offlineSrc/logo/Logo_Official_Dark.png" data-light-src="../offlineSrc/logo/Logo_Official_Dark.png" data-dark-src="../offlineSrc/logo/Logo_Official_Light.png" alt="공식" />
+  <a class="header-logo-link" href="/" aria-label="메인 페이지로 이동" data-i18n-attr="aria-label">
+    <img class="header-logo" src="../offlineSrc/logo/Logo_Official_Dark.png" data-light-src="../offlineSrc/logo/Logo_Official_Dark.png" data-dark-src="../offlineSrc/logo/Logo_Official_Light.png" alt="공식" data-i18n-attr="alt" />
   </a>
 </header>
 
-<button type="button" class="sidebar-toggle-btn" aria-label="메뉴 열기">
+<button type="button" class="sidebar-toggle-btn" aria-label="메뉴 열기" data-i18n-attr="aria-label">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
 </button>
 
 <aside class="sidebar">
   <nav class="header-nav">
     <div class="header-nav-primary">
-      <a href="/" class="header-nav-main">메인</a>
-      <a href="/notice" class="header-nav-changelog">공지사항</a>
+      <a href="/" class="header-nav-main" data-i18n>메인</a>
+      <a href="/notice" class="header-nav-changelog" data-i18n>공지사항</a>
     </div>
-    <a href="/official" class="header-nav-strong">공식</a>
-    <a href="/translation">번역</a>
-    <a href="/novel">문학</a>
-    <a href="/series">시리즈</a>
-    <a href="/hof">명예관</a>
-    <a href="/contest">대회</a>
+    <a href="/official" class="header-nav-strong" data-i18n>공식</a>
+    <a href="/translation" data-i18n>번역</a>
+    <a href="/novel" data-i18n>문학</a>
+    <a href="/series" data-i18n>시리즈</a>
+    <a href="/hof" data-i18n>명예관</a>
+    <a href="/contest" data-i18n>대회</a>
     <button type="button" class="header-nav-settings" data-settings-trigger>
       <svg class="header-nav-settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span class="header-nav-settings-label">설정</span>
+      <span class="header-nav-settings-label" data-i18n>설정</span>
     </button>
   </nav>
 </aside>
-
-<div class="hero-space" data-hero-space></div>
 
 <div class="series-toolbar">
   <div class="series-toolbar-row">
     <label class="series-search">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="#000000" stroke-width="1.5"/><line x1="11.5" y1="11.5" x2="15" y2="15" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <input type="text" id="series-search-input" placeholder="게시물 이름으로 검색" autocomplete="off" />
+      <input type="text" id="series-search-input" placeholder="게시물 이름으로 검색" autocomplete="off" data-i18n-attr="placeholder" />
     </label>
     <div class="series-filter">
-      <button type="button" class="series-filter-btn" id="series-filter-btn" aria-haspopup="true" aria-expanded="false" aria-label="태그 필터">
+      <button type="button" class="series-filter-btn" id="series-filter-btn" aria-haspopup="true" aria-expanded="false" aria-label="태그 필터" data-i18n-attr="aria-label">
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 3.5H17.5L11.5 10.3V16L8.5 14.3V10.3L2.5 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
       </button>
       <div class="series-filter-panel" id="series-filter-panel">
         <div class="sfp-header">
-          <span>원하는 태그를 고르세요!</span>
+          <span data-i18n>원하는 태그를 고르세요!</span>
         </div>
         <div class="sfp-options" id="series-filter-options"></div>
       </div>
     </div>
-    <button type="button" class="series-view-toggle-btn" id="series-view-toggle-btn" aria-pressed="false" aria-label="리스트로 보기">
+    <button type="button" class="series-view-toggle-btn" id="series-view-toggle-btn" aria-pressed="false" aria-label="리스트로 보기" data-i18n-attr="aria-label">
       <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="2" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="7.25" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="12.5" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
   </div>
@@ -104,13 +102,14 @@
 <section class="series-grid" id="series-grid"></section>
 
 <footer class="site-footer">
-  <p class="site-footer-line">해당 페이지는 <strong>절대로</strong> 초! 카구야 공주의 공식이 아니며, 팬메이드 페이지임을 알립니다.</p>
+  <p class="site-footer-line" data-i18n-html>해당 페이지는 <strong>절대로</strong> 초! 카구야 공주의 공식이 아니며, 팬메이드 페이지임을 알립니다.</p>
   <p class="site-footer-line">Copyright ⓒ 2026 - 2026 Cho Kaguya hime. All rights reserved.</p>
-  <p class="site-footer-line site-footer-contact">문의 : cpkg@cpkg.cloud</p>
+  <p class="site-footer-line site-footer-contact"><span data-i18n>문의</span> : cpkg@cpkg.cloud</p>
 </footer>
 
 <script defer src="../js/core/pwa.js"></script>
 <script defer src="../js/config/cdnConfig.js"></script>
+<script defer src="../js/core/i18n.js"></script>
 <script defer src="../js/config/siteConfig.js"></script>
 <script defer src="../js/core/presence.js"></script>
 <script defer src="../js/config/libraryConfig.js"></script>
@@ -129,7 +128,6 @@
 <script defer src="../js/core/audioSettings.js"></script>
 <script defer src="../js/core/contentSettings.js"></script>
 <script defer src="../js/components/settingsModal.js"></script>
-<script defer src="../js/components/heroLogo.js"></script>
 <script defer src="../js/config/tagConfig.js"></script>
 <script defer src="../js/core/seriesUtil.js"></script>
 <script defer src="../js/components/postDetailSeries.js"></script>

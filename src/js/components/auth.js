@@ -16,6 +16,7 @@
  *   있다가, 계정 탭이 지금 열려 있으면 다시 그린다.
  */
 (function (global) {
+  var t = global.I18n.t;
   // 사이드바에 찍히는 사이트 버전 — src/js/config/siteConfig.js 가 이미 fetch해둔
   // src/data/config/SiteConfig.json 을 그대로 재사용한다(같은 파일을 또 받지
   // 않도록). 대표님이 이 값을 바꾸고 싶을 때 코드를 건드릴 필요 없이 그
@@ -49,18 +50,18 @@
   // 믿는 상황을 막는 게 목적이라, 로그인 상태에서만 보여준다. 자동 동기화가
   // 없으므로(userData.js) 이 라벨은 곧 버튼이다 — 눌러야 실제로 맞춰진다.
   var SYNC_STATE_LABELS = {
-    synced: '동기화됨',
-    pending: '동기화 필요 · 아래에서 저장/불러오기',
-    syncing: '동기화 중...',
-    cooldown: '동기화 쿨타임중..',
-    offline: '오프라인 (이 기기에만 저장 중)',
-    error: '동기화 실패 · 다시 눌러보세요'
+    synced: t('동기화됨'),
+    pending: t('동기화 필요 · 아래에서 저장/불러오기'),
+    syncing: t('동기화 중...'),
+    cooldown: t('동기화 쿨타임중..'),
+    offline: t('오프라인 (이 기기에만 저장 중)'),
+    error: t('동기화 실패 · 다시 눌러보세요')
   };
 
   function renderLoggedOut(container) {
     container.innerHTML = '';
-    container.appendChild(el('p', 'settings-desc', '로그인하면 북마크를 다른 기기와 동기화할 수 있어요.'));
-    var loginBtn = settingsButton('로그인', 'is-primary');
+    container.appendChild(el('p', 'settings-desc', t('로그인하면 북마크를 다른 기기와 동기화할 수 있어요.')));
+    var loginBtn = settingsButton(t('로그인'), 'is-primary');
     loginBtn.addEventListener('click', function () {
       global.AuthModal.openSignIn({ onSuccess: function () { renderAccountSettings(container); } });
     });
@@ -70,7 +71,7 @@
   function renderLoggedIn(container) {
     container.innerHTML = '';
 
-    container.appendChild(el('p', 'settings-field-label', '개인 코드'));
+    container.appendChild(el('p', 'settings-field-label', t('개인 코드')));
     var codeRow = el('div', 'settings-inline-row');
     var codeInput = document.createElement('input');
     codeInput.type = 'text';
@@ -80,14 +81,14 @@
     codeInput.addEventListener('focus', function () { codeInput.select(); });
     codeRow.appendChild(codeInput);
 
-    var copyBtn = settingsButton('복사');
+    var copyBtn = settingsButton(t('복사'));
     copyBtn.addEventListener('click', function () {
       codeInput.focus();
       codeInput.select();
       var text = codeInput.value;
       var showCopied = function () {
-        copyBtn.textContent = '복사됨!';
-        setTimeout(function () { copyBtn.textContent = '복사'; }, 1500);
+        copyBtn.textContent = t('복사됨!');
+        setTimeout(function () { copyBtn.textContent = t('복사'); }, 1500);
       };
       if (global.navigator && global.navigator.clipboard && global.navigator.clipboard.writeText) {
         global.navigator.clipboard.writeText(text).then(showCopied).catch(function () {});
@@ -98,22 +99,22 @@
     codeRow.appendChild(copyBtn);
     container.appendChild(codeRow);
 
-    container.appendChild(el('p', 'settings-field-label', '클라우드 동기화'));
+    container.appendChild(el('p', 'settings-field-label', t('클라우드 동기화')));
     var state = (global.UserData && global.UserData.getStatus()) || 'offline';
     container.appendChild(el('p', 'settings-sync-status is-' + state, SYNC_STATE_LABELS[state] || SYNC_STATE_LABELS.offline));
 
     var syncRow = el('div', 'settings-inline-row');
-    var saveBtn = settingsButton('이 기기 → 서버에 저장', 'is-primary');
+    var saveBtn = settingsButton(t('이 기기 → 서버에 저장'), 'is-primary');
     saveBtn.addEventListener('click', function () { if (global.UserData) global.UserData.saveToServer(); });
     syncRow.appendChild(saveBtn);
-    var loadBtn = settingsButton('서버 → 이 기기로 불러오기');
+    var loadBtn = settingsButton(t('서버 → 이 기기로 불러오기'));
     loadBtn.addEventListener('click', function () { if (global.UserData) global.UserData.loadFromServer(); });
     syncRow.appendChild(loadBtn);
     container.appendChild(syncRow);
 
-    var logoutBtn = settingsButton('로그아웃', 'is-danger');
+    var logoutBtn = settingsButton(t('로그아웃'), 'is-danger');
     logoutBtn.addEventListener('click', function () {
-      if (!global.confirm('로그아웃할까요? 이 브라우저의 개인 코드가 지워져요. 다시 로그인하려면 그 코드를 알고 있어야 해요(단, 이 브라우저가 직접 관리 코드를 쥔 게시물은 로그아웃 후에도 계속 관리할 수 있어요).')) return;
+      if (!global.confirm(t('로그아웃할까요? 이 브라우저의 개인 코드가 지워져요. 다시 로그인하려면 그 코드를 알고 있어야 해요(단, 이 브라우저가 직접 관리 코드를 쥔 게시물은 로그아웃 후에도 계속 관리할 수 있어요).'))) return;
       global.BookmarkLibrary.logout();
     });
     container.appendChild(logoutBtn);
@@ -145,14 +146,14 @@
       buildInfoPromise = fetch('/__build-info')
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          if (!data.timestamp) return '확인 불가';
+          if (!data.timestamp) return t('확인 불가');
           var d = new Date(data.timestamp);
-          if (isNaN(d.getTime())) return '확인 불가';
+          if (isNaN(d.getTime())) return t('확인 불가');
           function pad(n) { return (n < 10 ? '0' : '') + n; }
           return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
             pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
         })
-        .catch(function () { return '확인 불가'; });
+        .catch(function () { return t('확인 불가'); });
     }
     return buildInfoPromise;
   }
@@ -166,7 +167,7 @@
     tag.type = 'button';
     tag.className = 'auth-version-tag';
     tag.textContent = SITE_VERSION;
-    tag.title = '눌러서 실제 배포 시각 확인';
+    tag.title = t('눌러서 실제 배포 시각 확인');
     tag.setAttribute('data-showing-time', '0');
     // SiteConfig.json 로딩이 끝나면 실제 버전으로 갱신 — 그사이 배포 시각을
     // 보여주는 중으로 전환했다면 덮어쓰지 않는다.
@@ -182,7 +183,7 @@
         return;
       }
       tag.setAttribute('data-showing-time', '1');
-      tag.textContent = '확인 중...';
+      tag.textContent = t('확인 중...');
       fetchBuildTimeText().then(function (text) {
         // 응답이 오기 전에 다시 눌러서 버전으로 돌아갔다면 덮어쓰지 않는다.
         if (tag.getAttribute('data-showing-time') !== '1') return;

@@ -13,6 +13,7 @@
  *   bookmarkPicker.js, postDetailSeries.js (없으면 해당 부가 기능만 빠진다)
  */
 (function (global) {
+  var t = global.I18n.t;
   var PK = global.PickerKit;
   if (!PK || !global.TagConfig || !document.body) return;
 
@@ -62,12 +63,12 @@
   var MACHINE_HTML =
     '<header class="pk-head">' +
       '<p class="pk-eyebrow">RANDOM LITERATURE</p>' +
-      '<h2 class="pk-title" id="rl-title">문학 룰렛</h2>' +
-      '<p class="pk-sub">룰렛이 태그를 고르면, 그 태그가 붙은 문학 중 한 편을 뽑아 드려요.</p>' +
+      '<h2 class="pk-title" id="rl-title">' + t('문학 룰렛') + '</h2>' +
+      '<p class="pk-sub">' + t('룰렛이 태그를 고르면, 그 태그가 붙은 문학 중 한 편을 뽑아 드려요.') + '</p>' +
     '</header>' +
     '<div class="rl-stage">' +
       '<div class="rl-rim" aria-hidden="true"></div>' +
-      '<svg class="rl-wheel" viewBox="-100 -100 200 200" role="img" aria-label="태그 룰렛"></svg>' +
+      '<svg class="rl-wheel" viewBox="-100 -100 200 200" role="img" aria-label="' + t('태그 룰렛') + '"></svg>' +
       '<div class="rl-pointer" aria-hidden="true">' +
         '<svg viewBox="0 0 32 40"><path d="M16 38L2.5 8.5A14 14 0 0 1 29.5 8.5Z" /><circle cx="16" cy="12" r="4.5" /></svg>' +
       '</div>' +
@@ -76,11 +77,11 @@
     '<div class="rl-screen" aria-live="polite">' +
       '<div class="rl-screen-row">' +
         '<span class="rl-screen-step">READY</span>' +
-        '<span class="rl-screen-tag">문학 목록을 불러오는 중…</span>' +
+        '<span class="rl-screen-tag">' + t('문학 목록을 불러오는 중…') + '</span>' +
       '</div>' +
-      '<div class="rl-reel"><p class="rl-reel-text">잠시만 기다려 주세요</p></div>' +
+      '<div class="rl-reel"><p class="rl-reel-text">' + t('잠시만 기다려 주세요') + '</p></div>' +
     '</div>' +
-    PK.resultHtml('같은 태그로 다시 뽑기');
+    PK.resultHtml(t('같은 태그로 다시 뽑기'));
 
   var fabEl = null;
   var modal = null;
@@ -325,12 +326,12 @@
     var winner = pickItem(tag);
     if (!winner) {
       setStep('EMPTY');
-      setReel('이 태그의 문학을 찾지 못했어요', true);
+      setReel(t('이 태그의 문학을 찾지 못했어요'), true);
       return Promise.resolve();
     }
     setStep('STEP 2');
     return spinReel(tag, winner).then(function () {
-      setStep('당첨!');
+      setStep(t('당첨!'));
       renderResult(winner);
     });
   }
@@ -343,16 +344,16 @@
     resultEl.hidden = true;
     currentTag = null;
     setStep('STEP 1');
-    screenTagEl.textContent = '태그를 고르는 중…';
+    screenTagEl.textContent = t('태그를 고르는 중…');
     screenTagEl.removeAttribute('data-tag');
-    setReel('룰렛이 돌아가고 있어요', false);
+    setReel(t('룰렛이 돌아가고 있어요'), false);
 
     spinWheel()
       .then(function (idx) {
         currentTag = wheelTags[idx];
         sliceEls[idx].classList.add('is-winner');
         wheelEl.classList.add('has-winner');
-        screenTagEl.textContent = tagChipText(currentTag) + ' · ' + tagPool[currentTag].length + '편';
+        screenTagEl.textContent = tagChipText(currentTag) + ' · ' + t('{n}편', { n: tagPool[currentTag].length });
         screenTagEl.dataset.tag = currentTag;
         return new Promise(function (r) { global.setTimeout(r, reduceMotion ? 0 : 450); });
       })
@@ -396,9 +397,9 @@
     currentItem = null;
     resultEl.hidden = true;
     setStep('READY');
-    screenTagEl.textContent = '태그 ' + wheelTags.length + '종 · 문학 ' + items.length + '편';
+    screenTagEl.textContent = t('태그 {tags}종 · 문학 {n}편', { tags: wheelTags.length, n: items.length });
     screenTagEl.removeAttribute('data-tag');
-    setReel(wheelTags.length ? '가운데 SPIN 버튼을 눌러 보세요' : '룰렛에 올릴 태그가 없어요', true);
+    setReel(wheelTags.length ? t('가운데 SPIN 버튼을 눌러 보세요') : t('룰렛에 올릴 태그가 없어요'), true);
     spinBtn.disabled = !wheelTags.length;
   }
 
@@ -408,7 +409,7 @@
     modal = PK.createModal({
       machineClass: 'rl-machine',
       labelledBy: 'rl-title',
-      closeLabel: '룰렛 닫기',
+      closeLabel: t('룰렛 닫기'),
       html: MACHINE_HTML,
       fab: fabEl,
       onOpen: loadData,
@@ -451,15 +452,15 @@
         // 다음에 팝업을 다시 열면 한 번 더 시도한다
         loadPromise = null;
         setStep('ERROR');
-        setReel('문학 목록을 불러오지 못했어요', true);
+        setReel(t('문학 목록을 불러오지 못했어요'), true);
       });
     return loadPromise;
   }
 
   fabEl = PK.createFab({
     iconHtml: FAB_ICON,
-    label: '문학 룰렛',
-    ariaLabel: '문학 룰렛 열기',
+    label: t('문학 룰렛'),
+    ariaLabel: t('문학 룰렛 열기'),
     order: 2,
     // 평소 7초에 한 바퀴, 마우스를 올리면 5배(1.4초에 한 바퀴)까지 가속
     spinSelector: '.rl-fab-wheel',

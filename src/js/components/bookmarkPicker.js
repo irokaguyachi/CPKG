@@ -11,6 +11,7 @@
  *   그린다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var BOOKMARK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
   var CHECK_ICON = '<svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -70,14 +71,14 @@
     var input = document.createElement('input');
     input.type = 'text';
     input.className = 'bkm-picker-new-input';
-    input.placeholder = '새 북마크 이름';
+    input.placeholder = t('새 북마크 이름');
     input.maxLength = global.LibraryConfig ? global.LibraryConfig.MAX_NAME_LENGTH : 20;
     row.appendChild(input);
 
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'bkm-picker-new-btn';
-    btn.textContent = '추가';
+    btn.textContent = t('추가');
     row.appendChild(btn);
 
     function submit() {
@@ -102,7 +103,7 @@
 
     var header = document.createElement('div');
     header.className = 'sfp-header';
-    header.textContent = '담을 북마크를 고르세요';
+    header.textContent = t('담을 북마크를 고르세요');
     popoverEl.appendChild(header);
 
     var list = document.createElement('div');
@@ -111,7 +112,7 @@
     if (!bookmarks.length) {
       var empty = document.createElement('div');
       empty.className = 'sfp-empty';
-      empty.textContent = '아직 만든 북마크가 없어요';
+      empty.textContent = t('아직 만든 북마크가 없어요');
       list.appendChild(empty);
     } else {
       bookmarks.forEach(function (b) { list.appendChild(renderRow(b)); });
@@ -166,7 +167,7 @@
     btn.type = 'button';
     btn.className = 'series-card-fav bkm-fav-btn';
     btn.innerHTML = BOOKMARK_ICON;
-    btn.setAttribute('aria-label', '북마크에 담기');
+    btn.setAttribute('aria-label', t('북마크에 담기'));
     // 로그아웃 상태에서는 담긴 표시(채운 아이콘)를 내보내지 않는다 — 열지도
     // 못하는 북마크에 담겨 있다고 보여주면, 눌렀을 때 로그인 모달이 뜨는 게
     // 앞뒤가 안 맞는다. 로그인하면 refreshButtons 가 곧바로 되살린다.
@@ -181,7 +182,7 @@
       // 끝나면 누르려던 그 버튼의 팝오버를 그대로 이어서 연다.
       if (!isLoggedIn()) {
         global.AuthModal.requireLogin({
-          reason: '북마크에 담으려면 먼저 로그인해주세요',
+          reason: t('북마크에 담으려면 먼저 로그인해주세요'),
           onSuccess: function () { open(btn, type, id, opts); }
         });
         return;

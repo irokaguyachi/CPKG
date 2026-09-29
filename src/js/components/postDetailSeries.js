@@ -1,4 +1,5 @@
 (function (global) {
+  var t = global.I18n.t;
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
 
   var overlayEl = null;
@@ -116,7 +117,7 @@
     }).then(function (res) {
       if (res.ok) return res.json();
       return res.json().catch(function () { return {}; }).then(function (data) {
-        throw new Error((data && data.error) || ('요청에 실패했어요 (' + res.status + ')'));
+        throw new Error((data && data.error && t(data.error)) || t('요청에 실패했어요 ({code})', { code: res.status }));
       });
     });
   }
@@ -129,7 +130,7 @@
 
     var label = document.createElement('p');
     label.className = 'pds-tags-label';
-    label.textContent = '공식 태그';
+    label.textContent = t('공식 태그');
     section.appendChild(label);
 
     var pillsWrap = document.createElement('div');
@@ -156,7 +157,7 @@
 
     var label = document.createElement('p');
     label.className = 'pds-tags-label';
-    label.textContent = '유저 인기 태그';
+    label.textContent = t('유저 인기 태그');
     section.appendChild(label);
 
     var pillsWrap = document.createElement('div');
@@ -206,7 +207,7 @@
       var addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'pds-tag-pill pds-tag-more';
-      addBtn.setAttribute('aria-label', '태그 선택');
+      addBtn.setAttribute('aria-label', t('태그 선택'));
       addBtn.textContent = '+';
       addBtn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -221,7 +222,7 @@
       pill.className = 'pds-tag-pill' + (myTags.indexOf(tag) !== -1 ? ' is-voted' : '');
       pill.dataset.tag = tag;
       pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-      pill.title = (votes[tag] || 0) + '표';
+      pill.title = t('{n}표', { n: votes[tag] || 0 });
       pill.addEventListener('click', function (e) {
         e.stopPropagation();
         vote(tag);
@@ -249,12 +250,12 @@
       header.className = 'pds-tagpicker-header';
       var title = document.createElement('h3');
       title.className = 'pds-tagpicker-title';
-      title.textContent = '태그 보기 및 변경';
+      title.textContent = t('태그 보기 및 변경');
       header.appendChild(title);
       var closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'pds-tagpicker-close';
-      closeBtn.setAttribute('aria-label', '닫기');
+      closeBtn.setAttribute('aria-label', t('닫기'));
       closeBtn.textContent = '×';
       closeBtn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -281,7 +282,7 @@
     function renderPicker(subEl) {
       if (subEl) {
         var popularCount = catalog.filter(function (t) { return (votes[t] || 0) > 0; }).length;
-        subEl.textContent = '이 문학의 인기 태그: ' + popularCount + '개';
+        subEl.textContent = t('이 문학의 인기 태그: {n}개', { n: popularCount });
       }
       if (!pickerListEl) return;
       pickerListEl.innerHTML = '';
@@ -305,14 +306,14 @@
 
       var count = document.createElement('span');
       count.className = 'pds-tagpicker-row-count';
-      count.textContent = (votes[tag] || 0) + '표';
+      count.textContent = t('{n}표', { n: votes[tag] || 0 });
       row.appendChild(count);
 
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'pds-tagpicker-row-btn';
       btn.textContent = voted ? '✓' : '+';
-      btn.setAttribute('aria-label', (voted ? '태그 투표 취소: ' : '태그 투표: ') + tag);
+      btn.setAttribute('aria-label', (voted ? t('태그 투표 취소') : t('태그 투표')) + ': ' + tag);
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         vote(tag);
@@ -328,7 +329,7 @@
       if (!personalCode) {
         if (!global.AuthModal) return;
         global.AuthModal.requireLogin({
-          reason: '태그에 투표하려면 로그인이 필요해요',
+          reason: t('태그에 투표하려면 로그인이 필요해요'),
           onSuccess: function () { vote(tag); }
         });
         return;
@@ -346,7 +347,7 @@
           applyVoteDelta(tag, hadVote ? 1 : -1, hadVote);
           renderMainRow();
           if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
-          showTagError((err && err.message) || '투표에 실패했어요. 잠시 후 다시 시도해주세요.');
+          showTagError((err && err.message) || t('투표에 실패했어요. 잠시 후 다시 시도해주세요.'));
         })
         .then(function () { delete pending[tag]; });
     }
@@ -403,7 +404,7 @@
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'pds-close';
-    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.setAttribute('aria-label', t('닫기'));
     closeBtn.innerHTML = ICON_CLOSE;
     closeBtn.addEventListener('click', close);
     card.appendChild(closeBtn);
@@ -418,18 +419,18 @@
 
     var title = document.createElement('p');
     title.className = 'pds-mature-notice-title';
-    title.textContent = '후방주의 태그가 붙은 문학이에요';
+    title.textContent = t('후방주의 태그가 붙은 문학이에요');
     notice.appendChild(title);
 
     var desc = document.createElement('p');
     desc.className = 'pds-mature-notice-desc';
-    desc.textContent = '설정에서 표시를 켜야 볼 수 있어요.';
+    desc.textContent = t('설정에서 표시를 켜야 볼 수 있어요.');
     notice.appendChild(desc);
 
     var settingsBtn = document.createElement('button');
     settingsBtn.type = 'button';
     settingsBtn.className = 'pds-mature-notice-btn';
-    settingsBtn.textContent = '설정 열기';
+    settingsBtn.textContent = t('설정 열기');
     settingsBtn.addEventListener('click', function () {
       close();
       if (global.SettingsModal) global.SettingsModal.open('general');
@@ -485,7 +486,7 @@
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'pds-close';
-    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.setAttribute('aria-label', t('닫기'));
     closeBtn.innerHTML = ICON_CLOSE;
     closeBtn.addEventListener('click', close);
     card.appendChild(closeBtn);
@@ -503,6 +504,9 @@
         var finalImg = window.resolveAssetUrl ? window.resolveAssetUrl(data.imageUrl) : data.imageUrl;
         image.style.backgroundImage = 'url("' + finalImg + '")';
       }
+    } else if (window.TagConfig && window.TagConfig.applyTagGlow) {
+      // 이미지가 없는 작품은 카드와 같은 태그 색 그라데이션으로 채운다.
+      window.TagConfig.applyTagGlow(image, data.tags);
     }
 
     var imageEffect = document.createElement('div');
@@ -523,11 +527,12 @@
     // 대상(제목 텍스트)을 배지와 분리된 자기 span으로 감싼다.
     var nameText = document.createElement('span');
     nameText.className = 'pds-series-name-text';
-    nameText.textContent = data.seriesName || '시리즈 이름';
+    nameText.textContent = data.seriesName || t('시리즈 이름');
     name.appendChild(nameText);
     var episodeCountEl = document.createElement('span');
     episodeCountEl.className = 'pds-series-episode-count';
-    episodeCountEl.textContent = (data.episodes || []).length + ' 화';
+    // 화수(개수)라서 회차 뱃지용 '{n} 화'(n화째)와 다른 키를 쓴다.
+    episodeCountEl.textContent = t('{n}화', { n: (data.episodes || []).length });
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
 
@@ -560,15 +565,15 @@
     var sortBtn = document.createElement('button');
     sortBtn.type = 'button';
     sortBtn.className = 'pds-sort-btn';
-    sortBtn.setAttribute('aria-label', '화 정렬 순서 변경');
+    sortBtn.setAttribute('aria-label', t('화 정렬 순서 변경'));
 
     function updateSortButtonUI() {
       if (currentSortOrder === 'asc') {
-        sortBtn.innerHTML = '<svg class="pds-sort-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M2.5 8h4M2.5 11.5h2"/><path d="M10.5 11.5l2.5-3 2.5 3"/><path d="M13 8.5v5"/></svg><span class="pds-sort-text">1화부터 (오름차순)</span>';
-        sortBtn.setAttribute('title', '현재: 1화부터 순서대로 (클릭 시 최신화부터 역순)');
+        sortBtn.innerHTML = '<svg class="pds-sort-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M2.5 8h4M2.5 11.5h2"/><path d="M10.5 11.5l2.5-3 2.5 3"/><path d="M13 8.5v5"/></svg><span class="pds-sort-text">' + t('1화부터 (오름차순)') + '</span>';
+        sortBtn.setAttribute('title', t('현재: 1화부터 순서대로 (클릭 시 최신화부터 역순)'));
       } else {
-        sortBtn.innerHTML = '<svg class="pds-sort-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M2.5 8h4M2.5 11.5h2"/><path d="M10.5 8.5l2.5 3 2.5-3"/><path d="M13 11.5v-5"/></svg><span class="pds-sort-text">최신화부터 (내림차순)</span>';
-        sortBtn.setAttribute('title', '현재: 최신화부터 역순으로 (클릭 시 1화부터 순서대로)');
+        sortBtn.innerHTML = '<svg class="pds-sort-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h6M2.5 8h4M2.5 11.5h2"/><path d="M10.5 8.5l2.5 3 2.5-3"/><path d="M13 11.5v-5"/></svg><span class="pds-sort-text">' + t('최신화부터 (내림차순)') + '</span>';
+        sortBtn.setAttribute('title', t('현재: 최신화부터 역순으로 (클릭 시 1화부터 순서대로)'));
       }
     }
 
@@ -749,22 +754,22 @@
       titleIcon.textContent = '🎧 ';
       titleInner.appendChild(titleIcon);
     }
-    titleInner.appendChild(document.createTextNode((ep.title || '게시물 이름') + ' '));
+    titleInner.appendChild(document.createTextNode((ep.title || t('게시물 이름')) + ' '));
     var idSpan = document.createElement('span');
     idSpan.className = 'pds-episode-id';
-    idSpan.textContent = '| ' + (ep.dcId != null ? ep.dcId : '게시물 ID');
+    idSpan.textContent = '| ' + (ep.dcId != null ? ep.dcId : t('게시물 ID'));
     titleInner.appendChild(idSpan);
     title.appendChild(titleInner);
     item.appendChild(title);
 
     var link = document.createElement('p');
     link.className = 'pds-episode-link';
-    link.textContent = ep.reader ? '오디오 노벨로 읽기' : (ep.link || '게시물 링크');
+    link.textContent = ep.reader ? t('오디오 노벨로 읽기') : (ep.link || t('게시물 링크'));
     item.appendChild(link);
 
     var badge = document.createElement('span');
     badge.className = 'pds-episode-badge';
-    badge.textContent = ep.episodeLabel || '00 화';
+    badge.textContent = ep.episodeLabel || t('00 화');
     item.appendChild(badge);
 
     if (ep.reader) {

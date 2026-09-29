@@ -29,6 +29,7 @@
 // Contest.json 을 고치면 src/scripts/10_update_data_version.py 로
 // DATA_VERSION 을 올려야 브라우저가 새 목록을 받아 갑니다.
 (function (global) {
+  var t = global.I18n.t;
   var CONTEST_URL = '../data/pageData/Contest.json';
   var NOVEL_URL = '../data/pageData/Novel.json';
   // HTML <title>("초카공 문학&번역 • 대회") 뒤에 대회 이름을 붙인다. 상세를
@@ -98,14 +99,14 @@
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var status;
     if (start && today < start) {
-      status = '시작 D-' + daysBetween(today, start);
+      status = t('시작 D-{n}', { n: daysBetween(today, start) });
     } else if (end && today > end) {
-      status = '종료';
+      status = t('종료');
     } else if (end) {
       var left = daysBetween(today, end);
       status = left === 0 ? 'D-Day' : 'D-' + left;
     } else {
-      status = '진행 중';
+      status = t('진행 중');
     }
     return range + ' (' + status + ')';
   }
@@ -194,7 +195,7 @@
 
     var count = document.createElement('p');
     count.className = 'contest-card-count';
-    count.textContent = '참가작 ' + entries.length + '편';
+    count.textContent = t('참가작 {n}편', { n: entries.length });
     info.appendChild(count);
 
     // 목록 카드는 <a> 라서 안에 링크를 또 넣을 수 없다. 상세 카드에만 단다.
@@ -208,7 +209,7 @@
         notice.href = n.url;
         notice.target = '_blank';
         notice.rel = 'noopener noreferrer';
-        notice.textContent = (n.label || '개최 글 보기') + ' ↗';
+        notice.textContent = (n.label || t('개최 글 보기')) + ' ↗';
         noticeRow.appendChild(notice);
       });
       info.appendChild(noticeRow);
@@ -225,7 +226,7 @@
     if (!contests.length) {
       var empty = document.createElement('p');
       empty.className = 'contest-list-empty';
-      empty.textContent = '아직 등록된 대회가 없어요.';
+      empty.textContent = t('아직 등록된 대회가 없어요.');
       listEl.appendChild(empty);
       return;
     }
@@ -250,21 +251,21 @@
     var back = document.createElement('a');
     back.className = 'contest-back-link';
     back.href = '/contest';
-    back.textContent = '← 대회 목록';
+    back.textContent = '← ' + t('대회 목록');
     heroEl.appendChild(back);
     heroEl.appendChild(createContestCard(contest, entries, null));
 
     document.title = BASE_TITLE + ' — ' + (contest.shortName || contest.name);
     var searchInput = document.getElementById('series-search-input');
-    if (searchInput) searchInput.placeholder = (contest.shortName || contest.name) + ' 참가작 검색';
+    if (searchInput) searchInput.placeholder = t('{name} 참가작 검색', { name: contest.shortName || contest.name });
 
     global.GridPage.create({
       dataUrl: NOVEL_URL,
       favType: 'novel',
       userTags: true,
       filterItems: function (items) { return items.filter(match); },
-      countText: function (n) { return n + '개의 참가작이 있습니다!'; },
-      emptyText: '조건에 맞는 참가작이 없어요.'
+      countText: function (n) { return t('{n}개의 참가작이 있습니다!', { n: n }); },
+      emptyText: t('조건에 맞는 참가작이 없어요.')
     });
   }
 

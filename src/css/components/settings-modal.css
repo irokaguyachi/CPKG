@@ -179,6 +179,31 @@
   flex-shrink: 0;
 }
 
+/* 언어 선택: .settings-mode-btn 세 개를 한 줄로 묶고, 지금 언어만
+   .settings-btn.is-primary 와 같은 민트 배경으로 칠한다. 좁은 화면에서는
+   라벨 아래로 줄바꿈된다. */
+.settings-lang-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.settings-lang-btn {
+  height: 36px;
+  padding: 0 14px;
+}
+.settings-lang-btn.is-active,
+.settings-lang-btn.is-active:hover {
+  color: #000000;
+  background: var(--mint);
+  border-color: transparent;
+  cursor: default;
+}
+.settings-lang-group.is-busy .settings-lang-btn {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .settings-btn {
   flex-shrink: 0;
   height: 42px;
@@ -421,6 +446,15 @@
   }
   .settings-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 언어 버튼 세 개가 라벨 옆에 다 안 들어가므로 라벨 아래 한 줄로 내린다. */
+  .settings-lang-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .settings-lang-group {
+    justify-content: flex-start;
   }
   .settings-stat-value {
     font-size: 20px;

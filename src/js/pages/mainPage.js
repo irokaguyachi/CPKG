@@ -1,4 +1,8 @@
 (function (global) {
+  var t = global.I18n.t;
+  function charLabel(text) {
+    return global.SeriesUtil ? global.SeriesUtil.charLabel(text) : text;
+  }
   var contentEl = document.getElementById('content');
   if (!contentEl) return;
 
@@ -56,7 +60,7 @@
         dcId: post.id,
         link: post.link,
         reader: post.reader,
-        episodeLabel: (post.episode != null ? post.episode + ' 화' : (item.charCount || '1 화'))
+        episodeLabel: (post.episode != null ? t('{n} 화', { n: post.episode }) : (charLabel(item.charCount) || t('{n} 화', { n: 1 })))
       };
     });
   }
@@ -69,7 +73,7 @@
     icon.textContent = '🎧';
     var label = document.createElement('span');
     label.className = 'audio-novel-ribbon-label';
-    label.textContent = '오디오노벨';
+    label.textContent = t('오디오노벨');
     ribbon.appendChild(icon);
     ribbon.appendChild(label);
     return ribbon;
@@ -96,6 +100,9 @@
         var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
         imageTarget.style.backgroundImage = 'url("' + finalImg + '")';
       }
+    } else if (global.TagConfig.applyTagGlow) {
+      // 이미지가 없는 작품은 태그 색 그라데이션으로 자리를 채운다.
+      global.TagConfig.applyTagGlow(imageTarget, (item.tags && item.tags.length) ? item.tags : item.popularUserTags);
     }
     var favId = item.posts && item.posts[0] && item.posts[0].id;
     if (favId != null && global.BookmarkPicker) {
@@ -118,7 +125,7 @@
 
     var name = document.createElement('span');
     name.className = 'post-row-name';
-    name.textContent = item.name || '제목 없음';
+    name.textContent = item.name || t('제목 없음');
     title.appendChild(name);
 
     if (favId != null) {
@@ -146,8 +153,8 @@
     var episode = document.createElement('div');
     episode.className = 'post-row-episode';
     var countText = (item.posts && item.posts.length > 1)
-      ? item.posts.length + '화'
-      : (item.charCount || '단편');
+      ? t('{n}화', { n: item.posts.length })
+      : (charLabel(item.charCount) || t('단편'));
     episode.textContent = countText;
     card.appendChild(episode);
 
@@ -240,15 +247,15 @@
       className: 'is-audio',
       image: item.image,
       eyebrow: 'NEW',
-      title: '🎧 오디오 노벨',
-      descLines: ['이제 소설을 눈이 아니라', '귀로도 즐길 수 있어요'],
-      cta: '더 알아보기'
+      title: t('🎧 오디오 노벨'),
+      descLines: [t('이제 소설을 눈이 아니라'), t('귀로도 즐길 수 있어요')],
+      cta: t('더 알아보기')
     });
 
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'main-hero-close';
-    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.setAttribute('aria-label', t('닫기'));
     closeBtn.textContent = '×';
     card.appendChild(closeBtn);
 
@@ -283,16 +290,16 @@
     var warning = document.createElement('aside');
     warning.className = 'translation-warning';
     warning.setAttribute('role', 'note');
-    warning.setAttribute('aria-label', '번역 페이지 주의사항');
+    warning.setAttribute('aria-label', t('번역 페이지 주의사항'));
 
     var warningTitle = document.createElement('p');
     warningTitle.className = 'translation-warning-title';
-    warningTitle.textContent = '⚠️ 주의';
+    warningTitle.textContent = t('⚠️ 주의');
     warning.appendChild(warningTitle);
 
     var warningText = document.createElement('p');
     warningText.className = 'translation-warning-text';
-    warningText.textContent = '해당 페이지는 태그를 지원하지 않습니다. 일부 선정적인 페이지가 노출될 수 있으므로 주의해주세요';
+    warningText.textContent = t('해당 페이지는 태그를 지원하지 않습니다. 일부 선정적인 페이지가 노출될 수 있으므로 주의해주세요');
     warning.appendChild(warningText);
 
     return warning;
@@ -458,7 +465,7 @@
 
     var desc = document.createElement('p');
     desc.className = 'birthday-banner-desc';
-    desc.textContent = '8월 32일은 야치요의 생일입니다 모두 야치요의 생일을 축하해줍시다!';
+    desc.textContent = t('8월 32일은 야치요의 생일입니다 모두 야치요의 생일을 축하해줍시다!');
     text.appendChild(desc);
 
     // 팬케이크 주기 버튼 + 카운트 — 실제 클릭 처리는 src/js/components/pancakeCounter.js
@@ -469,7 +476,7 @@
     ctaBtn.type = 'button';
     ctaBtn.id = 'birthday-pancake-btn';
     ctaBtn.className = 'birthday-banner-cta';
-    ctaBtn.textContent = '🥞 생일 기념 팬케이크 주기!';
+    ctaBtn.textContent = t('🥞 생일 기념 팬케이크 주기!');
     ctaRow.appendChild(ctaBtn);
 
     var countEl = document.createElement('span');
@@ -534,7 +541,7 @@
     var heading = document.createElement('div');
     heading.className = 'content-heading';
     var label = document.createElement('span');
-    label.textContent = '🔥 지금 끌올된 문학';
+    label.textContent = t('🔥 지금 끌올된 문학');
     heading.appendChild(label);
     headingRow.appendChild(heading);
 
@@ -567,7 +574,7 @@
         var h = Math.floor(remain / 3600000);
         var m = Math.floor((remain % 3600000) / 60000);
         var s = Math.floor((remain % 60000) / 1000);
-        countdown.textContent = '교체까지 ' + (h ? h + ':' + pad(m) : m) + ':' + pad(s);
+        countdown.textContent = t('교체까지 {time}', { time: (h ? h + ':' + pad(m) : m) + ':' + pad(s) });
       }
       tick();
       countdownTimer = setInterval(tick, 1000);
@@ -637,7 +644,7 @@
 
   function contestDdayText(contest) {
     var end = parseContestDate(contest.endDate);
-    if (!end) return '진행 중';
+    if (!end) return t('진행 중');
     var now = new Date();
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var left = Math.round((end - today) / 86400000);
@@ -647,14 +654,14 @@
   // "2026-09-24" → "9월 24일"
   function formatContestDay(str) {
     var d = parseContestDate(str);
-    return d ? (d.getMonth() + 1) + '월 ' + d.getDate() + '일' : '';
+    return d ? t('{m}월 {d}일', { m: d.getMonth() + 1, d: d.getDate() }) : '';
   }
 
   function contestPeriodText(contest) {
     var start = formatContestDay(contest.startDate);
     var end = formatContestDay(contest.endDate);
     if (start && end) return start + ' ~ ' + end;
-    return end ? end + ' 마감' : start + '부터';
+    return end ? t('{date} 마감', { date: end }) : t('{date}부터', { date: start });
   }
 
   // 진행 중인 대회 홍보 배너. 누르면 그 대회 상세(/contest?c=<id>)로 간다.
@@ -669,7 +676,7 @@
       eyebrow: contestDdayText(contest),
       title: contest.name || contest.shortName || contest.id,
       descLines: [contest.description, contestPeriodText(contest)],
-      cta: '참가작 보러 가기'
+      cta: t('참가작 보러 가기')
     });
   }
 
@@ -694,7 +701,7 @@
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'notice-board-page-btn';
-    btn.setAttribute('aria-label', dir < 0 ? '이전 공지' : '다음 공지');
+    btn.setAttribute('aria-label', dir < 0 ? t('이전 공지') : t('다음 공지'));
     btn.innerHTML = dir < 0
       ? '<svg width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="M6.5 1L1.5 6L6.5 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       : '<svg width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="M1.5 1L6.5 6L1.5 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -710,7 +717,7 @@
     var title = document.createElement('a');
     title.className = 'notice-board-title';
     title.href = '/notice?tab=notice';
-    title.textContent = '공지사항';
+    title.textContent = t('공지사항');
     head.appendChild(title);
 
     var pager = document.createElement('div');
@@ -796,7 +803,7 @@
     heading.appendChild(eyebrow);
     var title = document.createElement('p');
     title.className = 'notice-board-now-title';
-    title.textContent = entry.version + ' 업데이트';
+    title.textContent = t('{version} 업데이트', { version: entry.version });
     heading.appendChild(title);
     top.appendChild(heading);
     card.appendChild(top);
@@ -815,7 +822,7 @@
 
     var cta = document.createElement('span');
     cta.className = 'notice-board-now-cta';
-    cta.textContent = '업데이트 안내 보기';
+    cta.textContent = t('업데이트 안내 보기');
     card.appendChild(cta);
 
     fetch(DATA('../data/changelog/' + entry.file))
@@ -828,7 +835,7 @@
         });
         if (!sections.length) return;
         var summary = sections.slice(0, 3).join(' · ');
-        summary += sections.length > 3 ? ' 외 ' + (sections.length - 3) + '가지' : ' 포함';
+        summary += ' ' + (sections.length > 3 ? t('외 {n}가지', { n: sections.length - 3 }) : t('포함'));
         addDescLine(summary);
       })
       .catch(function () {});
@@ -848,9 +855,9 @@
       var notices = results[0];
       var changelogs = results[1];
       var merged = notices.map(function (e) {
-        return { tag: e.category || '공지', title: e.title, date: e.date, href: noticeHref('notice', e.file) };
+        return { tag: e.category ? t(e.category) : t('공지'), title: e.title, date: e.date, href: noticeHref('notice', e.file) };
       }).concat(changelogs.map(function (e) {
-        return { tag: '업데이트', title: e.version + ' ' + e.title, date: e.date, href: noticeHref('changelog', e.file) };
+        return { tag: t('업데이트'), title: e.version + ' ' + e.title, date: e.date, href: noticeHref('changelog', e.file) };
       }));
       if (!merged.length) return;
       // 같은 날짜면 원래 index.json 순서(최신 먼저)를 유지한다.
@@ -862,7 +869,7 @@
 
       var board = document.createElement('section');
       board.className = 'notice-board';
-      board.setAttribute('aria-label', '최근 공지사항');
+      board.setAttribute('aria-label', t('최근 공지사항'));
       board.appendChild(createNoticeListCard(merged));
       if (changelogs.length) {
         board.appendChild(createLatestUpdateCard(changelogs[0]));
@@ -891,8 +898,8 @@
       favType: 'novel',
       secondaryDataUrl: '../data/pageData/Translation.json',
       secondaryFavType: 'translation',
-      primaryLabel: '오늘의 문학',
-      secondaryLabel: '오늘의 번역',
+      primaryLabel: t('오늘의 문학'),
+      secondaryLabel: t('오늘의 번역'),
       filterItems: filterMature,
       renderCard: function (item, favType) { return createCard(item, favType); }
     });
@@ -941,7 +948,7 @@
       var statEl = document.querySelector('.site-info-stat');
       if (statEl) {
         var totalPosts = (totals.novel || 0) + (totals.series || 0);
-        statEl.textContent = formatCount(totalPosts) + '개의 게시물이 있습니다!';
+        statEl.textContent = t('{n}개의 게시물이 있습니다!', { n: formatCount(totalPosts) });
       }
 
       contentEl.innerHTML = '';
@@ -958,7 +965,7 @@
 
       // 1. 최신 등록 문학
       if (novels.length) {
-        contentEl.appendChild(createRecentSection('최신 등록 문학', novels, '/novel', 'novel'));
+        contentEl.appendChild(createRecentSection(t('최신 등록 문학'), novels, '/novel', 'novel'));
       }
 
       // 번역 데이터는 랜덤 번역과 같은 요청을 공유한다. 응답이 늦어도
@@ -975,7 +982,7 @@
           }
           // Translation.json은 번역 빌더가 게시글 ID 내림차순으로 생성한다.
           recentTranslationSlot.replaceWith(createRecentSection(
-            '최근 등록 번역',
+            t('최근 등록 번역'),
             translations.slice(0, 5),
             '/translation',
             'translation',
@@ -989,16 +996,16 @@
         .catch(function () { recentTranslationSlot.remove(); });
 
       // 2. 랜덤 문학 — 5초마다 다른 문학으로 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 문학', '../data/pageData/Novel.json', '/novel', 'novel'));
+      contentEl.appendChild(createRandomSection(t('랜덤 문학'), '../data/pageData/Novel.json', '/novel', 'novel'));
 
       // 랜덤 번역은 랜덤 문학과 랜덤 시리즈 사이에 배치한다.
-      contentEl.appendChild(createRandomSection('랜덤 번역', '../data/pageData/Translation.json', '/translation', 'translation'));
+      contentEl.appendChild(createRandomSection(t('랜덤 번역'), '../data/pageData/Translation.json', '/translation', 'translation'));
 
       // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 시리즈', '../data/pageData/Series.json', '/series', 'series'));
+      contentEl.appendChild(createRandomSection(t('랜덤 시리즈'), '../data/pageData/Series.json', '/series', 'series'));
 
       // 4. 랜덤 명예관 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection('랜덤 명예관', '../data/pageData/HOF.json', '/hof', 'hof'));
+      contentEl.appendChild(createRandomSection(t('랜덤 명예관'), '../data/pageData/HOF.json', '/hof', 'hof'));
     })
     .catch(function () {});
 

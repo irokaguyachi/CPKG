@@ -27,6 +27,7 @@
  *   재사용되는 .pds-close 를 그대로 쓴다.
  */
 (function (global) {
+  var t = global.I18n.t;
   var DATA = global.dataUrl || function (p) { return p; };
   var listEl = document.getElementById('changelog-list');
   if (!listEl) return;
@@ -40,16 +41,16 @@
   var KINDS = {
     changelog: {
       dir: 'changelog',
-      label: '업데이트 로그',
-      sub: '사이트의 변경 내역을 버전별로 확인해보세요!',
-      emptyMessage: '아직 등록된 업데이트 로그가 없어요.',
+      label: t('업데이트 로그'),
+      sub: t('사이트의 변경 내역을 버전별로 확인해보세요!'),
+      emptyMessage: t('아직 등록된 업데이트 로그가 없어요.'),
       tagField: 'version'
     },
     notice: {
       dir: 'notice',
-      label: '공지사항',
-      sub: '사이트의 공지사항을 확인해보세요!',
-      emptyMessage: '아직 등록된 공지사항이 없어요.',
+      label: t('공지사항'),
+      sub: t('사이트의 공지사항을 확인해보세요!'),
+      emptyMessage: t('아직 등록된 공지사항이 없어요.'),
       tagField: 'category'
     }
   };
@@ -157,7 +158,7 @@
     if (!entry.status) return null;
     var badge = document.createElement('span');
     badge.className = 'changelog-status ' + (STATUS_CLASS[entry.status] || '');
-    badge.textContent = entry.status;
+    badge.textContent = t(entry.status);
     return badge;
   }
 
@@ -217,7 +218,7 @@
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'pds-close';
-    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.setAttribute('aria-label', t('닫기'));
     closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
     closeBtn.addEventListener('click', closeDetail);
     card.appendChild(closeBtn);
@@ -228,7 +229,7 @@
     if (tagValue) {
       var tagEl = document.createElement('span');
       tagEl.className = 'changelog-version';
-      tagEl.textContent = tagValue;
+      tagEl.textContent = t(tagValue);
       header.appendChild(tagEl);
     }
     var statusBadge = createStatusBadge(entry);
@@ -248,7 +249,7 @@
     scroll.className = 'changelog-detail-scroll';
     var body = document.createElement('div');
     body.className = 'changelog-body';
-    body.textContent = '불러오는 중...';
+    body.textContent = t('불러오는 중...');
     scroll.appendChild(body);
     card.appendChild(scroll);
 
@@ -267,7 +268,7 @@
       })
       .catch(function () {
         if (token !== openToken) return;
-        body.textContent = '내용을 불러오지 못했어요.';
+        body.textContent = t('내용을 불러오지 못했어요.');
       });
   }
 
@@ -291,7 +292,7 @@
     if (tagValue) {
       var sub = document.createElement('p');
       sub.className = 'bkm-row-sub';
-      sub.textContent = tagValue;
+      sub.textContent = t(tagValue);
       info.appendChild(sub);
     }
     row.appendChild(info);
