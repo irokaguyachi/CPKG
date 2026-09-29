@@ -473,6 +473,38 @@
   100% { background-position: 30% 100%, 80% 0%, 20% 60%; }
 }
 
+/* 이미지가 도착해 로딩 표시를 떼는 순간, cdnConfig.js 의 coverWithVeil() 이
+   같은 그라데이션을 한 겹 덮어 두고 서서히 걷어서 이미지가 스며들듯
+   드러나게 한다. 자리에 isolation 을 걸어 z-index: -1 인 겹이 자리의
+   배경 바로 위, 북마크 버튼·리본·어두운 그라데이션 같은 자식들 아래에
+   깔리게 한다. 겹이 걷히면 스크립트가 겹과 이 클래스를 함께 떼어 낸다. */
+.is-img-revealing {
+  isolation: isolate;
+}
+
+.img-reveal-veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: var(--img-loading-base) !important;
+  background-image:
+    radial-gradient(closest-side, rgba(var(--img-loading-1), var(--img-loading-alpha)), transparent),
+    radial-gradient(closest-side, rgba(var(--img-loading-2), calc(var(--img-loading-alpha) * 0.8)), transparent),
+    radial-gradient(closest-side, rgba(var(--img-loading-3), calc(var(--img-loading-alpha) * 0.55)), transparent) !important;
+  background-size: 120% 190%, 100% 170%, 140% 210% !important;
+  background-repeat: no-repeat !important;
+  animation:
+    img-loading-drift 7s ease-in-out infinite alternate,
+    img-reveal-fade 0.6s ease-out forwards;
+}
+
+@keyframes img-reveal-fade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 /* 이미지가 없는 작품의 책 표지 — tagConfig.js 의 applyTextCover() 가
    붙인다. 대표 태그 색(--cover-color, tags.css 의 --tag-glow-<태그>)을
    옅게 깔고, 왼쪽에 책등 같은 색 띠, 오른쪽 위에 대표 태그 이모지를 크게

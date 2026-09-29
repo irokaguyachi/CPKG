@@ -98,7 +98,50 @@
   // (series-card.css 의 .is-img-loading). 배경을 칠하는 순간 떼어낸다.
   var LOADING_CLASS = 'is-img-loading';
 
+  // 로딩 표시를 떼는 순간 이미지가 뿅 하고 튀어나오지 않게, 같은 그라데이션을
+  // 한 겹(.img-reveal-veil) 덮어 두고 그 겹을 서서히 걷어 낸다. 배경 자체는
+  // 투명도를 줄 수 없고, 자리 전체를 흐리게 하면 안에 든 북마크 버튼까지
+  // 함께 깜빡이기 때문이다. 겹은 자리의 배경 바로 위, 자식들 아래에 깔린다
+  // (series-card.css 의 .is-img-revealing 참고).
+  var REVEAL_CLASS = 'is-img-revealing';
+  var VEIL_CLASS = 'img-reveal-veil';
+  var reduceMotion = global.matchMedia
+    ? global.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
+  function coverWithVeil(target) {
+    if (reduceMotion && reduceMotion.matches) return;
+    var veil = document.createElement('span');
+    veil.className = VEIL_CLASS;
+    veil.setAttribute('aria-hidden', 'true');
+    // 아래에서 흐르던 그라데이션과 같은 지점에서 이어 흐르도록 진행 시점을 맞춘다.
+    var drift = 0;
+    if (target.getAnimations) {
+      target.getAnimations().forEach(function (a) {
+        if (a.animationName === 'img-loading-drift') drift = Number(a.currentTime) || 0;
+      });
+    }
+    veil.style.animationDelay = (-drift) + 'ms, 0ms';
+    target.classList.add(REVEAL_CLASS);
+    target.insertBefore(veil, target.firstChild);
+
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      if (veil.parentNode) veil.parentNode.removeChild(veil);
+      target.classList.remove(REVEAL_CLASS);
+    }
+    veil.addEventListener('animationend', function (e) {
+      if (e.animationName === 'img-reveal-fade') finish();
+    });
+    // 탭이 백그라운드라 animationend 가 오지 않아도 겹이 남지 않게 한다.
+    setTimeout(finish, 1500);
+  }
+
   function paintBackground(target, url) {
+    // 이미 이미지가 칠해진 자리(썸네일 → 중간 이미지 교체)는 겹 없이 바로 바꾼다.
+    if (target.classList.contains(LOADING_CLASS)) coverWithVeil(target);
     target.style.backgroundImage = 'url("' + url + '")';
     target.classList.remove(LOADING_CLASS);
   }
