@@ -989,7 +989,7 @@
           recentTranslationSlot.replaceWith(createRecentSection(
             t('최근 등록 번역'),
             translations.slice(0, 5),
-            '/translation',
+            '/novel?tab=translation',
             'translation',
             {
               className: 'recent-translation',
@@ -1004,7 +1004,7 @@
       contentEl.appendChild(createRandomSection(t('랜덤 문학'), '../data/pageData/Novel.json', '/novel', 'novel'));
 
       // 랜덤 번역은 랜덤 문학과 랜덤 시리즈 사이에 배치한다.
-      contentEl.appendChild(createRandomSection(t('랜덤 번역'), '../data/pageData/Translation.json', '/translation', 'translation'));
+      contentEl.appendChild(createRandomSection(t('랜덤 번역'), '../data/pageData/Translation.json', '/novel?tab=translation', 'translation'));
 
       // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
       contentEl.appendChild(createRandomSection(t('랜덤 시리즈'), '../data/pageData/Series.json', '/series', 'series'));

@@ -17,7 +17,7 @@
  */
 (function (global) {
   var t = global.I18n.t;
-  // 사이드바에 찍히는 사이트 버전 — src/js/config/siteConfig.js 가 이미 fetch해둔
+  // 프로필 메뉴에 찍히는 사이트 버전 — src/js/config/siteConfig.js 가 이미 fetch해둔
   // src/data/config/SiteConfig.json 을 그대로 재사용한다(같은 파일을 또 받지
   // 않도록). 대표님이 이 값을 바꾸고 싶을 때 코드를 건드릴 필요 없이 그
   // JSON 파일의 "version" 값만 고치면 된다.
@@ -113,11 +113,18 @@
     container.appendChild(syncRow);
 
     var logoutBtn = settingsButton(t('로그아웃'), 'is-danger');
-    logoutBtn.addEventListener('click', function () {
-      if (!global.confirm(t('로그아웃할까요? 이 브라우저의 개인 코드가 지워져요. 다시 로그인하려면 그 코드를 알고 있어야 해요(단, 이 브라우저가 직접 관리 코드를 쥔 게시물은 로그아웃 후에도 계속 관리할 수 있어요).'))) return;
-      global.BookmarkLibrary.logout();
-    });
+    logoutBtn.addEventListener('click', confirmAndLogout);
     container.appendChild(logoutBtn);
+  }
+
+  // 설정창 계정 탭과 헤더 프로필 메뉴(siteHeader.js)가 같은 확인 문구를 쓴다.
+  function confirmAndLogout() {
+    if (!global.confirm(t('로그아웃할까요? 이 브라우저의 개인 코드가 지워져요. 다시 로그인하려면 그 코드를 알고 있어야 해요(단, 이 브라우저가 직접 관리 코드를 쥔 게시물은 로그아웃 후에도 계속 관리할 수 있어요).'))) return;
+    global.BookmarkLibrary.logout();
+  }
+
+  function syncStateLabel(state) {
+    return SYNC_STATE_LABELS[state] || SYNC_STATE_LABELS.offline;
   }
 
   // settingsModal.js 의 "계정" 탭이 호출하는 진입점 — 탭이 열릴 때마다,
@@ -158,9 +165,9 @@
     return buildInfoPromise;
   }
 
-  // 사이드바 맨 아래에 붙는 사이트 버전 표시. 계정과 무관한 배포 확인용
-  // 스탬프라 설정창으로 옮기지 않고 그대로 사이드바에 둔다. 눌러서 버전
-  // <-> 실제 배포 시각을 토글한다.
+  // 헤더 프로필 메뉴 맨 아래(siteHeader.js)에 붙는 사이트 버전 표시. 계정과
+  // 무관한 배포 확인용 스탬프라 설정창으로 옮기지 않는다. 눌러서 버전 <->
+  // 실제 배포 시각을 토글한다.
   function renderVersionTag(nav) {
     if (nav.querySelector('.auth-version-tag')) return;
     var tag = document.createElement('button');
@@ -196,16 +203,10 @@
   window.addEventListener('chokaguya:auth-change', refreshIfMounted);
   window.addEventListener('chokaguya:sync-state', refreshIfMounted);
 
-  function init() {
-    var nav = document.querySelector('.header-nav');
-    if (nav) renderVersionTag(nav);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  global.AuthUI = { renderAccountSettings: renderAccountSettings };
+  global.AuthUI = {
+    renderAccountSettings: renderAccountSettings,
+    renderVersionTag: renderVersionTag,
+    confirmAndLogout: confirmAndLogout,
+    syncStateLabel: syncStateLabel
+  };
 })(window);

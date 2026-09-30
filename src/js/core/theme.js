@@ -31,6 +31,11 @@
     localStorage.setItem(STORAGE_KEY, theme);
     updateLogos(theme);
     updateThemeColorMeta(theme);
+    // 헤더의 라이트/다크 전환(siteHeader.js)과 설정창이 서로의 변경을 따라
+    // 칠할 수 있게 알린다.
+    try {
+      global.dispatchEvent(new CustomEvent('chokaguya:theme-change', { detail: { theme: theme } }));
+    } catch (e) {}
   }
 
   function toggleTheme() {

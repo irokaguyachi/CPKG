@@ -2,31 +2,37 @@
    Main Page Exclusive Styles
    ========================================================================== */
 
-/* Main page header logo: 긴 타이틀에 맞춘 크기 */
+/* Main page header logo: 긴 타이틀에 맞춘 크기. 위치(1행 세로 중앙, 좌우
+   여백)는 site-header.css 의 --site-header-top / --site-header-pad 를 따른다. */
 .header-logo {
   max-width: 220px;
-  height: 42px;
+  height: 40px;
+}
+.site-header .header-logo-link {
+  width: 220px;
 }
 
-/* Main page hero logo expansion at top of page */
+/* Main page hero logo expansion at top of page — 2단 헤더(높이 112px) 아래로
+   예전과 같은 간격이 남도록 세로 이동량을 잡았다. 가로 이동량
+   --site-hero-shift(로고 왼쪽 끝 → 화면 가운데)는 siteHeader.js 가 잰다. */
 body.is-top .header-logo {
-  transform: translateY(-50%) translate(calc(50vw - 50px - 50%), 202px) scale(3.2);
+  transform: translateY(-50%) translate(calc(var(--site-hero-shift, calc(50vw - var(--site-header-pad))) - 50%), 234px) scale(3.2);
 }
 
 @media (max-width: 768px) {
   .header-logo {
-    left: 24px;
     max-width: 170px;
-    height: 36px;
+    height: 34px;
   }
-  /* header.css:54-56 의 모바일 값과 값 자체는 같지만, 이 규칙을 지우면
-     안 된다 — 위 :12-14 의 이 파일 자체의 무조건(미디어쿼리 없는) 데스크톱
-     규칙(scale 3.2)이 header.css보다 나중에 로드되어 캐스케이드 후순위라,
-     모바일에서도 그 데스크톱 값이 최종 승자가 돼버린다(로고가 화면 양옆으로
-     넘치는 버그로 실제 발생함). 이 파일 안에서 자기 자신의 데스크톱 규칙을
-     다시 이겨야 하므로, header.css와 값이 같아도 여기 그대로 있어야 한다. */
+  .site-header .header-logo-link {
+    width: 150px;
+  }
+  /* 이 파일 위쪽의 무조건(미디어쿼리 없는) 데스크톱 규칙(scale 3.2)이
+     header.css 보다 나중에 로드되어 모바일에서도 이기므로, 모바일 값을
+     이 파일 안에서 다시 지정해야 한다(로고가 화면 양옆으로 넘치는 버그로
+     실제 발생함). */
   body.is-top .header-logo {
-    transform: translateY(-50%) translate(calc(50vw - 24px - 50%), 150px) scale(2.0);
+    transform: translateY(-50%) translate(calc(var(--site-hero-shift, calc(50vw - var(--site-header-pad))) - 50%), 186px) scale(2.0);
   }
 }
 

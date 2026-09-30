@@ -59,41 +59,6 @@ html.theme-transitioning *:after {
   background: #121316;
 }
 
-[data-theme="dark"] .sidebar {
-  background: #121316;
-  border-left: 0.5px solid rgba(255, 255, 255, 0.08);
-}
-
-[data-theme="dark"] .sidebar-toggle-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: var(--dark-text);
-}
-[data-theme="dark"] .sidebar-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: var(--dark-emphasis);
-}
-
-[data-theme="dark"] .header-nav a {
-  color: var(--dark-text);
-}
-
-[data-theme="dark"] .header-nav a[data-locked] {
-  opacity: 0.35;
-}
-
-[data-theme="dark"] .header-nav-settings {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: var(--dark-text);
-}
-[data-theme="dark"] .header-nav-settings:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: var(--dark-emphasis);
-}
-
 /* Site Info Hero Section */
 [data-theme="dark"] .site-info-title {
   color: var(--dark-emphasis);

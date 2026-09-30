@@ -1,8 +1,9 @@
 /* sticky search + tag filter bar — a detached floating pill that stays pinned
-   with a gap below the header as the user scrolls */
+   with a gap below the header as the user scrolls.
+   --site-header-height 는 site-header.css(2단 헤더)가 정한다. */
 .series-toolbar {
   position: sticky;
-  top: 120px;
+  top: calc(var(--site-header-height, 96px) + 16px);
   z-index: 15;
   display: flex;
   justify-content: center;

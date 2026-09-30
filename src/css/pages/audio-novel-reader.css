@@ -1,20 +1,19 @@
-/* 헤더 소제목 — 로고가 position:fixed 라 같은 기준으로 고정하고,
-   로고 옆이 아니라 화면 가운데에 맞춘다. 세로 좌표는 데스크톱/모바일
-   로고 위치(header.css)에 맞춤. */
+/* 화 제목 — 예전엔 헤더 가운데에 고정해 띄웠지만, 2단 헤더(site-header.css)
+   에서는 그 자리에 통합 검색창이 있어 본문 맨 위 제목으로 옮겼다.
+   audioNovelReaderPage.js 가 #an-header-title 에 글자를 채운다. */
 .an-header-title {
-  position: fixed;
-  top: 48px;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 21;
-  font-size: 22px;
-  font-weight: 600;
+  max-width: var(--content-max-width);
+  margin: 32px auto 0;
+  padding: 0 var(--content-padding);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
   color: #000000;
   text-align: center;
-  white-space: nowrap;
-  max-width: calc(100% - 320px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: keep-all;
+}
+.an-header-title:empty {
+  display: none;
 }
 
 [data-theme="dark"] .an-header-title {
@@ -23,9 +22,8 @@
 
 @media (max-width: 768px) {
   .an-header-title {
-    top: 36px;
-    font-size: 16px;
-    max-width: calc(100% - 200px);
+    margin-top: 24px;
+    font-size: 20px;
   }
 }
 

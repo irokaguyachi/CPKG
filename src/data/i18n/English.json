@@ -23,8 +23,6 @@
   "메인 페이지로 이동": "Go to the home page",
   "초카구야히메! 번역 및 문학 페이지!": "Cho Kaguya-hime! Translations & Literature",
   "시리즈 문학": "Series",
-  "메뉴 열기": "Open menu",
-  "메뉴 닫기": "Close menu",
 
   "원하는 문학, 혹은 태그가 이상하다고요? 해당 페이지에서 문의해보세요!": "Looking for a story, or found a wrong tag? Let us know through the forms below!",
   "카갤 문학 페이지 문의 (건의,버그 제보)": "Site feedback (suggestions, bug reports)",
@@ -353,5 +351,28 @@
   "랜덤 문학": "Random stories",
   "랜덤 번역": "Random translations",
   "랜덤 시리즈": "Random series",
-  "랜덤 명예관": "Random Hall of Fame"
+  "랜덤 명예관": "Random Hall of Fame",
+
+  "계정 메뉴 · {status}": "Account menu · {status}",
+  "계정 메뉴 · 로그인하지 않음": "Account menu · Not signed in",
+  "로그인됨": "Signed in",
+  "로그인하지 않았어요": "Not signed in",
+  "게스트": "Guest",
+  "서버에 저장": "Save to server",
+  "불러오기": "Load",
+  "개인 코드 보기": "View personal code",
+  "검색 목록을 불러오는 중이에요...": "Loading search index...",
+  "검색 목록을 불러오지 못했어요.": "Couldn't load the search index.",
+  "{n}건 중 {shown}건": "{shown} of {n}",
+  "검색 결과가 없어요.": "No results found.",
+  "문학·번역": "Literature·Translation",
+  "작품 제목으로 검색": "Search by title",
+  "통합 검색": "All",
+  "검색 닫기": "Close search",
+  "검색 결과": "Search results",
+  "검색 열기": "Open search",
+  "화면 테마": "Theme",
+  "계정 메뉴": "Account menu",
+  "주요 메뉴": "Main menu",
+  "문학/번역 전환": "Switch literature/translation"
 }

@@ -231,7 +231,6 @@ async function cleanupBumps(env) {
 var PAGE_SLUGS = {
   main: 'mainPage.html',
   novel: 'novelPage.html',
-  translation: 'translationPage.html',
   series: 'seriesPage.html',
   hof: 'HOFPage.html',
   contest: 'contestPage.html',
@@ -247,6 +246,16 @@ var LEGACY_HTML_TO_SLUG = {};
 for (var slug in PAGE_SLUGS) {
   LEGACY_HTML_TO_SLUG['/page/' + PAGE_SLUGS[slug]] = '/' + slug;
 }
+
+// 문학 페이지로 합쳐진 옛 번역 탭 주소. 번역 목록은 이제 /novel 안의 번역
+// 탭(?tab=translation)이다. 공유된 옛 링크가 번역 탭으로 바로 열리도록
+// 보내되, 나중에 번역 페이지를 다시 분리할 수도 있어 브라우저가 영구히
+// 기억하는 301/308 대신 302 로 보낸다.
+var MERGED_PAGE_REDIRECTS = {
+  '/translation': '/novel?tab=translation',
+  '/translation/': '/novel?tab=translation',
+  '/page/translationPage.html': '/novel?tab=translation'
+};
 
 export default {
   // 1분 Cron(wrangler.toml [triggers]). 접속자 게이지를 Analytics Engine에 적재.
@@ -310,6 +319,11 @@ export default {
       return new Response(JSON.stringify({ id: meta.id || null, tag: meta.tag || null, timestamp: iso }), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
       });
+    }
+
+    var mergedTarget = MERGED_PAGE_REDIRECTS[url.pathname];
+    if (mergedTarget) {
+      return Response.redirect(new URL(mergedTarget, url.origin).toString(), 302);
     }
 
     var legacyTarget = LEGACY_HTML_TO_SLUG[url.pathname];

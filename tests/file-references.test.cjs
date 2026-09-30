@@ -91,11 +91,15 @@ test('daily gift includes one daily literature and one daily translation', () =>
   assert.match(dailyGift, /opts\.secondaryLabel \|\| t\('오늘의 번역'\)/);
 });
 
-test('translation page exposes the requested warning before its toolbar', () => {
-  const html = fs.readFileSync(path.join(src, 'page', 'translationPage.html'), 'utf8');
+test('literature page exposes the translation warning before its toolbar', () => {
+  const html = fs.readFileSync(path.join(src, 'page', 'novelPage.html'), 'utf8');
+  const tabs = html.indexOf('class="library-tabs"');
   const warning = html.indexOf('class="translation-warning"');
   const toolbar = html.indexOf('class="series-toolbar"');
+  assert.ok(tabs >= 0 && tabs < warning, 'novel/translation tabs must sit above the warning');
   assert.ok(warning >= 0 && warning < toolbar, 'warning must appear above the search toolbar');
+  assert.match(html, /data-source="novel"/);
+  assert.match(html, /data-source="translation"/);
   assert.match(html, /⚠️\s*주의/);
   assert.match(html, /해당 페이지는 태그를 지원하지 않습니다\./);
   assert.match(html, /일부 선정적인 페이지가 노출될 수 있으므로 주의해주세요/);
@@ -105,17 +109,22 @@ test('translation page exposes the requested warning before its toolbar', () => 
   assert.match(css, /\[data-theme="dark"\] \.translation-warning/);
 });
 
-test('translation page gates everything below the warning until scrolling', () => {
-  const html = fs.readFileSync(path.join(src, 'page', 'translationPage.html'), 'utf8');
-  assert.match(html, /<body class="translation-page is-content-gated">/);
-
-  const css = fs.readFileSync(path.join(src, 'css', 'pages', 'translation-page.css'), 'utf8');
-  assert.match(css, /\.translation-page\.is-content-gated \.series-toolbar/);
-  assert.match(css, /\.translation-page\.is-content-gated \.series-grid/);
-  assert.match(css, /\.translation-page\.is-content-gated \.site-footer/);
+test('translation tab gates everything below the warning until scrolling', () => {
+  const css = fs.readFileSync(path.join(src, 'css', 'pages', 'library-page.css'), 'utf8');
+  assert.match(css, /\.is-content-gated \.series-toolbar/);
+  assert.match(css, /\.is-content-gated \.series-grid/);
+  assert.match(css, /\.is-content-gated \.site-footer/);
   assert.match(css, /filter:\s*blur\(12px\)/);
 
-  const script = fs.readFileSync(path.join(src, 'js', 'pages', 'translationPage.js'), 'utf8');
+  const script = fs.readFileSync(path.join(src, 'js', 'pages', 'novelPage.js'), 'utf8');
   assert.match(script, /remove\('is-content-gated'\)/);
   assert.match(script, /addEventListener\('scroll',\s*revealOnScroll/);
+  assert.match(script, /userTagsOnly:\s*true/);
+});
+
+test('old translation address redirects to the literature page translation tab', () => {
+  const worker = fs.readFileSync(path.join(src, '_worker.js'), 'utf8');
+  assert.match(worker, /'\/translation':\s*'\/novel\?tab=translation'/);
+  assert.doesNotMatch(worker, /translation:\s*'translationPage\.html'/);
+  assert.ok(!fs.existsSync(path.join(src, 'page', 'translationPage.html')), 'merged translation page must not come back');
 });

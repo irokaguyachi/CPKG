@@ -1,0 +1,124 @@
+/* 문학·번역 통합 페이지(novelPage.html) — [문학 | 번역] 전환 탭과 번역 탭의
+   주의 게이트. 탭 전환 로직은 src/js/pages/novelPage.js 가 맡는다. */
+
+.library-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 24px auto;
+  padding: 0 var(--content-padding);
+  box-sizing: border-box;
+}
+
+.library-head .translation-warning {
+  margin: 0;
+}
+.library-head .translation-warning[hidden] {
+  display: none;
+}
+
+/* 세그먼트 컨트롤 — 활성 탭 뒤의 흰 알약(.library-tabs-indicator)이
+   data-active 값에 따라 좌우로 미끄러진다. 탭이 두 개라 폭을 반씩 쓴다. */
+.library-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 240px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-pill);
+}
+
+.library-tabs-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  background: #ffffff;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s var(--ease-out-site);
+}
+.library-tabs[data-active="translation"] .library-tabs-indicator {
+  transform: translateX(100%);
+}
+
+.library-tab {
+  position: relative;
+  z-index: 1;
+  height: 40px;
+  padding: 0 16px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.library-tab:hover {
+  color: rgba(0, 0, 0, 0.8);
+}
+.library-tab.is-active {
+  color: #000000;
+}
+.library-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .library-tabs {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .library-tabs-indicator {
+  background: var(--dark-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .library-tab {
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .library-tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+[data-theme="dark"] .library-tab.is-active {
+  color: var(--dark-emphasis);
+}
+
+/* 번역 탭의 주의 게이트 — 첫 화면에서 경고문 아래를 흐리게 보여주고,
+   사용자가 실제로 아래로 이동하면 novelPage.js 가 클래스를 제거해
+   검색·카드·푸터를 한 번에 공개한다. 레이아웃 높이는 유지해 스크롤 위치가
+   갑자기 변하지 않도록 한다. */
+.is-content-gated .series-toolbar,
+.is-content-gated .series-grid,
+.is-content-gated .site-footer {
+  filter: blur(12px);
+  pointer-events: none;
+  user-select: none;
+  transition: filter 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-tabs-indicator,
+  .is-content-gated .series-toolbar,
+  .is-content-gated .series-grid,
+  .is-content-gated .site-footer {
+    transition: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .library-head {
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .library-tabs {
+    width: 100%;
+    max-width: 320px;
+  }
+}

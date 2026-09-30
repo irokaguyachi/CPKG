@@ -326,6 +326,13 @@
   border-radius: var(--radius-pill);
 }
 
+/* 북마크 페이지는 탭이 헤더 바로 아래 첫 요소라 위 여백을 따로 준다(공지
+   페이지는 위에 제목 영역이 있어 필요 없다). 예전 헤더는 자체 높이 안에
+   빈 공간이 있었지만 2단 헤더(site-header.css)는 아래 경계선이 바로 붙는다. */
+#bkm-content .bkm-tabs {
+  margin-top: 24px;
+}
+
 /* 활성 탭 뒤에서 실제로 움직이는 흰 알약 — tabsKit.js가 activeTab의
    offsetLeft/offsetWidth로 위치·너비를 맞춘다. 예전엔 .bkm-tab.is-active
    자신에게 배경을 줘서 탭이 바뀔 때마다 스냅 전환됐는데, 인디케이터

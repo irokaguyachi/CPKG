@@ -67,8 +67,27 @@
     return ribbon;
   }
 
-  function create(config) {
-    config = config || {};
+  // 두 설정 객체를 얕게 합친다 — sources 를 쓰는 페이지(문학·번역 통합)가
+  // 공통 설정 위에 탭별 설정을 덮어쓸 때 쓴다.
+  function extend(base, override) {
+    var out = {};
+    var k;
+    for (k in base) if (Object.prototype.hasOwnProperty.call(base, k)) out[k] = base[k];
+    for (k in override) if (Object.prototype.hasOwnProperty.call(override, k)) out[k] = override[k];
+    return out;
+  }
+
+  // baseConfig.sources 가 있으면 한 페이지 안에서 데이터 소스(탭)를 바꿔 낄 수
+  // 있다: { sources: { novel: {...}, translation: {...} }, initialSource: 'novel' }.
+  // 각 탭 설정은 dataUrl/favType/userTags/userTagsOnly/countText/emptyText 등
+  // 단일 페이지 config 와 같은 키를 쓰고, 전환은 반환값의 setSource(key)로 한다.
+  // 검색창·필터·보기 전환 버튼의 이벤트는 처음 한 번만 걸고, 탭을 바꿀 때는
+  // 목록과 태그 상태만 갈아 끼운다.
+  function create(baseConfig) {
+    baseConfig = baseConfig || {};
+    var sources = baseConfig.sources || null;
+    var sourceKey = sources ? (baseConfig.initialSource || Object.keys(sources)[0]) : null;
+    var config = sources ? extend(baseConfig, sources[sourceKey]) : baseConfig;
 
     var searchInput = document.getElementById('series-search-input');
     var filterBtn = document.getElementById('series-filter-btn');
@@ -79,15 +98,19 @@
     var viewToggleBtn = document.getElementById('series-view-toggle-btn');
     if (!gridEl) return;
 
-    var countLine = config.countLine || global.SeriesUtil.countLine;
+    function countLine(s) {
+      return (config.countLine || global.SeriesUtil.countLine)(s);
+    }
 
-    // config.userTags 는 공식/유저 태그 토글을 다는 페이지(문학)가,
-    // config.userTagsOnly 는 유저 태그만 쓰는 페이지(번역 — 공식 AI 태그를
-    // 지원하지 않는다)가 켠다. 스냅샷·후보 목록을 받아야 하는지, 유저 태그
+    // config.userTags 는 공식/유저 태그 토글을 다는 탭(문학)이,
+    // config.userTagsOnly 는 유저 태그만 쓰는 탭(번역 — 공식 AI 태그를
+    // 지원하지 않는다)이 켠다. 스냅샷·후보 목록을 받아야 하는지, 유저 태그
     // 관련 코드 경로를 태울지는 둘 중 하나라도 켜져 있으면 되므로 여기서
     // 하나로 묶는다. userTagsOnly 는 추가로 activePool 을 처음부터 'user' 로
-    // 고정하고 공식/유저 토글 버튼을 아예 만들지 않는다.
-    var wantUserTags = !!(config.userTags || config.userTagsOnly);
+    // 고정하고 공식/유저 토글 버튼을 숨긴다.
+    function wantUserTags() {
+      return !!(config.userTags || config.userTagsOnly);
+    }
 
     var rawItems = [];
     var allItems = [];
@@ -161,38 +184,68 @@
       startSearchPlaceholderCycle();
     }
 
-    // 목록 본문과 태그 스냅샷은 서로 의존하지 않으니 동시에 요청하고 둘 다
-    // 도착했을 때 합친다 — 태그 스냅샷이 끝나야 목록 요청을 시작하던 예전
-    // 방식은 왕복 하나만큼 첫 렌더를 늦추고 있었다.
-    var itemsPromise = fetch(DATA(config.dataUrl)).then(function (r) { return r.json(); });
-    var snapshotPromise = wantUserTags
-      ? fetch('/tags/snapshot').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-      : Promise.resolve(null);
-    // 유저 태그 후보 목록은 postDetailSeries.js의 투표 모달이 읽는 것과 같은
-    // 정적 자산이다. 실패해도 스냅샷 득표 태그만으로 필터가 그려지도록
-    // 조용히 빈 배열로 넘어간다.
-    var catalogPromise = wantUserTags
-      ? fetchJson('../data/pageData/UserTagCatalog.json')
+    // 태그 스냅샷과 후보 목록은 탭과 무관하게 같은 자원이라 페이지당 한 번만
+    // 받는다. 유저 태그를 쓰는 탭이 처음 열릴 때 요청을 시작한다.
+    var snapshotPromise = null;
+    var catalogPromise = null;
+    function loadUserTagAssets() {
+      if (!snapshotPromise) {
+        snapshotPromise = fetch('/tags/snapshot')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; });
+        // 유저 태그 후보 목록은 postDetailSeries.js의 투표 모달이 읽는 것과 같은
+        // 정적 자산이다. 실패해도 스냅샷 득표 태그만으로 필터가 그려지도록
+        // 조용히 빈 배열로 넘어간다.
+        catalogPromise = fetchJson('../data/pageData/UserTagCatalog.json')
           .then(function (list) { return Array.isArray(list) ? list : []; })
-          .catch(function () { return []; })
-      : Promise.resolve([]);
+          .catch(function () { return []; });
+      }
+      return Promise.all([snapshotPromise, catalogPromise]);
+    }
 
-    Promise.all([itemsPromise, snapshotPromise, catalogPromise])
-      .then(function (results) {
-        rawItems = Array.isArray(results[0]) ? results[0] : [];
-        // config.filterItems 는 같은 데이터 파일에서 일부만 보여주는 페이지
-        // (대회 — Novel.json 중 해당 대회 참가작만)가 넘긴다. 태그 스냅샷
-        // 병합과 후방주의 필터보다 먼저 걸러야 카운트·태그 필터 후보도 그
-        // 부분집합 기준으로 계산된다.
-        if (config.filterItems) rawItems = config.filterItems(rawItems);
-        if (wantUserTags) {
-          mergeUserTagSnapshot(results[1]);
-          userTagCatalog = results[2].filter(function (t) { return typeof t === 'string'; });
-        }
+    // 탭별로 한 번 받아 가공한 목록을 보관한다. 문학 ↔ 번역을 오갈 때 같은
+    // 목록을 다시 받거나 스냅샷을 다시 병합하지 않는다.
+    var sourceCache = {};
+    var loadToken = 0;
+
+    function loadItems() {
+      var token = ++loadToken;
+      var cacheKey = sourceKey || '_';
+      if (sourceCache[cacheKey]) {
+        rawItems = sourceCache[cacheKey].rawItems;
+        userTagCatalog = sourceCache[cacheKey].userTagCatalog;
         recomputeAllItems();
         finishItemsLoad();
-      })
-      .catch(function () {});
+        return;
+      }
+
+      // 목록 본문과 태그 스냅샷은 서로 의존하지 않으니 동시에 요청하고 둘 다
+      // 도착했을 때 합친다 — 태그 스냅샷이 끝나야 목록 요청을 시작하던 예전
+      // 방식은 왕복 하나만큼 첫 렌더를 늦추고 있었다.
+      var itemsPromise = fetch(DATA(config.dataUrl)).then(function (r) { return r.json(); });
+      var tagAssetsPromise = wantUserTags() ? loadUserTagAssets() : Promise.resolve([null, []]);
+
+      Promise.all([itemsPromise, tagAssetsPromise])
+        .then(function (results) {
+          // 응답을 기다리는 사이 다른 탭으로 바뀌었으면 버린다.
+          if (token !== loadToken) return;
+          rawItems = Array.isArray(results[0]) ? results[0] : [];
+          userTagCatalog = [];
+          // config.filterItems 는 같은 데이터 파일에서 일부만 보여주는 페이지
+          // (대회 — Novel.json 중 해당 대회 참가작만)가 넘긴다. 태그 스냅샷
+          // 병합과 후방주의 필터보다 먼저 걸러야 카운트·태그 필터 후보도 그
+          // 부분집합 기준으로 계산된다.
+          if (config.filterItems) rawItems = config.filterItems(rawItems);
+          if (wantUserTags()) {
+            mergeUserTagSnapshot(results[1][0]);
+            userTagCatalog = results[1][1].filter(function (t) { return typeof t === 'string'; });
+          }
+          sourceCache[cacheKey] = { rawItems: rawItems, userTagCatalog: userTagCatalog };
+          recomputeAllItems();
+          finishItemsLoad();
+        })
+        .catch(function () {});
+    }
 
     // 설정창에서 토글을 켜고 끌 때 새로고침 없이 바로 반영 — 이미 받아둔
     // rawItems를 다시 거르기만 하면 되므로 네트워크 재요청은 없다.
@@ -207,10 +260,17 @@
     // rotates the (empty) search input's placeholder through real item
     // names, typed out like loading.js's tip text, so the dim placeholder
     // itself hints at what you can type
+    // 탭을 바꾸면 finishItemsLoad()가 다시 불리지만 타이머·관찰자는 처음 한
+    // 번만 만든다. 이름 목록은 cycle()이 돌 때마다 지금 탭의 allItems 에서
+    // 새로 섞도록 order 만 비워 둔다.
+    var placeholderCycleStarted = false;
+    var placeholderOrder = null;
     function startSearchPlaceholderCycle() {
       if (!searchInput || !allItems.length) return;
-      var names = allItems.map(function (s) { return s.name; });
-      var order = shuffle(names.slice());
+      placeholderOrder = null;
+      if (placeholderCycleStarted) return;
+      placeholderCycleStarted = true;
+      function freshOrder() { return shuffle(allItems.map(function (s) { return s.name; })); }
       var idx = 0;
       var typeTimer = null;
       var gapTimer = null;
@@ -231,8 +291,9 @@
       function cycle() {
         if (!canRun()) { stop(); return; }
         running = true;
-        if (idx >= order.length) { order = shuffle(names.slice()); idx = 0; }
-        var name = order[idx];
+        if (!placeholderOrder || idx >= placeholderOrder.length) { placeholderOrder = freshOrder(); idx = 0; }
+        if (!placeholderOrder.length) { running = false; return; }
+        var name = placeholderOrder[idx];
         idx++;
         searchInput.placeholder = '';
         var i = 0;
@@ -289,7 +350,7 @@
     // "공식 태그로 볼지 유저 태그로 볼지" 페이지 전체의 보기 모드를 바꾸는
     // 토글이지, 필터 후보 목록만 왔다갔다 하는 게 아니다.
     // config.userTagsOnly(번역)는 공식 태그 자체가 없으므로 처음부터 'user'로
-    // 고정하고, 아래 setupPoolToggle 은 토글 버튼을 만들지 않는다.
+    // 고정하고, 아래 setupPoolToggle 은 토글 버튼을 숨긴다.
     var activePool = config.userTagsOnly ? 'user' : 'official';
 
     function tagsField(s, pool) {
@@ -318,9 +379,13 @@
     // 패널이 열릴 때마다 다시 그리는 옵션 목록과 달리 이 버튼은 헤더에 한 번만
     // 만들어 두고 클릭 때마다 라벨만 다시 칠한다.
     var poolToggleBtn = null;
+    // userTagsOnly 탭(번역)은 전환할 공식 풀이 없으므로 토글을 숨긴다.
+    function hasPoolToggle() {
+      return !!(config.userTags && !config.userTagsOnly);
+    }
     function setupPoolToggle() {
-      // userTagsOnly 페이지(번역)는 전환할 공식 풀이 없으므로 토글을 달지 않는다.
-      if (config.userTagsOnly || !config.userTags || poolToggleBtn) return;
+      if (poolToggleBtn) { paintPoolToggle(); return; }
+      if (!hasPoolToggle()) return;
       var header = filterPanel && filterPanel.querySelector('.sfp-header');
       if (!header) return;
 
@@ -343,6 +408,8 @@
 
     function paintPoolToggle() {
       if (!poolToggleBtn) return;
+      // .settings-mode-btn 의 display 지정이 [hidden] 보다 우선하므로 직접 끈다.
+      poolToggleBtn.style.display = hasPoolToggle() ? '' : 'none';
       // 지금 보고 있는 모드를 그대로 표시한다(누르면 바뀔 모드가 아니라).
       poolToggleBtn.textContent = activePool === 'official' ? t('공식 태그') : t('유저 태그');
     }
@@ -623,9 +690,10 @@
         });
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
-      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      var favType = config.favType;
+      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(favType, favId));
       if (favId != null && global.BumpButton) {
-        image.appendChild(global.BumpButton.createButton(config.favType, favId, s.name));
+        image.appendChild(global.BumpButton.createButton(favType, favId, s.name));
       }
       if (hasAudioNovel(s)) {
         image.appendChild(createAudioRibbon());
@@ -665,7 +733,7 @@
         PostDetailSeries.open({
           seriesName: s.name,
           imageUrl: s.image,
-          favType: config.favType,
+          favType: favType,
           postId: favId,
           tags: s.tags,
           episodes: (s.posts || []).map(function (post) {
@@ -709,9 +777,10 @@
         });
       }
       var favId = s.posts && s.posts[0] && s.posts[0].id;
-      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      var favType = config.favType;
+      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(favType, favId));
       if (favId != null && global.BumpButton) {
-        image.appendChild(global.BumpButton.createButton(config.favType, favId, s.name));
+        image.appendChild(global.BumpButton.createButton(favType, favId, s.name));
       }
       if (hasAudioNovel(s)) {
         image.appendChild(createAudioRibbon());
@@ -753,7 +822,7 @@
         PostDetailSeries.open({
           seriesName: s.name,
           imageUrl: s.image,
-          favType: config.favType,
+          favType: favType,
           postId: favId,
           tags: s.tags,
           episodes: (s.posts || []).map(function (post) {
@@ -831,6 +900,35 @@
         });
       }
     }
+
+    // 탭 전환 — 태그 선택과 공식/유저 풀은 탭마다 의미가 달라 초기화하고,
+    // 검색어와 보기 모드(그리드/리스트)는 그대로 이어 간다.
+    function setSource(key) {
+      if (!sources || !sources[key] || key === sourceKey) return;
+      sourceKey = key;
+      config = extend(baseConfig, sources[key]);
+      activePool = config.userTagsOnly ? 'user' : 'official';
+      activeTags = {};
+      rawItems = [];
+      allItems = [];
+      closeFilterPanel();
+      updateFilterButtonState();
+      paintPoolToggle();
+      if (searchInput && config.searchPlaceholder) searchInput.placeholder = config.searchPlaceholder;
+      if (countEl) countEl.textContent = '';
+      if (global.unobserveAllLazy) global.unobserveAllLazy();
+      if (loadMoreObserver) loadMoreObserver.disconnect();
+      sentinelEl = null;
+      gridEl.innerHTML = '';
+      loadItems();
+    }
+
+    loadItems();
+
+    return {
+      setSource: setSource,
+      getSource: function () { return sourceKey; }
+    };
   }
 
   global.GridPage = { create: create };
