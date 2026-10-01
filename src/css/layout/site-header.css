@@ -843,3 +843,298 @@
     transform: none;
   }
 }
+
+/* ---------- 모바일 하단 내비게이션 (siteHeader.js 가 body 끝에 만든다) ----------
+ * 768px 이하에서는 헤더 2행(페이지 메뉴)·테마 전환·프로필 버튼을 숨기고
+ * 화면 아래 탭 바(홈 · 문학 · 프로필)로 옮긴다. "문학"은 페이지 버튼이
+ * 아래에서 차례로 올라오는 시트, "프로필"은 계정 메뉴·테마·설정 시트를 연다.
+ */
+:root {
+  --mtb-height: 0px;
+}
+.mtb,
+.mtb-sheet,
+.mtb-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --site-header-nav: 0px;
+    --mtb-height: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+  .site-header .site-nav,
+  .site-header .theme-switch,
+  .site-header .site-profile {
+    display: none;
+  }
+  body.has-mtb {
+    padding-bottom: var(--mtb-height);
+  }
+
+  .mtb {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 470;
+    display: flex;
+    height: var(--mtb-height);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+  }
+  .mtb-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: rgba(0, 0, 0, 0.45);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.15s ease;
+  }
+  .mtb-tab svg {
+    width: 24px;
+    height: 24px;
+    transition: transform 0.2s ease;
+  }
+  .mtb-tab .site-avatar {
+    width: 26px;
+    height: 26px;
+  }
+  .mtb-tab .site-avatar svg {
+    width: 18px;
+    height: 18px;
+  }
+  .mtb-tab.is-active {
+    color: var(--accent, #2563eb);
+  }
+  .mtb-tab:active svg {
+    transform: scale(0.88);
+  }
+
+  .mtb-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 468;
+    display: block;
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .mtb-backdrop.is-open {
+    opacity: 1;
+  }
+
+  .mtb-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--mtb-height);
+    z-index: 469;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(100vh - var(--mtb-height) - 48px);
+    overflow-y: auto;
+    padding: 8px 16px 18px;
+    background: #ffffff;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.14);
+    box-sizing: border-box;
+    transform: translateY(16px);
+    opacity: 0;
+    transition: transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.2s ease;
+  }
+  .mtb-sheet.is-open {
+    transform: none;
+    opacity: 1;
+  }
+  .mtb-backdrop[hidden],
+  .mtb-sheet[hidden] {
+    display: none;
+  }
+  .mtb-grip {
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  /* 문학 시트 — 버튼이 아래쪽부터 차례로 튀어 오른다 */
+  .mtb-pages {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .mtb-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.045);
+    color: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+    transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.35), opacity 0.2s ease, background 0.15s ease;
+    transition-delay: var(--mtb-delay, 0ms);
+  }
+  .mtb-page svg {
+    width: 18px;
+    height: 18px;
+  }
+  .mtb-sheet.is-open .mtb-page {
+    opacity: 1;
+    transform: none;
+  }
+  .mtb-page.is-active {
+    background: var(--accent, #2563eb);
+    color: #ffffff;
+  }
+  .mtb-page:active {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  /* 프로필 시트 — 데스크톱 드롭다운(.site-profile-menu)을 시트 안에 펼친다 */
+  .mtb-sheet .mtb-profile {
+    position: static;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+  .mtb-rows {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding-top: 8px;
+  }
+  .mtb-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 4px;
+    background: none;
+    border: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .mtb-row-btn {
+    justify-content: flex-start;
+    cursor: pointer;
+  }
+  .mtb-row-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .mtb-seg {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.06);
+  }
+  .mtb-seg-btn {
+    padding: 6px 14px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: inherit;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  .mtb-seg-btn.is-active {
+    background: #ffffff;
+    opacity: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  /* 화면 아래에 떠 있던 요소들은 탭 바 위로 올린다 */
+  body.has-mtb .series-toolbar {
+    bottom: calc(var(--mtb-height) + 12px);
+  }
+  body.has-mtb .an-player {
+    bottom: calc(var(--mtb-height) + 12px);
+  }
+  body.has-mtb .pk-fab-stack {
+    bottom: calc(var(--mtb-height) + 16px);
+  }
+  body.has-mtb:has(.series-toolbar) .pk-fab-stack {
+    bottom: calc(var(--mtb-height) + 76px);
+  }
+  body.has-mtb:has(.an-player) .pk-fab-stack {
+    bottom: calc(var(--mtb-height) + 104px);
+  }
+
+  [data-theme="dark"] .mtb {
+    background: rgba(18, 19, 22, 0.94);
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+  [data-theme="dark"] .mtb-tab {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  [data-theme="dark"] .mtb-tab.is-active {
+    color: var(--accent, #6b9bff);
+  }
+  [data-theme="dark"] .mtb-sheet {
+    background: #1a1b1f;
+    color: #e8e8ea;
+  }
+  [data-theme="dark"] .mtb-grip {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  [data-theme="dark"] .mtb-page,
+  [data-theme="dark"] .mtb-seg {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  [data-theme="dark"] .mtb-page.is-active {
+    background: var(--accent, #2563eb);
+  }
+  [data-theme="dark"] .mtb-seg-btn.is-active {
+    background: rgba(255, 255, 255, 0.16);
+  }
+  [data-theme="dark"] .mtb-sheet .mtb-profile {
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+  [data-theme="dark"] .mtb-rows {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .mtb-sheet,
+  .mtb-page {
+    transition: opacity 0.15s ease;
+    transform: none;
+  }
+}

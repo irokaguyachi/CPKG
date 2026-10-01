@@ -135,9 +135,10 @@
     return btn;
   }
 
-  function renderProfileMenu() {
-    if (!profileMenu) return;
-    profileMenu.innerHTML = '';
+  function renderProfileMenu(target) {
+    var menu = target || profileMenu;
+    if (!menu) return;
+    menu.innerHTML = '';
     var loggedIn = isLoggedIn();
 
     var head = el('div', 'site-profile-head');
@@ -146,17 +147,17 @@
     headText.appendChild(el('p', 'site-profile-title', loggedIn ? t('로그인됨') : t('로그인하지 않았어요')));
     headText.appendChild(el('p', 'site-profile-sub', loggedIn ? maskedCode() : t('게스트')));
     head.appendChild(headText);
-    profileMenu.appendChild(head);
+    menu.appendChild(head);
 
     if (!loggedIn) {
-      profileMenu.appendChild(el('p', 'site-profile-desc', t('로그인하면 북마크를 다른 기기와 동기화할 수 있어요.')));
+      menu.appendChild(el('p', 'site-profile-desc', t('로그인하면 북마크를 다른 기기와 동기화할 수 있어요.')));
       var loginBtn = settingsButton(t('로그인'), 'is-primary');
       loginBtn.setAttribute('role', 'menuitem');
       loginBtn.addEventListener('click', function () {
         closeProfileMenu();
         if (global.AuthModal) global.AuthModal.openSignIn({});
       });
-      profileMenu.appendChild(loginBtn);
+      menu.appendChild(loginBtn);
     } else {
       // 동기화 — 자동 동기화가 없으므로(userData.js) 두 버튼이 곧 동기화다.
       var sync = el('div', 'site-profile-sync');
@@ -181,7 +182,7 @@
       actions.appendChild(saveBtn);
       actions.appendChild(loadBtn);
       sync.appendChild(actions);
-      profileMenu.appendChild(sync);
+      menu.appendChild(sync);
 
       var links = el('div', 'site-profile-links');
       links.appendChild(menuLink(ICONS.key, t('개인 코드 보기'), function () {
@@ -192,12 +193,12 @@
         closeProfileMenu();
         if (global.AuthUI && global.AuthUI.confirmAndLogout) global.AuthUI.confirmAndLogout();
       }, 'is-danger'));
-      profileMenu.appendChild(links);
+      menu.appendChild(links);
     }
 
     var foot = el('div', 'site-profile-foot');
     if (global.AuthUI && global.AuthUI.renderVersionTag) global.AuthUI.renderVersionTag(foot);
-    profileMenu.appendChild(foot);
+    menu.appendChild(foot);
   }
 
   function isProfileOpen() {
@@ -213,6 +214,7 @@
   }
 
   function closeProfileMenu() {
+    closeMobileSheet();
     if (!profileMenu || profileMenu.hidden) return;
     profileMenu.hidden = true;
     profileBtn.setAttribute('aria-expanded', 'false');
@@ -553,6 +555,175 @@
     if (e.key === 'Escape') closeProfileMenu();
   });
 
+  // ── 모바일 하단 내비게이션 ─────────────────────────────────────────────
+  // 768px 이하에서는 헤더 2행(.site-nav)을 숨기고(site-header.css) 화면
+  // 아래 탭 바로 페이지를 옮긴다. 마크업은 페이지마다 넣지 않고 여기서
+  // 만들며, 페이지 목록은 헤더 메뉴(.site-nav-link)를 그대로 옮겨 쓴다.
+  // - 홈: 메인으로 이동
+  // - 문학: 페이지 버튼들이 아래에서 하나씩 올라오는 시트
+  // - 프로필: 계정 메뉴 + 테마 + 설정 시트
+  var MTB_ICONS = {
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
+    bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+  };
+
+  var mtb = el('nav', 'mtb');
+  mtb.setAttribute('aria-label', t('하단 메뉴'));
+  var mtbBackdrop = el('div', 'mtb-backdrop');
+  var mtbSheet = el('div', 'mtb-sheet');
+  mtbSheet.setAttribute('role', 'dialog');
+  mtbSheet.hidden = true;
+  mtbBackdrop.hidden = true;
+  var mtbOpen = null; // 'pages' | 'profile' | null
+
+  function mtbTab(key, icon, label) {
+    var node = el(key === 'home' ? 'a' : 'button', 'mtb-tab');
+    if (key === 'home') node.href = '/';
+    else node.type = 'button';
+    node.innerHTML = icon;
+    node.appendChild(el('span', 'mtb-label', label));
+    mtb.appendChild(node);
+    return node;
+  }
+
+  var homeTab = mtbTab('home', MTB_ICONS.home, t('홈'));
+  var pagesTab = mtbTab('pages', MTB_ICONS.book, t('문학'));
+  var profileTab = mtbTab('profile', '', t('프로필'));
+  profileTab.insertBefore(makeAvatar(false), profileTab.firstChild);
+  pagesTab.setAttribute('aria-haspopup', 'dialog');
+  profileTab.setAttribute('aria-haspopup', 'dialog');
+
+  function paintMtbTabs() {
+    var here = normalizePath(document.body.getAttribute('data-nav-path') || global.location.pathname);
+    var onHome = here === '/' || /mainPage\.html$/.test(here);
+    homeTab.classList.toggle('is-active', onHome && !mtbOpen);
+    pagesTab.classList.toggle('is-active', mtbOpen === 'pages' || (!onHome && !mtbOpen));
+    profileTab.classList.toggle('is-active', mtbOpen === 'profile');
+    pagesTab.setAttribute('aria-expanded', mtbOpen === 'pages' ? 'true' : 'false');
+    profileTab.setAttribute('aria-expanded', mtbOpen === 'profile' ? 'true' : 'false');
+    var av = profileTab.querySelector('.site-avatar');
+    if (av) av.classList.toggle('is-logged-in', isLoggedIn());
+  }
+
+  function renderPagesSheet() {
+    mtbSheet.setAttribute('aria-label', t('페이지 이동'));
+    var grid = el('div', 'mtb-pages');
+    var items = [];
+    headerEl.querySelectorAll('.site-nav-link').forEach(function (link) {
+      if (normalizePath(new URL(link.href, global.location.href).pathname) === '/') return;
+      items.push({ href: link.getAttribute('href'), label: link.textContent, active: link.classList.contains('is-active') });
+    });
+    items.push({ href: '/bookmarks', label: t('북마크'), active: normalizePath(global.location.pathname) === '/bookmarks', icon: MTB_ICONS.bookmark });
+    items.forEach(function (item, i) {
+      var a = el('a', 'mtb-page' + (item.active ? ' is-active' : ''));
+      a.href = item.href;
+      // 탭 바에 가까운 아래쪽 버튼부터 차례로 올라온다.
+      a.style.setProperty('--mtb-delay', ((items.length - 1 - i) * 35) + 'ms');
+      if (item.icon) a.innerHTML = item.icon;
+      a.appendChild(el('span', null, item.label));
+      if (item.active) a.setAttribute('aria-current', 'page');
+      grid.appendChild(a);
+    });
+    mtbSheet.appendChild(grid);
+  }
+
+  function renderProfileSheet() {
+    mtbSheet.setAttribute('aria-label', t('계정 메뉴'));
+    var box = el('div', 'mtb-profile site-profile-menu');
+    renderProfileMenu(box);
+    mtbSheet.appendChild(box);
+
+    var rows = el('div', 'mtb-rows');
+    var themeRow = el('div', 'mtb-row');
+    themeRow.appendChild(el('span', 'mtb-row-label', t('화면 테마')));
+    var seg = el('div', 'mtb-seg');
+    var current = global.ThemeManager ? global.ThemeManager.getTheme() : 'light';
+    [['light', t('라이트')], ['dark', t('다크')]].forEach(function (opt) {
+      var b = el('button', 'mtb-seg-btn' + (current === opt[0] ? ' is-active' : ''), opt[1]);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        if (global.ThemeManager && global.ThemeManager.getTheme() !== opt[0]) global.ThemeManager.setTheme(opt[0], true);
+        seg.querySelectorAll('.mtb-seg-btn').forEach(function (x) { x.classList.toggle('is-active', x === b); });
+      });
+      seg.appendChild(b);
+    });
+    themeRow.appendChild(seg);
+    rows.appendChild(themeRow);
+
+    var settingsRow = el('button', 'mtb-row mtb-row-btn');
+    settingsRow.type = 'button';
+    settingsRow.innerHTML = MTB_ICONS.gear;
+    settingsRow.appendChild(el('span', 'mtb-row-label', t('설정')));
+    settingsRow.addEventListener('click', function () {
+      closeMobileSheet();
+      if (global.SettingsModal) global.SettingsModal.open();
+    });
+    rows.appendChild(settingsRow);
+    mtbSheet.appendChild(rows);
+  }
+
+  function renderMobileSheet() {
+    mtbSheet.innerHTML = '';
+    mtbSheet.appendChild(el('div', 'mtb-grip'));
+    if (mtbOpen === 'pages') renderPagesSheet();
+    else renderProfileSheet();
+  }
+
+  function openMobileSheet(kind) {
+    if (mtbOpen === kind) { closeMobileSheet(); return; }
+    closeSearchResults();
+    closeMobileSearch();
+    mtbOpen = kind;
+    mtbSheet.className = 'mtb-sheet is-' + kind;
+    renderMobileSheet();
+    mtbSheet.hidden = false;
+    mtbBackdrop.hidden = false;
+    document.body.classList.add('is-mtb-open');
+    // hidden 을 푼 다음 프레임에 열린 상태를 붙여야 transition 이 돈다.
+    global.requestAnimationFrame(function () {
+      global.requestAnimationFrame(function () {
+        if (mtbOpen !== kind) return;
+        mtbSheet.classList.add('is-open');
+        mtbBackdrop.classList.add('is-open');
+      });
+    });
+    paintMtbTabs();
+  }
+
+  function closeMobileSheet() {
+    if (!mtbOpen) return;
+    mtbOpen = null;
+    mtbSheet.classList.remove('is-open');
+    mtbBackdrop.classList.remove('is-open');
+    document.body.classList.remove('is-mtb-open');
+    setTimeout(function () {
+      if (mtbOpen) return;
+      mtbSheet.hidden = true;
+      mtbBackdrop.hidden = true;
+    }, 260);
+    paintMtbTabs();
+  }
+
+  pagesTab.addEventListener('click', function (e) { e.stopPropagation(); openMobileSheet('pages'); });
+  profileTab.addEventListener('click', function (e) { e.stopPropagation(); openMobileSheet('profile'); });
+  mtbSheet.addEventListener('click', function (e) { e.stopPropagation(); });
+  mtbBackdrop.addEventListener('click', closeMobileSheet);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMobileSheet(); });
+  // 데스크톱 폭으로 넓어지면 열린 시트를 닫는다.
+  if (global.matchMedia) {
+    var mtbQuery = global.matchMedia('(max-width: 768px)');
+    if (mtbQuery.addEventListener) mtbQuery.addEventListener('change', function () { if (!mtbQuery.matches) closeMobileSheet(); });
+  }
+  global.addEventListener('chokaguya:auth-change', function () { paintMtbTabs(); if (mtbOpen === 'profile') renderMobileSheet(); });
+  global.addEventListener('chokaguya:sync-state', function () { if (mtbOpen === 'profile') renderMobileSheet(); });
+
+  document.body.appendChild(mtbBackdrop);
+  document.body.appendChild(mtbSheet);
+  document.body.appendChild(mtb);
+  document.body.classList.add('has-mtb');
+
   // ── 고정 로고 위치 맞추기 ──────────────────────────────────────────────
   // .header-logo 는 position:fixed 라 가운데 모은 헤더 컨테이너를 따라오지
   // 못한다. 로고 자리(.header-logo-link)의 실제 왼쪽 끝을 재서 CSS 변수로
@@ -584,4 +755,5 @@
   markActiveNav();
   paintThemeSwitch();
   paintProfileButton();
+  paintMtbTabs();
 })(window);
