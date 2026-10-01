@@ -14,6 +14,15 @@
   box-sizing: border-box;
 }
 
+/* 모바일 브라우저가 탭한 요소 크기만큼 파랗게 번쩍이는 기본 하이라이트를
+   끈다. 사이트의 버튼·카드는 각자 hover/눌림 효과를 따로 갖고 있어서,
+   이 하이라이트가 그 위에 겹치면 화면이 굳은 것처럼 보였다. 상속되는
+   속성이라 html 한 곳에만 두면 모든 요소에 적용된다. 키보드 포커스 표시
+   (:focus-visible)와는 관계가 없다. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* overflow-x: hidden 이었으면 스펙상 overflow-y 가 auto 로 승격돼(둘 중 하나가
    visible 이 아니면 나머지도 auto 로 바뀐다) html/body 가 스크롤 컨테이너가
    되고, 그 안의 position:sticky 요소(예: .series-toolbar 검색창)가 실제
