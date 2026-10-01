@@ -1,102 +1,98 @@
 {
   "totals": {
-    "novel": 1368,
+    "novel": 1394,
     "series": 107
   },
   "novels": [
     {
-      "name": "[ 이로하 길들이기 ]",
-      "image": "../assets/image/크롤링사진/문학/2026-09-26/321943_1.jpg",
+      "name": "[ Reply ]",
+      "image": null,
+      "tags": [
+        "짧문",
+        "감동",
+        "로맨스"
+      ],
+      "charCount": "922자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 326847,
+          "title": "[ Reply ]",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326847"
+        }
+      ]
+    },
+    {
+      "name": "내글구려로 폐기",
+      "image": "../assets/image/크롤링사진/문학/2026-10-01/326837_1.jpg",
+      "tags": [
+        "짧문",
+        "코미디",
+        "일상"
+      ],
+      "charCount": "717자",
+      "author": "ㅇㅇ(script1840)",
+      "posts": [
+        {
+          "id": 326837,
+          "title": "내글구려로 폐기",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326837"
+        }
+      ]
+    },
+    {
+      "name": "짧문학) 🎶 산토끼 토끼야...",
+      "image": "../assets/image/크롤링사진/문학/2026-10-01/326836_1.jpg",
+      "tags": [
+        "짧문",
+        "일상"
+      ],
+      "charCount": "261자",
+      "author": "카붕카퐁이(mortal6622)",
+      "posts": [
+        {
+          "id": 326836,
+          "title": "짧문학) 🎶 산토끼 토끼야...",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326836"
+        }
+      ]
+    },
+    {
+      "name": "부케",
+      "image": "../assets/image/크롤링사진/문학/2026-10-01/326822_1.jpg",
+      "tags": [
+        "감동",
+        "일상"
+      ],
+      "charCount": "1,077자",
+      "author": "ㅇㅇ(rokimi)",
+      "posts": [
+        {
+          "id": 326822,
+          "title": "부케",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326822"
+        }
+      ]
+    },
+    {
+      "name": "[ 따듯한 너 ]",
+      "image": "../assets/image/크롤링사진/문학/2026-10-01/326812_1.jpg",
       "tags": [
         "로맨스",
         "일상"
       ],
-      "charCount": "2,042자",
+      "charCount": "1,011자",
       "author": "별바다를불태우리(flock4442)",
       "posts": [
         {
-          "id": 321943,
-          "title": "[ 이로하 길들이기 ]",
+          "id": 326812,
+          "title": "[ 따듯한 너 ]",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321943"
-        }
-      ]
-    },
-    {
-      "name": "욕주의) 야치요 솔직히 그정돈 아님ㅋㅋㅋㅋ",
-      "image": null,
-      "tags": [
-        "짧문",
-        "대회",
-        "코미디",
-        "글카스"
-      ],
-      "charCount": "423자",
-      "author": "8000세야치요할머니의별바다라스트댄스",
-      "posts": [
-        {
-          "id": 321717,
-          "title": "욕주의) 야치요 솔직히 그정돈 아님ㅋㅋㅋㅋ",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321717"
-        }
-      ]
-    },
-    {
-      "name": "[초음문대] 오늘 내 생일을 아무도 축하해 주지 않았어.",
-      "image": null,
-      "tags": [
-        "짧문",
-        "대회",
-        "코미디",
-        "글카스"
-      ],
-      "charCount": "665자",
-      "author": "첼구야",
-      "posts": [
-        {
-          "id": 321531,
-          "title": "[초음문대] 오늘 내 생일을 아무도 축하해 주지 않았어.",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321531"
-        }
-      ]
-    },
-    {
-      "name": "[초음문대] 호기심과 죄악",
-      "image": null,
-      "tags": [
-        "대회",
-        "코미디",
-        "일상"
-      ],
-      "charCount": "1,753자",
-      "author": "ㅇㅇ",
-      "posts": [
-        {
-          "id": 321524,
-          "title": "[초음문대] 호기심과 죄악",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321524"
-        }
-      ]
-    },
-    {
-      "name": "[초음문대] 19) 떨어진 갈대 꽃, 진정한 열매를 맺는가",
-      "image": null,
-      "tags": [
-        "소설",
-        "대회",
-        "후방주의"
-      ],
-      "charCount": "5,123자",
-      "author": "솜방망이",
-      "posts": [
-        {
-          "id": 321387,
-          "title": "[초음문대] 19) 떨어진 갈대 꽃, 진정한 열매를 맺는가",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=321387"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326812"
         }
       ]
     }
