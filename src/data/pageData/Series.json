@@ -5230,6 +5230,29 @@
     ]
   },
   {
+    "name": "1일1문학",
+    "image": null,
+    "tags": [
+      "단편",
+      "피폐",
+      "슬픔"
+    ],
+    "posts": [
+      {
+        "id": 298793,
+        "title": "[1일1문학] 《 『 카구ㅇ– 』 》",
+        "episode": 1,
+        "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=298793"
+      },
+      {
+        "id": 299601,
+        "title": "[1일1문학] 《 너에게 닿기를 》",
+        "episode": 2,
+        "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=299601"
+      }
+    ]
+  },
+  {
     "name": "8000년째의 바람",
     "image": null,
     "tags": [
