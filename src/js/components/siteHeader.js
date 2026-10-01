@@ -759,15 +759,15 @@
           active++;
           // 타일 높이보다 크게(1.35~1.65배) 띄워 꽉 차 보이게 한다. 가장자리는
           // CSS 마스크로 흐려지므로 타일 밖으로 넘친 부분은 자연스럽게
-          // 잘린다. 중심은 가로로는 자기 칸 안, 세로로는 타일 높이의
-          // 15~45% 사이(위쪽 절반)에서 무작위로 잡는다.
+          // 잘린다. 중심은 가로로는 자기 칸 안, 세로로는 타일 한가운데에서
+          // 위아래로 타일 높이의 ±15%(35~65%) 안에서 무작위로 잡는다.
           var w = tile.offsetWidth || 340;
           var h = tile.offsetHeight || 112;
           var bh = h * randBetween(1.35, 1.65);
           var bw = bh * randBetween(1.25, 1.45);
           var zoneW = w / FX_MAX;
           var cx = zoneW * (zone + randBetween(0.2, 0.8));
-          var cy = h * randBetween(0.15, 0.45);
+          var cy = h * (0.5 + randBetween(-0.15, 0.15));
           var bubble = el('span', 'mtb-fx-bubble');
           bubble.style.width = bw + 'px';
           bubble.style.height = bh + 'px';
