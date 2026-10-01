@@ -1,9 +1,9 @@
 [
   {
-    "version": "v0.7",
+    "version": "v1.0",
     "date": "2026-10-01",
-    "title": "헤더 개편 & 문학·번역 통합 업데이트",
-    "file": "0.7.md"
+    "title": "UI 전면 개편 업데이트",
+    "file": "1.0.md"
   },
   {
     "version": "v0.6",
