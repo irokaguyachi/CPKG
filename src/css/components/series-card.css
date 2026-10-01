@@ -427,12 +427,576 @@
   }
 }
 
-/* 그리드 페이지의 리스트 뷰 컨테이너 — .post-list(메인페이지 전용)와 같은
-   세로 스택 배치를 #series-grid 위에서 재현한다. */
+/* 그리드 페이지의 리스트 뷰 컨테이너 — 게시판형 행(.post-board-row)을
+   간격 없이 세로로 이어 붙인다. 행끼리는 구분선으로 나눈다. */
 .series-grid.is-list-view {
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+
+/* ==========================================================================
+   그리드 카드 모양 (설정창 보기 탭, src/js/core/viewSettings.js)
+   gridPage.js 가 그리드 컨테이너에 is-grid-<모양> 클래스를 붙이고, 모양마다
+   다른 카드 마크업을 그린다. 기본(classic)은 위의 .series-card 그대로다.
+   ========================================================================== */
+:root {
+  --card-ink: #000000;
+  --card-muted: rgba(0, 0, 0, 0.55);
+  --card-line: rgba(0, 0, 0, 0.1);
+  --card-surface: #ffffff;
+  --card-hover: rgba(0, 0, 0, 0.03);
+  --card-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+  --card-shadow-up: 0 12px 20px rgba(0, 0, 0, 0.18);
+  --card-action-ink: rgba(0, 0, 0, 0.4);
+}
+
+.series-grid.is-grid-cover {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 18px;
+}
+.series-grid.is-grid-magazine {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 34px 22px;
+}
+.series-grid.is-grid-compact {
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 12px;
+}
+
+/* 작가·화수 한 줄(gridPage.js createMetaLine) — 작가가 길면 작가 쪽만
+   말줄임하고 화수/글자 수는 끝까지 보인다. */
+.card-meta-author {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-meta-dot {
+  flex-shrink: 0;
+  margin: 0 5px;
+  opacity: 0.6;
+}
+.card-meta-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 리본 대신 쓰는 작은 오디오 노벨 표시 */
+.audio-novel-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--mint);
+  color: #000000;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* 버튼 칸이 따로 있는 카드(컴팩트·게시판형)의 북마크·끌올 버튼 — 그림 위에
+   띄우던 절대 위치와 반투명 검은 배경을 풀고 글자색 아이콘으로 바꾼다. */
+.card-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.card-inline-actions .series-card-fav,
+.card-inline-actions .series-card-bump {
+  position: static;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  color: var(--card-action-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.card-inline-actions .series-card-bump {
+  order: -1;
+  font-size: 14px;
+}
+.card-inline-actions .series-card-fav:hover,
+.card-inline-actions .series-card-bump:hover {
+  background: var(--card-hover);
+  color: var(--card-ink);
+}
+.card-inline-actions .series-card-fav.is-fav {
+  color: #e0a800;
+  background: transparent;
+}
+.card-inline-actions .series-card-fav.is-fav svg {
+  fill: #e0a800;
+}
+.card-inline-actions .series-card-bump.is-bumped {
+  background: rgba(255, 90, 54, 0.9);
+}
+
+/* ---------- 표지형 ---------- */
+.grid-cover-card {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 3 / 4;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease-out-site), box-shadow 0.3s ease;
+}
+.grid-cover-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--card-shadow-up);
+}
+.grid-cover-card.is-audio-novel {
+  box-shadow: 0 0 0 2px var(--mint), var(--card-shadow);
+}
+.grid-cover-media {
+  position: absolute;
+  inset: 0;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: transform 0.5s var(--ease-out-site);
+}
+.grid-cover-card:hover .grid-cover-media {
+  transform: scale(1.05);
+}
+.grid-cover-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(8, 9, 12, 0.92) 0%, rgba(8, 9, 12, 0.65) 30%, rgba(8, 9, 12, 0) 58%);
+  pointer-events: none;
+}
+.grid-cover-card.is-text-cover .grid-cover-shade {
+  background: none;
+}
+.grid-cover-media .text-cover-emoji {
+  top: 22%;
+  font-size: 92px;
+}
+.grid-cover-card .audio-novel-chip {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+}
+.grid-cover-body {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 15px 15px;
+  color: #ffffff;
+}
+.grid-cover-card.is-text-cover .grid-cover-body {
+  color: var(--cover-ink);
+}
+.grid-cover-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.grid-cover-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-size: 11px;
+  font-weight: 700;
+}
+.grid-cover-card.is-text-cover .grid-cover-tag {
+  background: var(--card-hover);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.grid-cover-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.grid-cover-meta {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* ---------- 매거진형 ---------- */
+.grid-mag-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+.grid-mag-frame {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s ease;
+}
+.grid-mag-card:hover .grid-mag-frame {
+  box-shadow: var(--card-shadow-up);
+}
+.grid-mag-card.is-audio-novel .grid-mag-frame {
+  box-shadow: 0 0 0 2px var(--mint), var(--card-shadow);
+}
+.grid-mag-media {
+  position: absolute;
+  inset: 0;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: transform 0.5s var(--ease-out-site);
+}
+.grid-mag-card:hover .grid-mag-media {
+  transform: scale(1.04);
+}
+.grid-mag-media .text-cover-emoji {
+  top: 22%;
+  font-size: 110px;
+}
+.grid-mag-frame .audio-novel-chip {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 2;
+}
+.grid-mag-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 2px;
+}
+.grid-mag-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--card-muted);
+}
+.grid-mag-tag::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(var(--dot-color));
+}
+.grid-mag-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.38;
+  color: var(--card-ink);
+  word-break: keep-all;
+}
+.grid-mag-card:hover .grid-mag-title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.grid-mag-meta {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--card-muted);
+}
+
+/* ---------- 컴팩트 타일 ---------- */
+.grid-compact-card {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 10px;
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.grid-compact-card:hover {
+  border-color: transparent;
+  box-shadow: var(--card-shadow-up);
+}
+.grid-compact-card.is-audio-novel {
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(0, 255, 204, 0) 60%),
+    var(--card-surface);
+  border-color: rgba(0, 179, 133, 0.5);
+}
+.grid-compact-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.grid-compact-thumb .text-cover-emoji,
+.post-board-thumb .text-cover-emoji {
+  top: auto;
+  right: auto;
+  bottom: 14%;
+  left: 50%;
+  font-size: 40px;
+  opacity: 0.85;
+  transform: translateX(-50%);
+}
+.grid-compact-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0;
+}
+.grid-compact-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.38;
+  color: var(--card-ink);
+  word-break: keep-all;
+}
+.grid-compact-meta {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--card-muted);
+}
+.grid-compact-meta .audio-novel-chip {
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+}
+.grid-compact-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: auto;
+}
+.grid-compact-tags .series-card-tag,
+.post-board-tags .series-card-tag {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.grid-compact-card .card-inline-actions {
+  align-self: start;
+  margin: -4px -4px 0 0;
+}
+
+/* ---------- 리스트: 게시판형 ---------- */
+.post-board-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 150px 84px auto;
   gap: 16px;
+  align-items: center;
+  padding: 10px 14px 10px 12px;
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-top: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.post-board-row:first-of-type {
+  border-top: 1px solid var(--card-line);
+  border-radius: 14px 14px 0 0;
+}
+.post-board-row:last-of-type {
+  border-radius: 0 0 14px 14px;
+}
+.post-board-row:only-of-type {
+  border-radius: 14px;
+}
+.post-board-row:hover {
+  background:
+    linear-gradient(var(--card-hover), var(--card-hover)),
+    var(--card-surface);
+}
+.post-board-row.is-audio-novel {
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+.post-board-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #d9d9d9;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.post-board-thumb .text-cover-emoji {
+  font-size: 28px;
+}
+.post-board-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.post-board-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--card-ink);
+}
+.post-board-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-board-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+/* 넓은 화면에서는 작가·화수를 각자 열에 두므로 제목 아래 줄은 숨긴다. */
+.post-board-sub {
+  display: none;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--card-muted);
+}
+.post-board-author {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--card-muted);
+}
+.post-board-count {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--card-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .post-board-row {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 10px;
+  }
+  .post-board-thumb {
+    width: 56px;
+    height: 56px;
+  }
+  .post-board-author,
+  .post-board-count {
+    display: none;
+  }
+  .post-board-sub {
+    display: flex;
+  }
+  /* 좁은 행에서 태그 세 개가 두 줄로 넘어가면 행 높이가 들쭉날쭉해지므로
+     두 개까지만 보여 준다. */
+  .post-board-tags .series-card-tag:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .series-grid.is-grid-cover {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .grid-cover-title {
+    font-size: 14px;
+  }
+  .grid-cover-tags {
+    display: none;
+  }
+  .grid-cover-media .text-cover-emoji {
+    font-size: 64px;
+  }
+  .series-grid.is-grid-magazine {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 12px;
+  }
+  .grid-mag-title {
+    font-size: 15px;
+  }
+  .grid-mag-media .text-cover-emoji {
+    font-size: 72px;
+  }
+  .series-grid.is-grid-compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .grid-compact-card {
+    grid-template-columns: 84px minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+  /* 버튼 두 개(32px)가 좁은 표지·정사각형 위에서 그림을 많이 가리므로 줄인다. */
+  .grid-cover-card .series-card-fav,
+  .grid-cover-card .series-card-bump,
+  .grid-mag-frame .series-card-fav,
+  .grid-mag-frame .series-card-bump {
+    top: 8px;
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+  .grid-cover-card .series-card-fav,
+  .grid-mag-frame .series-card-fav {
+    right: 8px;
+  }
+  .grid-cover-card .series-card-bump,
+  .grid-mag-frame .series-card-bump {
+    right: 42px;
+  }
+  .grid-cover-card .audio-novel-chip {
+    top: 8px;
+    left: 8px;
+  }
 }
 
 /* 이미지 로딩 표시 — cdnConfig.js 의 lazyLoadBackground()/

@@ -380,5 +380,23 @@
   "메뉴": "Menu",
   "프로필": "Profile",
   "라이트": "Light",
-  "다크": "Dark"
+  "다크": "Dark",
+
+  "보기": "View",
+  "그리드": "Grid",
+  "리스트": "List",
+  "그림을 크게 보며 고르기 좋아요": "Browse with large pictures",
+  "게시판처럼 한 줄씩 빠르게 훑어봐요": "Skim quickly, one row per work",
+  "기본": "Default",
+  "표지형": "Cover",
+  "매거진형": "Magazine",
+  "컴팩트": "Compact",
+  "가로 배너 그림 아래에 제목과 태그": "Title and tags under a wide banner",
+  "책 표지처럼 그림 위에 제목": "Title over the picture, like a book cover",
+  "정사각형 그림 아래에 두 줄 제목": "Two-line title under a square picture",
+  "작은 그림 옆에 제목, 가장 많이 보여요": "Title beside a small picture, fits the most",
+  "이 페이지에서는 보기 설정을 바꿀 수 없어요.": "View settings are not available on this page.",
+  "목록 보기 방식": "List layout",
+  "그리드 카드 모양": "Grid card style",
+  "작가 이름은 앞 두 글자만 보여 줍니다. 툴바의 보기 전환 버튼으로 바꾼 값도 여기에 함께 저장됩니다.": "Only the first two letters of author names are shown. Changes made with the toolbar view button are saved here too."
 }

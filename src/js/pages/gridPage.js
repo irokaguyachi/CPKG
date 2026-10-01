@@ -117,6 +117,7 @@
     var activeTags = {};
     var searchTerm = '';
     var viewMode = 'grid';
+    var gridStyle = 'classic';
 
     var PAGE_SIZE = 50;
     var currentFiltered = [];
@@ -498,49 +499,60 @@
       if (e.key === 'Escape') closeFilterPanel();
     });
 
-    // 그리드/리스트 보기 — localStorage에 저장해서 다른 페이지(탭)로 이동해도
-    // 유지된다. 아이콘은 theme.js의 테마 토글 버튼과 같은 관례로 "누르면
-    // 바뀔 모드"를 보여준다(현재 상태 아이콘이 아님).
-    var VIEW_MODE_KEY = 'chokaguya_grid_view';
+    // 그리드/리스트 보기와 그리드 카드 모양 — viewSettings.js 가 저장해서
+    // 다른 페이지(탭)로 이동해도 유지되고, 설정창 보기 탭에서 바꿔도 이벤트로
+    // 곧바로 다시 그린다. 아이콘은 theme.js의 테마 토글 버튼과 같은 관례로
+    // "누르면 바뀔 모드"를 보여준다(현재 상태 아이콘이 아님).
     var GRID_ICON = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="1.5" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="10" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="10" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>';
     var LIST_ICON = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1.5" y="2" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="7.25" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="12.5" width="15" height="3.5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
-
-    function getStoredViewMode() {
-      var stored = global.localStorage.getItem(VIEW_MODE_KEY);
-      return stored === 'list' ? 'list' : 'grid';
-    }
+    var ViewSettings = global.ViewSettings;
 
     var VIEW_SWITCH_MS = 180;
     var viewSwitchTimer = null;
 
-    function applyViewMode(mode, skipRerender) {
-      viewMode = mode === 'list' ? 'list' : 'grid';
-      if (viewToggleBtn) {
-        var toList = viewMode === 'grid';
-        viewToggleBtn.innerHTML = toList ? LIST_ICON : GRID_ICON;
-        viewToggleBtn.setAttribute('aria-pressed', viewMode === 'list' ? 'true' : 'false');
-        viewToggleBtn.setAttribute('aria-label', toList ? t('리스트로 보기') : t('그리드로 보기'));
-        viewToggleBtn.title = toList ? t('리스트로 보기') : t('그리드로 보기');
-      }
-      global.localStorage.setItem(VIEW_MODE_KEY, viewMode);
+    function paintViewToggle() {
+      if (!viewToggleBtn) return;
+      var toList = viewMode === 'grid';
+      viewToggleBtn.innerHTML = toList ? LIST_ICON : GRID_ICON;
+      viewToggleBtn.setAttribute('aria-pressed', viewMode === 'list' ? 'true' : 'false');
+      viewToggleBtn.setAttribute('aria-label', toList ? t('리스트로 보기') : t('그리드로 보기'));
+      viewToggleBtn.title = toList ? t('리스트로 보기') : t('그리드로 보기');
+    }
 
-      if (skipRerender) {
-        // 페이지 로드 시 저장된 모드를 처음 반영하는 자리 — 아직 카드가
-        // 하나도 없으니 페이드할 것도 없이 바로 클래스만 맞춰둔다.
-        gridEl.classList.toggle('is-list-view', viewMode === 'list');
+    // 카드 모양마다 열 수와 간격이 달라서(series-card.css 의 is-grid-*)
+    // 컨테이너 클래스도 함께 바꿔 끼운다. 리스트일 때는 어느 모양도 붙이지
+    // 않는다.
+    function syncContainerClasses() {
+      gridEl.classList.toggle('is-list-view', viewMode === 'list');
+      (ViewSettings ? ViewSettings.GRID_STYLES : []).forEach(function (style) {
+        gridEl.classList.toggle('is-grid-' + style, viewMode === 'grid' && gridStyle === style);
+      });
+    }
+
+    function applyView(mode, style, skipRerender) {
+      viewMode = mode === 'list' ? 'list' : 'grid';
+      gridStyle = style || gridStyle;
+      paintViewToggle();
+      if (ViewSettings) ViewSettings.setViewMode(viewMode);
+
+      if (skipRerender || !allItems.length) {
+        // 페이지 로드 시 저장된 모드를 처음 반영하거나 아직 목록을 받기
+        // 전이라 카드가 하나도 없는 자리 — 페이드할 것도 없이 바로 클래스만
+        // 맞춰둔다.
+        syncContainerClasses();
         return;
       }
 
-      // 그리드 카드(.series-card)와 리스트 카드(.post-row)는 마크업 자체가
-      // 달라 레이아웃을 직접 애니메이션할 수 없다 — 대신 살짝 페이드아웃한
-      // 다음 카드를 바꿔 끼우고 다시 페이드인해서 순간적으로 확 바뀌는
-      // 느낌을 없앤다. renderGrid() 자체는 캐시된 currentFiltered를 다시
-      // 그리는 것뿐이라 네트워크 재요청 없이 저비용으로 끝난다.
+      // 그리드 카드와 리스트 카드는 마크업 자체가 달라 레이아웃을 직접
+      // 애니메이션할 수 없다 — 대신 살짝 페이드아웃한 다음 카드를 바꿔
+      // 끼우고 다시 페이드인해서 순간적으로 확 바뀌는 느낌을 없앤다.
+      // renderGrid() 자체는 캐시된 currentFiltered를 다시 그리는 것뿐이라
+      // 네트워크 재요청 없이 저비용으로 끝난다.
       gridEl.classList.add('is-view-switching');
       if (viewSwitchTimer) clearTimeout(viewSwitchTimer);
       viewSwitchTimer = setTimeout(function () {
         viewSwitchTimer = null;
-        gridEl.classList.toggle('is-list-view', viewMode === 'list');
+        syncContainerClasses();
         renderGrid(true);
         gridEl.classList.remove('is-view-switching');
       }, VIEW_SWITCH_MS);
@@ -548,10 +560,18 @@
 
     if (viewToggleBtn) {
       viewToggleBtn.addEventListener('click', function () {
-        applyViewMode(viewMode === 'list' ? 'grid' : 'list');
+        applyView(viewMode === 'list' ? 'grid' : 'list');
       });
     }
-    applyViewMode(getStoredViewMode(), true);
+    // 설정창 보기 탭에서 바꾼 값 — 툴바 버튼으로 바꾼 값도 같은 이벤트가
+    // 돌아오지만, 이미 반영된 값이라 아래 비교에서 걸러진다.
+    global.addEventListener('chokaguya:view-settings-change', function (e) {
+      var next = e.detail || {};
+      if (next.viewMode === viewMode && next.gridStyle === gridStyle) return;
+      applyView(next.viewMode, next.gridStyle);
+    });
+    if (ViewSettings) applyView(ViewSettings.getViewMode(), ViewSettings.getGridStyle(), true);
+    else applyView('grid', 'classic', true);
 
     // 항상 activePool 쪽 필드(s.tags 또는 s.popularUserTags)만 본다 — 풀을
     // 바꾸면 activeTags가 초기화되므로 여기서 두 풀을 섞어 볼 일이 없다.
@@ -667,12 +687,14 @@
       }, 180);
     }
 
-    function createGridCard(s) {
-      var card = document.createElement('article');
-      card.className = 'series-card';
+    // ---- 카드 공용 부품 ----
+    // 그리드 카드 네 가지 모양과 리스트(게시판형) 행이 썸네일·버튼·태그·상세
+    // 열기를 똑같이 쓰도록 여기 모아 둔다.
 
-      var image = document.createElement('div');
-      image.className = 'series-card-image';
+    // 썸네일 칠하기. 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로
+    // 자리를 채운다. withText 가 false 면 색과 이모지만 깐다 — 제목이 이미
+    // 표지 위나 바로 옆에 따로 있는 카드에서 같은 제목이 두 번 보이지 않게.
+    function fillThumb(image, s, withText) {
       if (s.image) {
         // cards show the 600px thumbnail, never the full-size original
         if (global.lazyLoadBackground) {
@@ -682,19 +704,125 @@
           image.style.backgroundImage = 'url("' + finalImg + '")';
         }
       } else if (global.TagConfig.applyTextCover) {
-        // 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로 자리를 채운다.
         global.TagConfig.applyTextCover(image, {
           name: s.name,
           author: s.author,
-          tags: (s.tags && s.tags.length) ? s.tags : s.popularUserTags
+          tags: (s.tags && s.tags.length) ? s.tags : s.popularUserTags,
+          text: withText !== false
         });
       }
-      var favId = s.posts && s.posts[0] && s.posts[0].id;
-      var favType = config.favType;
-      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(favType, favId));
-      if (favId != null && global.BumpButton) {
-        image.appendChild(global.BumpButton.createButton(favType, favId, s.name));
+    }
+
+    function favIdOf(s) {
+      return s.posts && s.posts[0] && s.posts[0].id;
+    }
+
+    // 북마크·끌올 버튼. 그림 위에 띄우는 카드는 series-card.css 의 절대
+    // 위치를 그대로 쓰고, 리스트·컴팩트처럼 버튼 칸이 따로 있는 카드는
+    // 그 칸의 CSS 가 위치를 풀어 한 줄로 늘어놓는다.
+    function appendActions(parent, s) {
+      var favId = favIdOf(s);
+      if (favId == null) return;
+      parent.appendChild(global.BookmarkPicker.createButton(config.favType, favId));
+      if (global.BumpButton) parent.appendChild(global.BumpButton.createButton(config.favType, favId, s.name));
+    }
+
+    // 리본이 들어갈 자리가 없는 새 카드 모양에서 쓰는 작은 오디오 노벨 표시
+    function createAudioChip() {
+      var chip = document.createElement('span');
+      chip.className = 'audio-novel-chip';
+      chip.textContent = '🎧 ' + t('오디오노벨');
+      return chip;
+    }
+
+    function createTagPills(s, max, className) {
+      var wrap = document.createElement('div');
+      wrap.className = className;
+      // 4개째부터는 2줄로 넘어가면서 형제 카드와 높이가 어긋나므로 정해진 개수까지만 보여준다
+      sortTags(tagsField(s)).slice(0, max).forEach(function (tag) {
+        var pill = document.createElement('span');
+        pill.className = 'series-card-tag';
+        pill.dataset.tag = tag;
+        pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
+        wrap.appendChild(pill);
+      });
+      return wrap;
+    }
+
+    // 작가 이름은 친목 방지를 위해 앞 두 글자만 보여 준다(tagConfig.js
+    // maskAuthor). 시리즈·공식처럼 데이터에 작가가 없는 탭은 빈 문자열이다.
+    function maskedAuthor(s) {
+      return s.author && global.TagConfig.maskAuthor ? global.TagConfig.maskAuthor(s.author) : '';
+    }
+
+    // "별바*** · 2,042자" 처럼 작가와 화수/글자 수를 한 줄로 잇는다.
+    function createMetaLine(s, className) {
+      var meta = document.createElement('p');
+      meta.className = className;
+      var author = maskedAuthor(s);
+      if (author) {
+        var who = document.createElement('span');
+        who.className = 'card-meta-author';
+        who.textContent = author;
+        meta.appendChild(who);
+        var dot = document.createElement('span');
+        dot.className = 'card-meta-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        dot.textContent = '·';
+        meta.appendChild(dot);
       }
+      var count = document.createElement('span');
+      count.className = 'card-meta-count';
+      count.textContent = countLine(s);
+      meta.appendChild(count);
+      return meta;
+    }
+
+    function textEl(tag, className, text) {
+      var node = document.createElement(tag);
+      node.className = className;
+      node.textContent = text;
+      return node;
+    }
+
+    function bindOpenDetail(card, s) {
+      card.addEventListener('click', function () {
+        if (!global.PostDetailSeries) return;
+        PostDetailSeries.open({
+          seriesName: s.name,
+          imageUrl: s.image,
+          favType: config.favType,
+          postId: favIdOf(s),
+          tags: s.tags,
+          episodes: (s.posts || []).map(function (post) {
+            return {
+              title: post.title,
+              dcId: post.id,
+              link: post.link,
+              reader: post.reader,
+              episodeLabel: t('{n} 화', { n: post.episode })
+            };
+          })
+        });
+      });
+    }
+
+    function createGridCard(s) {
+      if (gridStyle === 'cover') return createCoverCard(s);
+      if (gridStyle === 'magazine') return createMagazineCard(s);
+      if (gridStyle === 'compact') return createCompactCard(s);
+      return createClassicCard(s);
+    }
+
+    // 기본: 가로 배너 이미지 아래에 제목·화수·태그를 쌓는 원래 카드
+    function createClassicCard(s) {
+      var card = document.createElement('article');
+      card.className = 'series-card';
+
+      var image = document.createElement('div');
+      image.className = 'series-card-image';
+      fillThumb(image, s, true);
+      appendActions(image, s);
       if (hasAudioNovel(s)) {
         image.appendChild(createAudioRibbon());
         card.classList.add('is-audio-novel');
@@ -703,140 +831,152 @@
 
       var info = document.createElement('div');
       info.className = 'series-card-info';
-
-      var title = document.createElement('p');
-      title.className = 'series-card-title';
-      title.textContent = s.name;
-      info.appendChild(title);
-
-      var count = document.createElement('p');
-      count.className = 'series-card-count';
-      count.textContent = countLine(s);
-      info.appendChild(count);
-
-      var tagsWrap = document.createElement('div');
-      tagsWrap.className = 'series-card-tags';
-      // 4개째부터는 2줄로 넘어가면서 형제 카드와 높이가 어긋나므로 3개까지만 보여준다
-      sortTags(tagsField(s)).slice(0, 3).forEach(function (tag) {
-        var pill = document.createElement('span');
-        pill.className = 'series-card-tag';
-        pill.dataset.tag = tag;
-        pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-        tagsWrap.appendChild(pill);
-      });
-      info.appendChild(tagsWrap);
-
+      info.appendChild(textEl('p', 'series-card-title', s.name));
+      info.appendChild(textEl('p', 'series-card-count', countLine(s)));
+      info.appendChild(createTagPills(s, 3, 'series-card-tags'));
       card.appendChild(info);
 
-      card.addEventListener('click', function () {
-        if (!global.PostDetailSeries) return;
-        PostDetailSeries.open({
-          seriesName: s.name,
-          imageUrl: s.image,
-          favType: favType,
-          postId: favId,
-          tags: s.tags,
-          episodes: (s.posts || []).map(function (post) {
-            return {
-              title: post.title,
-              dcId: post.id,
-              link: post.link,
-              reader: post.reader,
-              episodeLabel: t('{n} 화', { n: post.episode })
-            };
-          })
-        });
-      });
-
+      bindOpenDetail(card, s);
       return card;
     }
 
-    // 리스트 뷰 카드 — mainPage.js의 .post-row 마크업을 재사용해 메인
-    // 페이지의 "최신 등록" 리스트와 같은 모습을 낸다. 화수/글자수 뱃지는
-    // createGridCard와 같은 countLine(s)을 써서 그리드/리스트가 항상 같은
-    // 문구를 보여주도록 한다.
-    function createListCard(s) {
+    // 표지형: 세로 3:4 카드에 그림을 꽉 채우고, 아래쪽 그늘 위에 태그·제목·
+    // 작가를 얹는다. 크롤링된 그림 대부분이 정사각형이라 가로 배너보다 훨씬
+    // 덜 잘린다. 그림을 감싼 칸(.grid-cover-media)만 확대되도록 따로 둔다.
+    function createCoverCard(s) {
       var card = document.createElement('article');
-      card.className = 'post-row';
+      card.className = 'grid-cover-card';
+      if (!s.image) card.classList.add('is-text-cover');
 
-      var image = document.createElement('div');
-      image.className = 'post-row-image';
-      if (s.image) {
-        if (global.lazyLoadBackground) {
-          global.lazyLoadBackground(image, s.image);
-        } else {
-          var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(s.image) : s.image;
-          image.style.backgroundImage = 'url("' + finalImg + '")';
-        }
-      } else if (global.TagConfig.applyTextCover) {
-        // 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로 자리를 채운다.
-        global.TagConfig.applyTextCover(image, {
-          name: s.name,
-          author: s.author,
-          tags: (s.tags && s.tags.length) ? s.tags : s.popularUserTags
-        });
-      }
-      var favId = s.posts && s.posts[0] && s.posts[0].id;
-      var favType = config.favType;
-      if (favId != null) image.appendChild(global.BookmarkPicker.createButton(favType, favId));
-      if (favId != null && global.BumpButton) {
-        image.appendChild(global.BumpButton.createButton(favType, favId, s.name));
-      }
+      var media = document.createElement('div');
+      media.className = 'grid-cover-media';
+      fillThumb(media, s, false);
+      card.appendChild(media);
+      card.appendChild(textEl('div', 'grid-cover-shade', ''));
+
+      appendActions(card, s);
       if (hasAudioNovel(s)) {
-        image.appendChild(createAudioRibbon());
+        card.appendChild(createAudioChip());
         card.classList.add('is-audio-novel');
       }
-      card.appendChild(image);
 
-      var info = document.createElement('div');
-      info.className = 'post-row-info';
+      var body = document.createElement('div');
+      body.className = 'grid-cover-body';
+      var tags = document.createElement('div');
+      tags.className = 'grid-cover-tags';
+      sortTags(tagsField(s)).slice(0, 2).forEach(function (tag) {
+        tags.appendChild(textEl('span', 'grid-cover-tag', (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag));
+      });
+      body.appendChild(tags);
+      body.appendChild(textEl('p', 'grid-cover-title', s.name));
+      body.appendChild(createMetaLine(s, 'grid-cover-meta'));
+      card.appendChild(body);
 
-      var title = document.createElement('p');
-      title.className = 'post-row-title';
-      var name = document.createElement('span');
-      name.className = 'post-row-name';
-      name.textContent = s.name;
-      title.appendChild(name);
-      info.appendChild(title);
+      bindOpenDetail(card, s);
+      return card;
+    }
 
-      var tagsWrap = document.createElement('div');
-      tagsWrap.className = 'post-row-tags';
+    // 매거진형: 테두리 없는 정사각형 그림 아래에 태그 색 점, 두 줄 제목,
+    // 작가와 화수/글자 수를 기사 목록처럼 둔다.
+    function createMagazineCard(s) {
+      var card = document.createElement('article');
+      card.className = 'grid-mag-card';
+
+      var frame = document.createElement('div');
+      frame.className = 'grid-mag-frame';
+      var media = document.createElement('div');
+      media.className = 'grid-mag-media';
+      fillThumb(media, s, false);
+      frame.appendChild(media);
+      appendActions(frame, s);
+      if (hasAudioNovel(s)) {
+        frame.appendChild(createAudioChip());
+        card.classList.add('is-audio-novel');
+      }
+      card.appendChild(frame);
+
+      var kicker = document.createElement('div');
+      kicker.className = 'grid-mag-tags';
       sortTags(tagsField(s)).slice(0, 3).forEach(function (tag) {
-        var pill = document.createElement('span');
-        pill.className = 'series-card-tag';
-        pill.dataset.tag = tag;
-        pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-        tagsWrap.appendChild(pill);
+        var item = textEl('span', 'grid-mag-tag', tag);
+        // 색이 정해진 태그만 CSS 변수 이름으로 쓸 수 있다(유저 태그는 임의 문자열)
+        var known = Object.prototype.hasOwnProperty.call(TAG_EMOJI, tag);
+        item.style.setProperty('--dot-color',
+          known ? 'var(--tag-glow-' + tag + ', var(--tag-glow-default))' : 'var(--tag-glow-default)');
+        kicker.appendChild(item);
       });
-      info.appendChild(tagsWrap);
+      card.appendChild(kicker);
 
-      card.appendChild(info);
+      card.appendChild(textEl('p', 'grid-mag-title', s.name));
+      card.appendChild(createMetaLine(s, 'grid-mag-meta'));
 
-      var episode = document.createElement('div');
-      episode.className = 'post-row-episode';
-      episode.textContent = countLine(s);
-      card.appendChild(episode);
+      bindOpenDetail(card, s);
+      return card;
+    }
 
-      card.addEventListener('click', function () {
-        if (!global.PostDetailSeries) return;
-        PostDetailSeries.open({
-          seriesName: s.name,
-          imageUrl: s.image,
-          favType: favType,
-          postId: favId,
-          tags: s.tags,
-          episodes: (s.posts || []).map(function (post) {
-            return {
-              title: post.title,
-              dcId: post.id,
-              link: post.link,
-              reader: post.reader,
-              episodeLabel: t('{n} 화', { n: post.episode })
-            };
-          })
-        });
-      });
+    // 컴팩트 타일: 작은 정사각형 썸네일과 글을 가로로 놓은 타일. 그림보다
+    // 제목 위주로 훑어볼 때 한 화면에 가장 많이 들어온다.
+    function createCompactCard(s) {
+      var card = document.createElement('article');
+      card.className = 'grid-compact-card';
+      if (hasAudioNovel(s)) card.classList.add('is-audio-novel');
 
+      var thumb = document.createElement('div');
+      thumb.className = 'grid-compact-thumb';
+      fillThumb(thumb, s, false);
+      card.appendChild(thumb);
+
+      var body = document.createElement('div');
+      body.className = 'grid-compact-body';
+      body.appendChild(textEl('p', 'grid-compact-title', s.name));
+      var meta = createMetaLine(s, 'grid-compact-meta');
+      if (hasAudioNovel(s)) meta.appendChild(createAudioChip());
+      body.appendChild(meta);
+      body.appendChild(createTagPills(s, 2, 'grid-compact-tags'));
+      card.appendChild(body);
+
+      var actions = document.createElement('div');
+      actions.className = 'card-inline-actions';
+      appendActions(actions, s);
+      card.appendChild(actions);
+
+      bindOpenDetail(card, s);
+      return card;
+    }
+
+    // 리스트(게시판형) — 썸네일, 제목과 태그, 작가, 화수/글자 수, 버튼을
+    // 열로 맞춘 촘촘한 행. 모바일에서는 작가와 글자 수를 제목 아래 한 줄로
+    // 내린다. 북마크·끌올 버튼은 그림을 가리지 않게 행 끝 칸에 둔다.
+    function createListCard(s) {
+      var card = document.createElement('article');
+      card.className = 'post-board-row';
+      if (hasAudioNovel(s)) card.classList.add('is-audio-novel');
+
+      var thumb = document.createElement('div');
+      thumb.className = 'post-board-thumb';
+      fillThumb(thumb, s, false);
+      card.appendChild(thumb);
+
+      var main = document.createElement('div');
+      main.className = 'post-board-main';
+      var title = document.createElement('p');
+      title.className = 'post-board-title';
+      title.appendChild(textEl('span', 'post-board-name', s.name));
+      if (hasAudioNovel(s)) title.appendChild(createAudioChip());
+      main.appendChild(title);
+      main.appendChild(createTagPills(s, 3, 'post-board-tags'));
+      main.appendChild(createMetaLine(s, 'post-board-sub'));
+      card.appendChild(main);
+
+      card.appendChild(textEl('span', 'post-board-author', maskedAuthor(s)));
+      card.appendChild(textEl('span', 'post-board-count', countLine(s)));
+
+      var actions = document.createElement('div');
+      actions.className = 'card-inline-actions';
+      appendActions(actions, s);
+      card.appendChild(actions);
+
+      bindOpenDetail(card, s);
       return card;
     }
 

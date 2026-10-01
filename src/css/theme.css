@@ -236,6 +236,31 @@ html.theme-transitioning *:after {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* 그리드 카드 모양(표지형·매거진형·컴팩트)과 게시판형 리스트 —
+   series-card.css 가 :root 에 둔 카드 색 변수를 다크용으로 바꾼다. */
+[data-theme="dark"] {
+  --card-ink: var(--dark-text);
+  --card-muted: rgba(255, 255, 255, 0.6);
+  --card-line: rgba(255, 255, 255, 0.08);
+  --card-surface: var(--dark-surface);
+  --card-hover: rgba(255, 255, 255, 0.05);
+  --card-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+  --card-shadow-up: 0 16px 30px rgba(0, 0, 0, 0.6);
+  --card-action-ink: rgba(255, 255, 255, 0.5);
+}
+[data-theme="dark"] .grid-cover-media,
+[data-theme="dark"] .grid-mag-media,
+[data-theme="dark"] .grid-compact-thumb,
+[data-theme="dark"] .post-board-thumb {
+  background-color: #25272d;
+}
+[data-theme="dark"] .grid-compact-card.is-audio-novel {
+  background:
+    linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(0, 255, 204, 0) 60%),
+    var(--dark-surface);
+  border-color: rgba(0, 255, 204, 0.4);
+}
+
 /* 오디오 노벨 강조(series-card.css) 다크 대응 — 기본 다크 카드 배경 규칙과
    특이도가 같고 이 파일이 나중에 로드되므로 여기서 덮어써야 한다.
    그라데이션은 불투명 다크 서피스 위에 얹는다. */
@@ -864,6 +889,26 @@ html.theme-transitioning *:after {
 }
 [data-theme="dark"] .settings-slider-value {
   color: rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .settings-view-option {
+  color: var(--dark-text);
+  background: var(--dark-input-bg);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .settings-view-option:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+[data-theme="dark"] .settings-view-option.is-active {
+  border-color: transparent;
+}
+[data-theme="dark"] .settings-view-option-desc {
+  color: rgba(255, 255, 255, 0.55);
+}
+[data-theme="dark"] .svp {
+  --svp-bg: rgba(255, 255, 255, 0.05);
+  --svp-card: rgba(255, 255, 255, 0.08);
+  --svp-line: rgba(255, 255, 255, 0.18);
+  --svp-line-strong: rgba(255, 255, 255, 0.5);
 }
 [data-theme="dark"] .settings-stat {
   background: var(--dark-input-bg);

@@ -21,6 +21,7 @@
 
   var TABS = [
     { id: 'general', label: t('일반') },
+    { id: 'view', label: t('보기') },
     { id: 'account', label: t('계정') },
     { id: 'audio', label: t('오디오 문학') },
     { id: 'info', label: t('정보') }
@@ -214,6 +215,120 @@
     return row;
   }
 
+  // ---- 보기 탭 ----
+  // 문학·시리즈·명예관·공식 목록의 보기 방식(그리드/리스트)과 그리드 카드
+  // 모양을 고른다. 값은 viewSettings.js 가 저장하고, 이미 열려 있는 목록은
+  // 이벤트를 받아 곧바로 다시 그린다. 고르기 전에 모양을 짐작할 수 있도록
+  // 각 선택지에 작은 예시 그림(.svp-*)을 붙인다 — 예시는 실제 카드 CSS 를
+  // 쓰지 않는 도식이라 카드 CSS 가 없는 페이지에서 설정창을 열어도 깨지지
+  // 않는다.
+  var VIEW_MODE_OPTIONS = [
+    { id: 'grid', label: t('그리드'), desc: t('그림을 크게 보며 고르기 좋아요') },
+    { id: 'list', label: t('리스트'), desc: t('게시판처럼 한 줄씩 빠르게 훑어봐요') }
+  ];
+  var GRID_STYLE_OPTIONS = [
+    { id: 'classic', label: t('기본'), desc: t('가로 배너 그림 아래에 제목과 태그') },
+    { id: 'cover', label: t('표지형'), desc: t('책 표지처럼 그림 위에 제목') },
+    { id: 'magazine', label: t('매거진형'), desc: t('정사각형 그림 아래에 두 줄 제목') },
+    { id: 'compact', label: t('컴팩트'), desc: t('작은 그림 옆에 제목, 가장 많이 보여요') }
+  ];
+  // 예시 그림 속 썸네일 색 — tags.css 의 태그 색(--tag-glow-*) 몇 가지를 빌린다.
+  var PREVIEW_TINTS = ['235, 105, 145', '105, 140, 225', '70, 185, 175', '225, 185, 50'];
+
+  function previewFigure(kind) {
+    var fig = el('div', 'svp svp-' + kind);
+    fig.setAttribute('aria-hidden', 'true');
+    var count = kind === 'list' || kind === 'compact' ? 3 : (kind === 'classic' ? 2 : 3);
+    for (var i = 0; i < count; i++) {
+      var item = el('span', 'svp-item');
+      var img = el('span', 'svp-img');
+      img.style.setProperty('--svp-tint', PREVIEW_TINTS[i % PREVIEW_TINTS.length]);
+      item.appendChild(img);
+      var text = el('span', 'svp-text');
+      text.appendChild(el('span', 'svp-line svp-line-title'));
+      text.appendChild(el('span', 'svp-line'));
+      item.appendChild(text);
+      fig.appendChild(item);
+    }
+    return fig;
+  }
+
+  function optionGroup(label, options, current, onPick, kindOf) {
+    var group = el('div', 'settings-view-options');
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-label', label);
+    var buttons = [];
+    options.forEach(function (opt) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'settings-view-option';
+      btn.setAttribute('role', 'radio');
+      btn.appendChild(previewFigure(kindOf(opt.id)));
+      var text = el('span', 'settings-view-option-text');
+      text.appendChild(el('span', 'settings-view-option-label', opt.label));
+      text.appendChild(el('span', 'settings-view-option-desc', opt.desc));
+      btn.appendChild(text);
+      btn.addEventListener('click', function () {
+        paint(opt.id);
+        onPick(opt.id);
+      });
+      buttons.push({ id: opt.id, btn: btn });
+      group.appendChild(btn);
+    });
+    function paint(id) {
+      buttons.forEach(function (b) {
+        var on = b.id === id;
+        b.btn.classList.toggle('is-active', on);
+        b.btn.setAttribute('aria-checked', String(on));
+      });
+    }
+    paint(current);
+    return { el: group, paint: paint };
+  }
+
+  function renderViewPane(pane) {
+    pane.appendChild(el('h3', 'settings-pane-title', t('보기')));
+    var VS = global.ViewSettings;
+    if (!VS) {
+      pane.appendChild(el('p', 'settings-desc', t('이 페이지에서는 보기 설정을 바꿀 수 없어요.')));
+      return;
+    }
+    var state = VS.get();
+
+    pane.appendChild(el('p', 'settings-field-label', t('목록 보기 방식')));
+    var modeGroup = optionGroup(t('목록 보기 방식'), VIEW_MODE_OPTIONS, state.viewMode, function (id) {
+      VS.setViewMode(id);
+    }, function (id) { return id === 'list' ? 'list' : VS.getGridStyle(); });
+    pane.appendChild(modeGroup.el);
+
+    pane.appendChild(el('p', 'settings-field-label', t('그리드 카드 모양')));
+    var styleGroup = optionGroup(t('그리드 카드 모양'), GRID_STYLE_OPTIONS, state.gridStyle, function (id) {
+      VS.setGridStyle(id);
+      // 카드 모양을 고르는 건 그리드로 보겠다는 뜻이므로 보기 방식도 맞춘다.
+      VS.setViewMode('grid');
+    }, function (id) { return id; });
+    styleGroup.el.classList.add('is-grid-styles');
+    pane.appendChild(styleGroup.el);
+
+    pane.appendChild(el('p', 'settings-stat-note', t('작가 이름은 앞 두 글자만 보여 줍니다. 툴바의 보기 전환 버튼으로 바꾼 값도 여기에 함께 저장됩니다.')));
+
+    // 툴바 버튼이나 카드 모양 선택으로 값이 바뀌면 이 탭의 선택 표시와
+    // 그리드 예시 그림을 다시 맞춘다. 탭이 닫혀 노드가 치워지면 스스로 뗀다.
+    function onChange(e) {
+      if (!pane.contains(modeGroup.el)) {
+        global.removeEventListener('chokaguya:view-settings-change', onChange);
+        return;
+      }
+      var next = e.detail || VS.get();
+      modeGroup.paint(next.viewMode);
+      styleGroup.paint(next.gridStyle);
+      var gridBtn = modeGroup.el.querySelector('.settings-view-option');
+      var oldFig = gridBtn && gridBtn.querySelector('.svp');
+      if (oldFig) gridBtn.replaceChild(previewFigure(next.gridStyle), oldFig);
+    }
+    global.addEventListener('chokaguya:view-settings-change', onChange);
+  }
+
   // ---- 계정 탭 ----
   function renderAccountPane(pane) {
     pane.appendChild(el('h3', 'settings-pane-title', t('계정')));
@@ -387,6 +502,7 @@
     function fill() {
       paneEl.innerHTML = '';
       if (tabId === 'general') renderGeneralPane(paneEl);
+      else if (tabId === 'view') renderViewPane(paneEl);
       else if (tabId === 'account') renderAccountPane(paneEl);
       else if (tabId === 'audio') renderAudioPane(paneEl);
       else if (tabId === 'info') renderInfoPane(paneEl);

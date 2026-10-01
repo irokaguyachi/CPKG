@@ -410,6 +410,211 @@
   color: rgba(0, 0, 0, 0.45);
 }
 
+/* 보기 탭 — 보기 방식·그리드 카드 모양 선택지. 선택지마다 작은 예시
+   그림(.svp)을 위에 두고 이름과 설명을 아래에 둔다. 지금 고른 것은
+   언어 버튼과 같은 민트로 테두리를 칠한다. */
+.settings-view-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.settings-view-option {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  font-family: inherit;
+  text-align: left;
+  color: #000000;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.settings-view-option:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+.settings-view-option.is-active {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--mint);
+}
+.settings-view-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.settings-view-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px 2px;
+}
+.settings-view-option-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+.settings-view-option-desc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* 예시 그림 — 실제 카드 CSS 를 쓰지 않는 도식. 썸네일 칸은 태그 색
+   (--svp-tint)으로 칠하고 글줄은 회색 막대로 대신한다. */
+.svp {
+  --svp-bg: #f1f2f5;
+  --svp-card: #ffffff;
+  --svp-line: rgba(0, 0, 0, 0.18);
+  --svp-line-strong: rgba(0, 0, 0, 0.42);
+  display: grid;
+  gap: 6px;
+  height: 92px;
+  padding: 8px;
+  overflow: hidden;
+  background: var(--svp-bg);
+  border-radius: 10px;
+}
+.svp-item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+.svp-img {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(var(--svp-tint), 0.75), rgba(var(--svp-tint), 0.35));
+}
+.svp-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.svp-line {
+  display: block;
+  width: 55%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--svp-line);
+}
+.svp-line-title {
+  width: 85%;
+  background: var(--svp-line-strong);
+}
+
+/* 기본: 가로 배너 + 아래 글 */
+.svp-classic {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.svp-classic .svp-item {
+  flex-direction: column;
+  background: var(--svp-card);
+  border-radius: 6px;
+}
+.svp-classic .svp-img {
+  height: 28px;
+  border-radius: 0;
+}
+.svp-classic .svp-text {
+  padding: 7px 6px 9px;
+}
+
+/* 표지형: 세로 표지 위에 글 */
+.svp-cover {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+.svp-cover .svp-item {
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+}
+.svp-cover .svp-img {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(135deg, rgba(var(--svp-tint), 0.8), rgba(var(--svp-tint), 0.4));
+}
+.svp-cover .svp-text {
+  position: absolute;
+  right: 5px;
+  bottom: 6px;
+  left: 5px;
+}
+.svp-cover .svp-line {
+  background: rgba(255, 255, 255, 0.55);
+}
+.svp-cover .svp-line-title {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* 매거진형: 정사각 그림 아래 글, 테두리 없음 */
+.svp-magazine {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+.svp-magazine .svp-item {
+  flex-direction: column;
+  gap: 5px;
+}
+.svp-magazine .svp-img {
+  aspect-ratio: 1 / 1;
+  border-radius: 5px;
+}
+
+/* 컴팩트: 작은 그림 + 옆 글, 한 줄에 하나 */
+.svp-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+.svp-compact .svp-item {
+  gap: 6px;
+  align-items: center;
+  padding: 4px;
+  background: var(--svp-card);
+  border-radius: 5px;
+}
+.svp-compact .svp-img {
+  width: 18px;
+  height: 18px;
+}
+
+/* 리스트(게시판형): 구분선으로 나뉜 행 */
+.svp-list {
+  gap: 0;
+  align-content: start;
+  padding: 4px 8px;
+}
+.svp-list .svp-item {
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--svp-line);
+}
+.svp-list .svp-item:last-child {
+  border-bottom: none;
+}
+.svp-list .svp-img {
+  width: 16px;
+  height: 16px;
+}
+.svp-list .svp-text {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.svp-list .svp-line-title {
+  width: 50%;
+}
+.svp-list .svp-line {
+  width: 22%;
+}
+
 @media (max-width: 640px) {
   .settings-card {
     flex-direction: column;
