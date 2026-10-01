@@ -571,7 +571,7 @@
   color: rgba(0, 0, 0, 0.6);
   text-decoration: none;
   white-space: nowrap;
-  transition: color 0.2s ease;
+  transition: color 0.25s ease, text-shadow 0.25s ease;
 }
 .site-nav-link:first-child {
   margin-left: -12px;
@@ -583,8 +583,9 @@
   font-weight: 700;
   color: #000000;
 }
-/* 활성 탭 밑줄 — 헤더 아래 테두리에 겹쳐 붙는다 */
-.site-nav-link.is-active::after {
+/* 밑줄 — 헤더 아래 테두리에 겹쳐 붙는다. 지금 페이지에서는 늘 보이고,
+   색이 있는 메뉴(.has-glow)는 마우스를 올렸을 때 그 색으로 빛나며 나타난다. */
+.site-nav-link::after {
   content: '';
   position: absolute;
   left: 12px;
@@ -593,6 +594,33 @@
   height: 3px;
   border-radius: 3px 3px 0 0;
   background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.site-nav-link.is-active::after {
+  opacity: 1;
+}
+
+/* 메뉴 색 효과 — 모바일 메뉴 시트 타일과 같은 색(siteHeader.js 의
+   MENU_GLOW_COLORS 가 --tile-glow 로 넣는다). 마우스를 올리면 글자가 그
+   색으로 바뀌며 은은하게 빛나고 밑줄도 같은 색으로 빛난다. 밝은 배경에서는
+   노란 계열이 잘 안 읽혀서 라이트 모드 글자색만 조금 어둡게 섞는다. */
+.site-nav-link.has-glow:hover,
+.site-nav-link.has-glow:focus-visible {
+  outline: none;
+  color: color-mix(in srgb, var(--tile-glow) 72%, #000000);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--tile-glow) 45%, transparent);
+}
+.site-nav-link.has-glow:hover::after,
+.site-nav-link.has-glow:focus-visible::after {
+  opacity: 1;
+  background: var(--tile-glow);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--tile-glow) 60%, transparent);
+}
+[data-theme="dark"] .site-nav-link.has-glow:hover,
+[data-theme="dark"] .site-nav-link.has-glow:focus-visible {
+  color: var(--tile-glow);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--tile-glow) 55%, transparent);
 }
 
 .site-nav-settings {
@@ -846,8 +874,9 @@
 
 /* ---------- 모바일 하단 내비게이션 (siteHeader.js 가 body 끝에 만든다) ----------
  * 768px 이하에서는 헤더 2행(페이지 메뉴)·테마 전환·프로필 버튼을 숨기고
- * 화면 아래 탭 바(홈 · 문학 · 프로필)로 옮긴다. "문학"은 페이지 버튼이
- * 아래에서 차례로 올라오는 시트, "프로필"은 계정 메뉴·테마·설정 시트를 연다.
+ * 화면 아래 탭 바(홈 · 메뉴 · 프로필)로 옮긴다. "메뉴"는 페이지 타일과
+ * 북마크·룰렛 버튼이 아래에서 차례로 올라오는 시트, "프로필"은 계정 메뉴·
+ * 테마·설정 시트를 연다.
  */
 :root {
   --mtb-height: 0px;
@@ -975,36 +1004,121 @@
     background: rgba(0, 0, 0, 0.15);
   }
 
-  /* 문학 시트 — 버튼이 아래쪽부터 차례로 튀어 오른다 */
+  /* 메뉴 시트 — 맨 위 큰 '문학·번역' 타일, 2열 페이지 타일, 가로로 꽉 찬
+     공지사항 타일, 북마크·룰렛 버튼 줄. 아래쪽(탭 바 쪽)부터 차례로 튀어 오른다. */
   .mtb-pages {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
+  /* 올라오는 움직임에만 차례 지연(--mtb-delay)을 건다 — 호버 빛까지 늦게
+     켜지지 않도록 transition-delay 를 속성마다 따로 준다. */
+  .mtb-page,
+  .mtb-fabs {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+    transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.35) var(--mtb-delay, 0ms),
+                opacity 0.2s ease var(--mtb-delay, 0ms);
+  }
   .mtb-page {
+    position: relative;
+    transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.35) var(--mtb-delay, 0ms),
+                opacity 0.2s ease var(--mtb-delay, 0ms),
+                background-color 0.15s ease,
+                box-shadow 0.3s ease,
+                color 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    height: 52px;
-    border-radius: 14px;
+    height: 54px;
+    border-radius: 16px;
     background: rgba(0, 0, 0, 0.045);
     color: inherit;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: none;
+  }
+  .mtb-page.is-wide {
+    grid-column: 1 / -1;
+  }
+  .mtb-page.is-featured {
+    grid-column: 1 / -1;
+    height: 112px;
+    border-radius: 18px;
+    font-size: 19px;
+    font-weight: 800;
+  }
+  /* '문학·번역' 타일 안에 무작위 위치로 나타났다 사라지는 GIF 타원
+     (siteHeader.js 의 startTileEffect). 마스크로 가장자리를 흐려 타원처럼
+     보이게 하고, 자리는 그대로 둔 채 투명도만 서서히 오르내린다. 글자는
+     그 위에 올린다. 페이드 시간(1.2s)은 siteHeader.js 의 FX_FADE_MS 와 맞춘다. */
+  .mtb-page.has-fx {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .mtb-page-label {
+    position: relative;
+    z-index: 1;
+  }
+  .mtb-fx {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .mtb-fx-bubble {
+    position: absolute;
+    background-size: cover;
+    background-position: center;
+    -webkit-mask-image: radial-gradient(closest-side, #000 45%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 45%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
     opacity: 0;
-    transform: translateY(24px) scale(0.96);
-    transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.35), opacity 0.2s ease, background 0.15s ease;
-    transition-delay: var(--mtb-delay, 0ms);
+    transition: opacity 1.2s ease-in-out;
   }
-  .mtb-page svg {
-    width: 18px;
-    height: 18px;
+  .mtb-fx-bubble.is-shown {
+    opacity: 0.55;
   }
-  .mtb-sheet.is-open .mtb-page {
+  [data-theme="dark"] .mtb-fx-bubble.is-shown {
+    opacity: 0.6;
+  }
+  .mtb-page.is-active .mtb-fx-bubble.is-shown {
+    opacity: 0.4;
+  }
+  .mtb-page.has-fx .mtb-page-label {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.85), 0 0 2px rgba(255, 255, 255, 0.9);
+  }
+  [data-theme="dark"] .mtb-page.has-fx .mtb-page-label,
+  .mtb-page.is-active.has-fx .mtb-page-label {
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7), 0 0 2px rgba(0, 0, 0, 0.6);
+  }
+
+  .mtb-sheet.is-open .mtb-page,
+  .mtb-sheet.is-open .mtb-fabs {
     opacity: 1;
     transform: none;
+  }
+
+  /* 오른쪽 아래에 떠 있던 북마크·룰렛 버튼 묶음은 모바일에서 숨기고, 메뉴
+     시트를 열 때 siteHeader.js 가 이 줄로 옮겨 와 가로로 펼친다. */
+  body.has-mtb > .pk-fab-stack {
+    display: none;
+  }
+  .mtb-fabs {
+    padding: 10px 0 2px;
+  }
+  .mtb-fabs .pk-fab-stack {
+    position: static;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    pointer-events: auto;
+  }
+  .mtb-fabs .pk-fab-icon {
+    width: 54px;
+    height: 54px;
   }
   .mtb-page.is-active {
     background: var(--accent, #2563eb);
@@ -1012,6 +1126,51 @@
   }
   .mtb-page:active {
     background: rgba(0, 0, 0, 0.1);
+  }
+
+  /* 타일 호버 빛 — 타일마다 siteHeader.js 가 --tile-glow 색을 넣는다(문학·번역
+     #FC4845, 공식 #FED571, 시리즈 #F3F23E, 명예관 #C4F23D, 대회 #07D796,
+     공지사항 #00C5C1). 테두리는 GIF 위에도 보이도록 ::after 로 맨 위에
+     그리고, 타일 바깥과 안쪽으로 같은 색 빛이 은은하게 번진다. 휴대폰에는
+     호버가 없으므로 누르는 동안(:active)과 키보드 선택(:focus-visible)에도
+     똑같이 빛난다. */
+  .mtb-page::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1.5px var(--tile-glow, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .mtb-page:hover,
+  .mtb-page:focus-visible,
+  .mtb-page:active {
+    outline: none;
+    box-shadow: 0 0 18px -2px color-mix(in srgb, var(--tile-glow, transparent) 55%, transparent),
+                inset 0 0 24px -6px color-mix(in srgb, var(--tile-glow, transparent) 45%, transparent);
+  }
+  .mtb-page:hover::after,
+  .mtb-page:focus-visible::after,
+  .mtb-page:active::after {
+    opacity: 1;
+  }
+  /* 글자도 같은 색으로 바뀐다. 밝은 배경에서는 노란 계열이 잘 안 읽혀서
+     라이트 모드에서만 같은 색을 조금 어둡게 섞어 쓴다. */
+  .mtb-page:hover,
+  .mtb-page:focus-visible,
+  .mtb-page:active {
+    color: color-mix(in srgb, var(--tile-glow, currentColor) 72%, #000000);
+  }
+  [data-theme="dark"] .mtb-page:hover,
+  [data-theme="dark"] .mtb-page:focus-visible,
+  [data-theme="dark"] .mtb-page:active,
+  .mtb-page.is-active:hover,
+  .mtb-page.is-active:focus-visible,
+  .mtb-page.is-active:active {
+    color: var(--tile-glow, currentColor);
   }
 
   /* 프로필 시트 — 데스크톱 드롭다운(.site-profile-menu)을 시트 안에 펼친다 */
@@ -1084,15 +1243,6 @@
   body.has-mtb .an-player {
     bottom: calc(var(--mtb-height) + 12px);
   }
-  body.has-mtb .pk-fab-stack {
-    bottom: calc(var(--mtb-height) + 16px);
-  }
-  body.has-mtb:has(.series-toolbar) .pk-fab-stack {
-    bottom: calc(var(--mtb-height) + 76px);
-  }
-  body.has-mtb:has(.an-player) .pk-fab-stack {
-    bottom: calc(var(--mtb-height) + 104px);
-  }
 
   [data-theme="dark"] .mtb {
     background: rgba(18, 19, 22, 0.94);
@@ -1133,7 +1283,8 @@
 
 @media (max-width: 768px) and (prefers-reduced-motion: reduce) {
   .mtb-sheet,
-  .mtb-page {
+  .mtb-page,
+  .mtb-fabs {
     transition: opacity 0.15s ease;
     transform: none;
   }

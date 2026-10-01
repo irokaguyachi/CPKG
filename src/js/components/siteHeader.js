@@ -48,6 +48,12 @@
       var target = normalizePath(new URL(link.href, global.location.href).pathname);
       var active = target === here;
       link.classList.toggle('is-active', active);
+      // 메뉴 색 효과(site-header.css 의 .has-glow) — 모바일 시트 타일과 같은 색
+      var glow = MENU_GLOW_COLORS[target];
+      if (glow) {
+        link.style.setProperty('--tile-glow', glow);
+        link.classList.add('has-glow');
+      }
       if (active) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     });
@@ -560,13 +566,12 @@
   // 아래 탭 바로 페이지를 옮긴다. 마크업은 페이지마다 넣지 않고 여기서
   // 만들며, 페이지 목록은 헤더 메뉴(.site-nav-link)를 그대로 옮겨 쓴다.
   // - 홈: 메인으로 이동
-  // - 문학: 페이지 버튼들이 아래에서 하나씩 올라오는 시트
+  // - 메뉴: 페이지 타일과 북마크·룰렛 버튼이 아래에서 하나씩 올라오는 시트
   // - 프로필: 계정 메뉴 + 테마 + 설정 시트
   var MTB_ICONS = {
     home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"/></svg>',
-    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>',
-    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
-    bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>'
   };
 
   var mtb = el('nav', 'mtb');
@@ -589,7 +594,7 @@
   }
 
   var homeTab = mtbTab('home', MTB_ICONS.home, t('홈'));
-  var pagesTab = mtbTab('pages', MTB_ICONS.book, t('문학'));
+  var pagesTab = mtbTab('pages', MTB_ICONS.menu, t('메뉴'));
   var profileTab = mtbTab('profile', '', t('프로필'));
   profileTab.insertBefore(makeAvatar(false), profileTab.firstChild);
   pagesTab.setAttribute('aria-haspopup', 'dialog');
@@ -599,7 +604,7 @@
     var here = normalizePath(document.body.getAttribute('data-nav-path') || global.location.pathname);
     var onHome = here === '/' || /mainPage\.html$/.test(here);
     homeTab.classList.toggle('is-active', onHome && !mtbOpen);
-    pagesTab.classList.toggle('is-active', mtbOpen === 'pages' || (!onHome && !mtbOpen));
+    pagesTab.classList.toggle('is-active', mtbOpen === 'pages');
     profileTab.classList.toggle('is-active', mtbOpen === 'profile');
     pagesTab.setAttribute('aria-expanded', mtbOpen === 'pages' ? 'true' : 'false');
     profileTab.setAttribute('aria-expanded', mtbOpen === 'profile' ? 'true' : 'false');
@@ -607,26 +612,277 @@
     if (av) av.classList.toggle('is-logged-in', isLoggedIn());
   }
 
-  function renderPagesSheet() {
-    mtbSheet.setAttribute('aria-label', t('페이지 이동'));
-    var grid = el('div', 'mtb-pages');
-    var items = [];
-    headerEl.querySelectorAll('.site-nav-link').forEach(function (link) {
-      if (normalizePath(new URL(link.href, global.location.href).pathname) === '/') return;
-      items.push({ href: link.getAttribute('href'), label: link.textContent, active: link.classList.contains('is-active') });
+  // 메뉴 시트 — 맨 위에 큰 '문학·번역' 타일, 그 아래 나머지 페이지를 2열
+  // 타일로, 공지사항은 맨 아래 가로로 꽉 찬 타일로 둔다. 그 밑에는 오른쪽
+  // 아래 버튼 묶음(북마크·룰렛, pickerKit.js 의 .pk-fab-stack)을 통째로
+  // 옮겨 와 가로로 펼친다. 룰렛은 페이지마다 있는 것이 달라서 새로 만들지
+  // 않고 그 페이지에 이미 있는 버튼을 그대로 쓴다. 모바일에서는 떠 있는
+  // 버튼 묶음을 숨기고(site-header.css) 이 시트에서만 보여 준다. 시트를
+  // 닫으면 묶음을 body 로 되돌려 데스크톱 폭에서 다시 뜬다.
+  var MENU_FEATURED_PATH = '/novel'; // 맨 위 큰 타일
+  var MENU_WIDE_PATH = '/notice';    // 2열 타일 아래 가로로 꽉 찬 타일
+  var MENU_EXCLUDED_PATHS = { '/': true }; // 메인은 홈 탭이 있다
+  // 타일을 누르거나 마우스를 올렸을 때 테두리·빛 색(site-header.css 의 --tile-glow)
+  var MENU_GLOW_COLORS = {
+    '/novel': '#FC4845',
+    '/official': '#FED571',
+    '/series': '#F3F23E',
+    '/hof': '#C4F23D',
+    '/contest': '#07D796',
+    '/notice': '#00C5C1'
+  };
+
+  // ── '문학·번역' 타일 배경 이펙트 ──
+  // offlineSrc/buttonEffect/ 의 GIF(목록: ButtonEffects.json, 3_build_data.py
+  // 가 만든다)를 가장자리가 흐려지는 타원 안에 담아 타일 안 무작위 위치에
+  // 띄운다. 각 거품은 제자리에서 투명도만 서서히 올라갔다가, 1~2.5초 머문
+  // 뒤 서서히 사라진다. 동시에 2~4개가 떠 있고, 사라지려던 거품은 자기를
+  // 빼고도 2개가 남을 때만 사라진다 — 모자라면 뒤를 이을 거품을 띄우고,
+  // 그 거품이 나타나기 시작하자마자 겹쳐서 사라진다. 타일을 가로로 네 칸으로
+  // 나눠 한 칸에 하나씩 띄우고, 세로 위치는 타일 높이 안에서 무작위로 잡는다.
+  // GIF는 띄울 때마다 하나씩 받고, 다음에 쓸 것 하나만 미리 받아 둔다.
+  // 최근에 띄운 GIF는 잠시 피해서 골고루 나오게 한다.
+  var FX_DIR = '../offlineSrc/buttonEffect/';
+  var FX_MIN = 2;          // 항상 떠 있어야 하는 최소 개수
+  var FX_MAX = 4;          // 동시에 떠 있을 수 있는 최대 개수(= 칸 수)
+  var FX_FADE_MS = 1200;   // site-header.css 의 .mtb-fx-bubble transition 과 맞춘다
+  var fxListPromise = null;
+  var fxRun = 0;           // 시트를 다시 그리거나 닫으면 이전 이펙트를 무효로 만든다
+  var fxTimers = [];
+  var fxReady = {};        // 이미 받아 둔 GIF 이름 → true (페이지에 머무는 동안 유지)
+
+  function loadFxList() {
+    if (!fxListPromise) {
+      var fetchJson = global.fetchJsonCached || function (p) { return fetch(p).then(function (r) { return r.json(); }); };
+      fxListPromise = fetchJson('../data/config/ButtonEffects.json')
+        .then(function (list) { return Array.isArray(list) ? list : []; })
+        .catch(function () { fxListPromise = null; return []; });
+    }
+    return fxListPromise;
+  }
+
+  function fxLater(run, fn, ms) {
+    var id = setTimeout(function () {
+      var at = fxTimers.indexOf(id);
+      if (at >= 0) fxTimers.splice(at, 1);
+      if (run === fxRun) fn();
+    }, ms);
+    fxTimers.push(id);
+  }
+
+  function stopTileEffect() {
+    fxRun++;
+    fxTimers.forEach(clearTimeout);
+    fxTimers = [];
+  }
+
+  function randBetween(a, b) { return a + Math.random() * (b - a); }
+
+  function startTileEffect(tile) {
+    stopTileEffect();
+    if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var run = fxRun;
+    var fx = el('span', 'mtb-fx');
+    fx.setAttribute('aria-hidden', 'true');
+    tile.insertBefore(fx, tile.firstChild);
+    tile.classList.add('has-fx');
+
+    var zonesInUse = {};   // 칸 번호 → true
+    var namesInUse = {};   // 지금 떠 있거나 받는 중인 GIF 이름 → true
+    var loading = 0;       // 받는 중인 거품 수
+    var active = 0;        // 화면에 있고 아직 사라지기 시작하지 않은 거품 수
+    var target = FX_MIN;
+
+    loadFxList().then(function (list) {
+      if (run !== fxRun || !list.length) return;
+
+      function randomOf(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+      // 최근에 띄운 GIF는 잠시 피해서 고른다. 목록이 많으니 같은 GIF가
+      // 금방 다시 나오지 않도록, 목록 절반 정도는 되돌아 나오지 않게 한다.
+      var recent = [];
+      var recentLimit = Math.max(0, Math.min(Math.floor(list.length / 2), list.length - FX_MAX - 1));
+      var nextName = null; // 다음 차례에 쓸 GIF — 미리 받아 둔다
+
+      function randomFresh() {
+        var pool = list.filter(function (n) { return !namesInUse[n] && recent.indexOf(n) < 0 && n !== nextName; });
+        if (!pool.length) pool = list.filter(function (n) { return !namesInUse[n]; });
+        if (!pool.length) pool = list;
+        return randomOf(pool);
+      }
+
+      function pickName() {
+        var name = (nextName && !namesInUse[nextName]) ? nextName : randomFresh();
+        nextName = null;
+        recent.push(name);
+        if (recent.length > recentLimit) recent.shift();
+        return name;
+      }
+
+      // 다음 차례에 쓸 GIF를 무작위로 정해 미리 받아 둔다. 이미 받아 둔
+      // 것만 고르면 같은 몇 개만 반복되므로, 고른 뒤에 받는다.
+      function prefetchOne() {
+        if (nextName) return;
+        nextName = randomFresh();
+        if (fxReady[nextName]) return;
+        var name = nextName;
+        var img = new Image();
+        img.onload = function () { fxReady[name] = true; };
+        img.src = FX_DIR + encodeURIComponent(name);
+      }
+
+      function pickZone() {
+        var free = [];
+        for (var z = 0; z < FX_MAX; z++) if (!zonesInUse[z]) free.push(z);
+        return free.length ? randomOf(free) : -1;
+      }
+
+      function spawn() {
+        var zone = pickZone();
+        if (zone < 0) return false;
+        var name = pickName();
+        zonesInUse[zone] = true;
+        namesInUse[name] = true;
+        loading++;
+
+        function release() {
+          delete zonesInUse[zone];
+          delete namesInUse[name];
+        }
+
+        var url = FX_DIR + encodeURIComponent(name);
+        var img = new Image();
+        img.onload = function () {
+          if (run !== fxRun) return;
+          fxReady[name] = true;
+          loading--;
+          active++;
+          // 타일 높이보다 크게(1.35~1.65배) 띄워 꽉 차 보이게 한다. 가장자리는
+          // CSS 마스크로 흐려지므로 타일 밖으로 넘친 부분은 자연스럽게
+          // 잘린다. 중심은 가로로는 자기 칸 안, 세로로는 타일 높이의
+          // 15~45% 사이(위쪽 절반)에서 무작위로 잡는다.
+          var w = tile.offsetWidth || 340;
+          var h = tile.offsetHeight || 112;
+          var bh = h * randBetween(1.35, 1.65);
+          var bw = bh * randBetween(1.25, 1.45);
+          var zoneW = w / FX_MAX;
+          var cx = zoneW * (zone + randBetween(0.2, 0.8));
+          var cy = h * randBetween(0.15, 0.45);
+          var bubble = el('span', 'mtb-fx-bubble');
+          bubble.style.width = bw + 'px';
+          bubble.style.height = bh + 'px';
+          bubble.style.left = (cx - bw / 2) + 'px';
+          bubble.style.top = (cy - bh / 2) + 'px';
+          bubble.style.backgroundImage = 'url("' + url + '")';
+          fx.appendChild(bubble);
+          void bubble.offsetWidth; // 붙인 다음 프레임에 보이게 해야 서서히 나타난다
+          bubble.classList.add('is-shown');
+          prefetchOne();
+
+          // 다 나타난 뒤 1~2.5초 머문다. 자기를 빼면 최소 개수에 못 미칠 것
+          // 같으면 그때 미리 뒤를 이을 거품을 띄워 둔다.
+          fxLater(run, function () {
+            if (active - 1 < FX_MIN) topUp(true);
+            fxLater(run, tryFadeOut, randBetween(1000, 2500));
+          }, FX_FADE_MS);
+
+          function tryFadeOut() {
+            if (active - 1 < FX_MIN) {
+              // 뒤를 이을 거품이 나타나기 시작할 때까지 잠깐씩 기다린다.
+              if (!loading) topUp(true);
+              fxLater(run, tryFadeOut, 150);
+              return;
+            }
+            active--;
+            bubble.classList.remove('is-shown');
+            fxLater(run, function () {
+              if (bubble.parentNode) bubble.parentNode.removeChild(bubble);
+              release();
+              fxLater(run, topUp, randBetween(100, 600));
+            }, FX_FADE_MS);
+          }
+        };
+        // 못 받은 GIF는 건너뛰고 잠시 뒤 다른 것을 시도한다.
+        img.onerror = function () {
+          loading--;
+          release();
+          fxLater(run, topUp, 800);
+        };
+        img.src = url;
+        return true;
+      }
+
+      // 목표 개수(2~4개)를 매번 새로 정하고, 모자란 만큼 시차를 두고 띄운다.
+      // force 는 최소 개수를 지키려고 부를 때다 — 목표와 상관없이 빈 칸이
+      // 있으면 바로 하나를 더 띄운다.
+      function topUp(force) {
+        if (force === true) {
+          if (active + loading <= FX_MAX) spawn();
+          return;
+        }
+        target = FX_MIN + Math.floor(Math.random() * (FX_MAX - FX_MIN + 1));
+        var need = target - (active + loading);
+        for (var i = 0; i < need; i++) {
+          fxLater(run, function () { if (active + loading < target) spawn(); }, i * randBetween(250, 700));
+        }
+      }
+
+      // 처음에는 최소 개수를 바로 띄우고, 나머지는 목표에 맞춰 이어서 띄운다.
+      for (var i = 0; i < FX_MIN; i++) spawn();
+      fxLater(run, topUp, FX_FADE_MS);
     });
-    items.push({ href: '/bookmarks', label: t('북마크'), active: normalizePath(global.location.pathname) === '/bookmarks', icon: MTB_ICONS.bookmark });
-    items.forEach(function (item, i) {
-      var a = el('a', 'mtb-page' + (item.active ? ' is-active' : ''));
+  }
+
+  function restoreFabStack() {
+    var stack = mtbSheet.querySelector('.pk-fab-stack');
+    if (stack) document.body.appendChild(stack);
+  }
+
+  function renderPagesSheet() {
+    mtbSheet.setAttribute('aria-label', t('메뉴'));
+    var grid = el('div', 'mtb-pages');
+    var featured = [];
+    var tiles = [];
+    var wide = [];
+    headerEl.querySelectorAll('.site-nav-link').forEach(function (link) {
+      var path = normalizePath(new URL(link.href, global.location.href).pathname);
+      if (MENU_EXCLUDED_PATHS[path]) return;
+      var item = { href: link.getAttribute('href'), label: link.textContent, active: link.classList.contains('is-active'), glow: MENU_GLOW_COLORS[path] };
+      if (path === MENU_FEATURED_PATH) { item.className = 'is-featured'; featured.push(item); }
+      else if (path === MENU_WIDE_PATH) { item.className = 'is-wide'; wide.push(item); }
+      else tiles.push(item);
+    });
+
+    var stack = document.querySelector('.pk-fab-stack');
+    // 탭 바에 가까운 아래쪽부터 차례로 올라온다 — 버튼 줄이 먼저, 그다음
+    // 타일을 아래 줄부터. 줄 번호는 아래에서부터 센다.
+    var step = 40;
+    var row = stack ? 1 : 0;
+    function addTile(item, rowFromBottom) {
+      var a = el('a', 'mtb-page' + (item.className ? ' ' + item.className : '') + (item.active ? ' is-active' : ''));
       a.href = item.href;
-      // 탭 바에 가까운 아래쪽 버튼부터 차례로 올라온다.
-      a.style.setProperty('--mtb-delay', ((items.length - 1 - i) * 35) + 'ms');
-      if (item.icon) a.innerHTML = item.icon;
-      a.appendChild(el('span', null, item.label));
+      a.style.setProperty('--mtb-delay', (rowFromBottom * step) + 'ms');
+      if (item.glow) a.style.setProperty('--tile-glow', item.glow);
+      a.appendChild(el('span', 'mtb-page-label', item.label));
       if (item.active) a.setAttribute('aria-current', 'page');
       grid.appendChild(a);
-    });
+      return a;
+    }
+    var wideRow = row;
+    if (wide.length) row++;
+    var tileRows = Math.ceil(tiles.length / 2);
+    var featuredRow = row + tileRows;
+    featured.forEach(function (item) { startTileEffect(addTile(item, featuredRow)); });
+    tiles.forEach(function (item, i) { addTile(item, row + tileRows - 1 - Math.floor(i / 2)); });
+    wide.forEach(function (item) { addTile(item, wideRow); });
     mtbSheet.appendChild(grid);
+
+    if (stack) {
+      var fabs = el('div', 'mtb-fabs');
+      fabs.style.setProperty('--mtb-delay', '0ms');
+      fabs.appendChild(stack);
+      mtbSheet.appendChild(fabs);
+    }
   }
 
   function renderProfileSheet() {
@@ -665,6 +921,8 @@
   }
 
   function renderMobileSheet() {
+    stopTileEffect();
+    restoreFabStack(); // innerHTML 로 지우기 전에 빌려 온 버튼 묶음부터 돌려준다
     mtbSheet.innerHTML = '';
     mtbSheet.appendChild(el('div', 'mtb-grip'));
     if (mtbOpen === 'pages') renderPagesSheet();
@@ -695,6 +953,7 @@
   function closeMobileSheet() {
     if (!mtbOpen) return;
     mtbOpen = null;
+    stopTileEffect();
     mtbSheet.classList.remove('is-open');
     mtbBackdrop.classList.remove('is-open');
     document.body.classList.remove('is-mtb-open');
@@ -702,13 +961,18 @@
       if (mtbOpen) return;
       mtbSheet.hidden = true;
       mtbBackdrop.hidden = true;
+      restoreFabStack();
     }, 260);
     paintMtbTabs();
   }
 
   pagesTab.addEventListener('click', function (e) { e.stopPropagation(); openMobileSheet('pages'); });
   profileTab.addEventListener('click', function (e) { e.stopPropagation(); openMobileSheet('profile'); });
-  mtbSheet.addEventListener('click', function (e) { e.stopPropagation(); });
+  mtbSheet.addEventListener('click', function (e) {
+    e.stopPropagation();
+    // 룰렛 버튼은 팝업을 띄우므로 그 뒤에 시트가 남지 않게 닫는다.
+    if (e.target.closest && e.target.closest('.pk-fab')) closeMobileSheet();
+  });
   mtbBackdrop.addEventListener('click', closeMobileSheet);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMobileSheet(); });
   // 데스크톱 폭으로 넓어지면 열린 시트를 닫는다.

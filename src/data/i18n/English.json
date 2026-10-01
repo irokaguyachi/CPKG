@@ -374,5 +374,11 @@
   "화면 테마": "Theme",
   "계정 메뉴": "Account menu",
   "주요 메뉴": "Main menu",
-  "문학/번역 전환": "Switch literature/translation"
+  "문학/번역 전환": "Switch literature/translation",
+  "하단 메뉴": "Bottom menu",
+  "홈": "Home",
+  "메뉴": "Menu",
+  "프로필": "Profile",
+  "라이트": "Light",
+  "다크": "Dark"
 }

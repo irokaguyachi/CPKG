@@ -96,3 +96,13 @@ icons_out = os.path.join(HERE, "..", "data", "config", "LoadingIcons.json")
 with open(icons_out, "w", encoding="utf-8") as f:
     json.dump(icons, f, ensure_ascii=False, indent=2)
 print("loading icons:", len(icons))
+
+# ---- menu tile effect manifest ----
+# 모바일 메뉴 시트의 '문학·번역' 타일 뒤에 번갈아 비추는 GIF 목록
+# (src/js/components/siteHeader.js). 위 로딩 아이콘 목록과 같은 방식이다.
+fx_dir = os.path.join(HERE, "..", "..", "offlineSrc", "buttonEffect")
+fx_files = sorted(f for f in os.listdir(fx_dir) if f.lower().endswith(icon_exts)) if os.path.isdir(fx_dir) else []
+fx_out = os.path.join(HERE, "..", "data", "config", "ButtonEffects.json")
+with open(fx_out, "w", encoding="utf-8") as f:
+    json.dump(fx_files, f, ensure_ascii=False, indent=2)
+print("button effects:", len(fx_files))
