@@ -1179,7 +1179,26 @@
   .post-row-image .text-cover-author {
     font-size: 11px;
   }
+  /* 140px 썸네일은 오른쪽 위를 북마크·끌올 버튼이, 아래를 제목이
+     차지해 큰 이모지를 깔면 버튼과 글씨 뒤에 묻힌다. 비어 있는 왼쪽 위
+     구석에 작게 또렷하게 둔다. */
   .post-row-image .text-cover-emoji {
+    top: 12px;
+    right: auto;
+    left: 14px;
+    font-size: 26px;
+    opacity: 0.85;
+    transform: none;
+  }
+}
+
+/* 카드가 좁아지면 이미지 자리도 낮아져 큰 이모지가 북마크·끌올 버튼
+   뒤로 파고들고 아래로 잘린다. 버튼 바로 아래에서 시작하도록 내리고
+   자리 높이에 맞게 줄인다. */
+@media (max-width: 960px) {
+  .series-card-image .text-cover-emoji {
+    top: 50px;
+    right: 14px;
     font-size: 64px;
   }
 }
@@ -1188,25 +1207,22 @@
   .series-card-image .text-cover-title {
     font-size: 16px;
   }
-  .series-card-image .text-cover-emoji {
-    font-size: 80px;
-  }
 }
 
 /* 96px 정사각 썸네일에는 글씨가 들어갈 자리가 없어 이모지만 둔다. 위쪽은
-   북마크·끌올 버튼이 차지하므로 아래 가운데에 둔다. */
+   북마크·끌올 버튼(아래 끝 42px)이 차지하므로 그 아래 남은 칸의 가운데에
+   둔다. */
 @media (max-width: 520px) {
   .post-row-image .text-cover-text {
     display: none;
   }
   .post-row-image .text-cover-emoji {
-    top: auto;
+    top: calc(50% + 21px);
     right: auto;
-    bottom: 8px;
     left: 50%;
-    font-size: 34px;
+    font-size: 32px;
     opacity: 0.85;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
   }
 }
 
