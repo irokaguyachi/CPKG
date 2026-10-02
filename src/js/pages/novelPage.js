@@ -76,8 +76,10 @@
     var isTranslation = key === 'translation';
     if (warningEl) warningEl.hidden = !isTranslation;
     global.removeEventListener('scroll', revealOnScroll);
-    // 뒤로 가기 등으로 이미 내려간 위치에서 열린 경우에는 즉시 공개한다.
-    if (!isTranslation || global.scrollY > GATE_SCROLL_PX) {
+    // 후방주의 모드가 켜져 있거나, 뒤로 가기 등으로 이미 내려간 위치에서
+    // 열린 경우에는 즉시 공개한다.
+    var censored = !global.ContentSettings || global.ContentSettings.isTranslationCensored();
+    if (!isTranslation || !censored || global.scrollY > GATE_SCROLL_PX) {
       body.classList.remove('is-content-gated');
       return;
     }
@@ -133,4 +135,9 @@
   });
 
   showSource(initialSource);
+
+  // 설정창에서 후방주의 모드를 바꾸면 새로고침 없이 게이트를 다시 판단한다.
+  global.addEventListener('chokaguya:content-settings-change', function () {
+    if (grid) applyGate(grid.getSource());
+  });
 })(window);

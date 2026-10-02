@@ -274,6 +274,10 @@
     return !!(global.ContentSettings && global.ContentSettings.isBlocked(item.tags));
   }
 
+  function isTranslationCensored() {
+    return !global.ContentSettings || global.ContentSettings.isTranslationCensored();
+  }
+
   function loadSearchIndex() {
     if (searchIndexPromise) return searchIndexPromise;
     var fetchJson = global.fetchJsonCached || function (p) { return fetch(p).then(function (r) { return r.json(); }); };
@@ -361,7 +365,7 @@
     if (item.image) {
       var src = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
       thumb.style.backgroundImage = 'url("' + src + '")';
-      if (entry.type === 'translation') thumb.classList.add('is-blurred');
+      if (entry.type === 'translation' && isTranslationCensored()) thumb.classList.add('is-blurred');
     } else {
       thumb.appendChild(el('span', 'site-search-thumb-letter', item.name.replace(/^[\s\[\(【「『]+/, '').charAt(0)));
     }

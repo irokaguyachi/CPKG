@@ -73,7 +73,8 @@ test('main page warns before recent translations and blurs only their photos', (
   assert.match(source, /createTranslationWarning\(\)/);
   assert.match(source, /className: 'recent-translation'/);
   assert.match(source, /warning: true/);
-  assert.match(source, /cardOptions: \{ blurPhoto: true \}/);
+  // 후방주의 모드가 꺼져 있을 때만 흐린다.
+  assert.match(source, /blurPhoto: !global\.ContentSettings \|\| global\.ContentSettings\.isTranslationCensored\(\)/);
   assert.match(warningCss, /\.translation-warning-title/);
   assert.match(warningCss, /linear-gradient\(/);
   assert.match(cardCss, /\.post-row-image\.is-photo-blurred \.post-row-image-bg/);

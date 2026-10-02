@@ -154,14 +154,15 @@
     row.appendChild(btn);
     pane.appendChild(row);
 
-    // 후방주의(성인) 태그 문학 노출 토글 — 오디오 탭의 자동재생 토글과 같은
+    // 후방주의 모드 토글 — 켜면 후방주의(성인) 태그 문학이 보이고 번역 사진
+    // 검열(흐림·주의 게이트)도 풀린다. 오디오 탭의 자동재생 토글과 같은
     // .settings-toggle 마크업/스타일을 그대로 쓴다. 기본 OFF(ContentSettings
     // 참고) — 국내 법적 리스크와, 원치 않는 방문자가 성인 콘텐츠를 갑자기
     // 마주치는 상황을 막기 위함.
     var matureRow = el('div', 'settings-row');
     var matureText = el('div', 'settings-row-text');
-    matureText.appendChild(el('p', 'settings-row-label', t('🔞 후방주의 태그 문학 표시')));
-    matureText.appendChild(el('p', 'settings-row-desc', t('성인 서사가 중심인 후방주의 태그 문학을 목록과 상세 화면에 노출합니다')));
+    matureText.appendChild(el('p', 'settings-row-label', t('🔞 후방주의 모드')));
+    matureText.appendChild(el('p', 'settings-row-desc', t('후방주의 태그 문학을 노출하고 번역 사진 검열을 해제합니다')));
     matureRow.appendChild(matureText);
 
     var matureToggle = document.createElement('button');

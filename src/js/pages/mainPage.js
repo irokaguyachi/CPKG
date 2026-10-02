@@ -994,7 +994,8 @@
             {
               className: 'recent-translation',
               warning: true,
-              cardOptions: { blurPhoto: true }
+              // 후방주의 모드가 켜져 있으면 사진을 흐리지 않는다.
+              cardOptions: { blurPhoto: !global.ContentSettings || global.ContentSettings.isTranslationCensored() }
             }
           ));
         })
