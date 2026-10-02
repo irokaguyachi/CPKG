@@ -764,15 +764,18 @@
   background-size: cover;
   background-repeat: no-repeat;
 }
+/* 컴팩트·리스트 썸네일은 위에 버튼이 올라가지 않으므로 이모지를 정
+   가운데에 둔다. 왼쪽 5px 책등을 뺀 색 영역의 가운데에 맞추려고 그 절반만큼
+   오른쪽으로 민다. */
 .grid-compact-thumb .text-cover-emoji,
 .post-board-thumb .text-cover-emoji {
-  top: auto;
+  top: 50%;
   right: auto;
-  bottom: 14%;
-  left: 50%;
+  bottom: auto;
+  left: calc(50% + 2.5px);
   font-size: 40px;
   opacity: 0.85;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 .grid-compact-body {
   display: flex;
