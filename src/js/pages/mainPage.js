@@ -51,8 +51,8 @@
     return false;
   }
 
-  // 시리즈/작품 상세 모달(PostDetailSeries)에 넘길 화 목록 매핑 — createCard의
-  // 클릭 핸들러와 오디오 노벨 홍보 카드가 함께 쓰도록 뽑아둔 공용 헬퍼.
+  // 시리즈/작품 상세 모달(PostDetailSeries)에 넘길 화 목록 매핑 — 목록 행·
+  // 카드의 클릭 핸들러와 오디오 노벨 홍보 카드가 함께 쓰도록 뽑아둔 공용 헬퍼.
   function buildEpisodes(item) {
     return (item.posts || []).map(function (post) {
       return {
@@ -65,119 +65,24 @@
     });
   }
 
-  function createAudioRibbon() {
-    var ribbon = document.createElement('span');
-    ribbon.className = 'audio-novel-ribbon';
-    var icon = document.createElement('span');
-    icon.className = 'audio-novel-ribbon-icon';
-    icon.textContent = '🎧';
-    var label = document.createElement('span');
-    label.className = 'audio-novel-ribbon-label';
-    label.textContent = t('오디오노벨');
-    ribbon.appendChild(icon);
-    ribbon.appendChild(label);
-    return ribbon;
-  }
-
-  function createCard(item, favType, options) {
-    options = options || {};
-    var card = document.createElement('article');
-    card.className = 'post-row';
-
-    var image = document.createElement('div');
-    image.className = 'post-row-image';
-    var imageTarget = image;
-    // 흐림은 사진에만 건다 — 이미지가 없으면 표지 글씨까지 흐려진다.
-    if (options.blurPhoto && item.image) {
-      image.classList.add('is-photo-blurred');
-      imageTarget = document.createElement('div');
-      imageTarget.className = 'post-row-image-bg';
-      image.appendChild(imageTarget);
-    }
-    if (item.image) {
-      if (global.lazyLoadBackground) {
-        global.lazyLoadBackground(imageTarget, item.image);
-      } else {
-        var finalImg = global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image;
-        imageTarget.style.backgroundImage = 'url("' + finalImg + '")';
-      }
-    } else if (global.TagConfig.applyTextCover) {
-      // 이미지가 없는 작품은 제목·작가를 올린 책 표지 모양으로 자리를 채운다.
-      global.TagConfig.applyTextCover(image, {
-        name: item.name,
-        author: item.author,
-        tags: (item.tags && item.tags.length) ? item.tags : item.popularUserTags
-      });
-    }
-    var favId = item.posts && item.posts[0] && item.posts[0].id;
-    if (favId != null && global.BookmarkPicker) {
-      image.appendChild(global.BookmarkPicker.createButton(favType, favId));
-    }
-    if (favId != null && global.BumpButton) {
-      image.appendChild(global.BumpButton.createButton(favType, favId, item.name));
-    }
-    if (hasAudioNovel(item)) {
-      image.appendChild(createAudioRibbon());
-      card.classList.add('is-audio-novel');
-    }
-    card.appendChild(image);
-
-    var info = document.createElement('div');
-    info.className = 'post-row-info';
-
-    var title = document.createElement('p');
-    title.className = 'post-row-title';
-
-    var name = document.createElement('span');
-    name.className = 'post-row-name';
-    name.textContent = item.name || t('제목 없음');
-    title.appendChild(name);
-
-    if (favId != null) {
-      var idSpan = document.createElement('span');
-      idSpan.className = 'post-row-id';
-      idSpan.textContent = '| ' + favId;
-      title.appendChild(idSpan);
-    }
-    info.appendChild(title);
-
-    var tagsWrap = document.createElement('div');
-    tagsWrap.className = 'post-row-tags';
-    // 4개째부터는 2줄로 넘어가면서 형제 카드와 높이가 어긋나므로 3개까지만 보여준다
-    sortTags(item.tags).slice(0, 3).forEach(function (tag) {
-      var pill = document.createElement('span');
-      pill.className = 'series-card-tag';
-      pill.dataset.tag = tag;
-      pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
-      tagsWrap.appendChild(pill);
-    });
-    info.appendChild(tagsWrap);
-
-    card.appendChild(info);
-
-    var episode = document.createElement('div');
-    episode.className = 'post-row-episode';
-    var countText = (item.posts && item.posts.length > 1)
+  // 카드 오른쪽의 분량 글자 — 여러 화면 화 수, 한 편이면 글자 수(없으면 단편).
+  // 메인 목록 행과 오늘의 랜덤 위젯(dailyGift.js)이 같은 기준을 쓴다.
+  function countLabel(item) {
+    return (item.posts && item.posts.length > 1)
       ? t('{n}화', { n: item.posts.length })
       : (charLabel(item.charCount) || t('단편'));
-    episode.textContent = countText;
-    card.appendChild(episode);
+  }
 
-    card.addEventListener('click', function (e) {
-      if (e.target.closest('.bkm-heart-btn')) return;
-      if (!global.PostDetailSeries) return;
-
-      PostDetailSeries.open({
-        seriesName: item.name,
-        imageUrl: item.image,
-        favType: favType,
-        postId: favId,
-        tags: item.tags,
-        episodes: buildEpisodes(item)
-      });
+  function openItemDetail(item, favType) {
+    if (!global.PostDetailSeries) return;
+    PostDetailSeries.open({
+      seriesName: item.name,
+      imageUrl: item.image,
+      favType: favType,
+      postId: item.posts && item.posts[0] && item.posts[0].id,
+      tags: item.tags,
+      episodes: buildEpisodes(item)
     });
-
-    return card;
   }
 
   // 메인 상단 가로 배너(대회 홍보·신규 기능 알림 공용). 왼쪽엔 한 줄
@@ -293,7 +198,7 @@
 
   function createTranslationWarning() {
     var warning = document.createElement('aside');
-    warning.className = 'translation-warning';
+    warning.className = 'translation-warning is-compact';
     warning.setAttribute('role', 'note');
     warning.setAttribute('aria-label', t('번역 페이지 주의사항'));
 
@@ -310,141 +215,395 @@
     return warning;
   }
 
-  function createRecentSection(title, items, href, favType, options) {
+  // ---- 메인 목록: 최신 등록(하이라이트 + 스크롤 목록)과 랜덤 픽 ----
+  // 공지 보드·오늘의 랜덤과 같은 흰/어두운 카드 안에, 왼쪽엔 큰 표지 카드
+  // 하나, 오른쪽엔 썸네일 행 목록을 둔다. 큰 카드는 5초마다 목록 순서대로
+  // 다음 글로 넘어가고, 지금 큰 카드에 나온 글의 행을 강조한다.
+
+  // 최신 등록 문학/번역 목록 길이. 문학은 Recent.json 이 담아 온 만큼
+  // (8_build_recent_page_data.py 의 RECENT_COUNT) 그대로 쓰고, 번역은
+  // Translation.json 앞에서 이만큼 자른다.
+  var RECENT_LIST_COUNT = 15;
+  var SPOTLIGHT_INTERVAL_MS = 5000;
+  var SPOTLIGHT_TICK_MS = 200;
+  // 목록을 직접 스크롤하거나 만진 뒤 이 시간 동안은 순환을 멈춘다(터치
+  // 기기엔 hover 가 없어서, 손가락으로 목록을 넘기는 중에 자동 스크롤이
+  // 끼어드는 걸 막는다).
+  var SPOTLIGHT_HOLD_MS = 4000;
+
+  var LIST_ARROW = '<svg width="7" height="11" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function createListHead(title, href) {
+    var head = document.createElement('div');
+    head.className = 'main-list-head';
+
+    var heading = document.createElement('h2');
+    heading.className = 'main-list-title';
+    heading.textContent = title;
+    head.appendChild(heading);
+
+    if (href) {
+      var more = document.createElement('a');
+      more.className = 'main-list-more';
+      more.href = href;
+      more.textContent = t('전체 보기') + ' ';
+      more.insertAdjacentHTML('beforeend', LIST_ARROW);
+      head.appendChild(more);
+    }
+    return head;
+  }
+
+  // 표지 칸 채우기 — 사진은 안쪽 레이어에 깔아 흐림이 칸 밖으로 번지지
+  // 않게 하고, 사진이 없으면 책 표지 모양(색 + 이모지)으로 채운다.
+  function fillCover(frame, item, blurPhoto) {
+    if (item.image) {
+      var layer = document.createElement('div');
+      layer.className = 'main-list-cover' + (blurPhoto ? ' is-blurred' : '');
+      frame.appendChild(layer);
+      if (global.lazyLoadBackground) {
+        global.lazyLoadBackground(layer, item.image);
+      } else {
+        layer.style.backgroundImage = 'url("' + (global.resolveThumbUrl ? global.resolveThumbUrl(item.image) : item.image) + '")';
+      }
+    } else if (global.TagConfig.applyTextCover) {
+      global.TagConfig.applyTextCover(frame, {
+        name: item.name,
+        author: item.author,
+        tags: (item.tags && item.tags.length) ? item.tags : item.popularUserTags,
+        text: false
+      });
+    }
+  }
+
+  function createTagPills(item, max) {
+    var wrap = document.createElement('div');
+    wrap.className = 'main-list-tags';
+    sortTags(item.tags).slice(0, max).forEach(function (tag) {
+      var pill = document.createElement('span');
+      pill.className = 'series-card-tag';
+      pill.dataset.tag = tag;
+      pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
+      wrap.appendChild(pill);
+    });
+    return wrap;
+  }
+
+  // 썸네일 행 하나. opts.blurPhoto: 사진 흐림, opts.kindLabel: 제목 앞
+  // 종류 알약(랜덤 픽에서 '랜덤 문학' 등).
+  function createListRow(item, favType, opts) {
+    opts = opts || {};
+    var row = document.createElement('div');
+    row.className = 'main-list-row';
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+
+    var thumb = document.createElement('div');
+    thumb.className = 'main-list-thumb';
+    fillCover(thumb, item, opts.blurPhoto);
+    row.appendChild(thumb);
+
+    var info = document.createElement('div');
+    info.className = 'main-list-info';
+
+    var line = document.createElement('p');
+    line.className = 'main-list-line';
+    if (opts.kindLabel) {
+      var kind = document.createElement('span');
+      kind.className = 'main-list-kind is-' + favType;
+      kind.textContent = opts.kindLabel;
+      line.appendChild(kind);
+    }
+    var name = document.createElement('span');
+    name.className = 'main-list-name';
+    name.textContent = item.name || t('제목 없음');
+    line.appendChild(name);
+    var favId = item.posts && item.posts[0] && item.posts[0].id;
+    if (favId != null) {
+      var idSpan = document.createElement('span');
+      idSpan.className = 'main-list-id';
+      idSpan.textContent = '| ' + favId;
+      line.appendChild(idSpan);
+    }
+    if (hasAudioNovel(item)) {
+      var audio = document.createElement('span');
+      audio.className = 'main-list-audio';
+      audio.textContent = '🎧';
+      audio.title = t('오디오노벨');
+      line.appendChild(audio);
+    }
+    info.appendChild(line);
+    info.appendChild(createTagPills(item, 3));
+    row.appendChild(info);
+
+    var count = document.createElement('span');
+    count.className = 'main-list-count';
+    count.textContent = countLabel(item);
+    row.appendChild(count);
+
+    var actions = document.createElement('div');
+    actions.className = 'card-inline-actions main-list-actions';
+    if (favId != null && global.BumpButton) actions.appendChild(global.BumpButton.createButton(favType, favId, item.name));
+    if (favId != null && global.BookmarkPicker) actions.appendChild(global.BookmarkPicker.createButton(favType, favId));
+    row.appendChild(actions);
+
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('.card-inline-actions')) return;
+      openItemDetail(item, favType);
+    });
+    row.addEventListener('keydown', function (e) {
+      if (e.target !== row || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      openItemDetail(item, favType);
+    });
+    return row;
+  }
+
+  // 왼쪽 큰 표지 카드 — 표지 위에 제목·태그를 얹는다(끌올 카드와 같은
+  // 어두운 판). 아래쪽 얇은 막대가 다음 글로 넘어가기까지 남은 시간이다.
+  function createFeatureCard(item, favType, opts) {
+    opts = opts || {};
+    var card = document.createElement('article');
+    card.className = 'main-list-feature';
+
+    var art = document.createElement('div');
+    art.className = 'main-list-feature-art';
+    fillCover(art, item, opts.blurPhoto);
+    card.appendChild(art);
+
+    if (opts.isNewest) {
+      var badge = document.createElement('span');
+      badge.className = 'main-list-badge';
+      badge.textContent = 'NEW';
+      card.appendChild(badge);
+    }
+
+    var favId = item.posts && item.posts[0] && item.posts[0].id;
+    if (favId != null && global.BookmarkPicker) card.appendChild(global.BookmarkPicker.createButton(favType, favId));
+    if (favId != null && global.BumpButton) card.appendChild(global.BumpButton.createButton(favType, favId, item.name));
+
+    var body = document.createElement('div');
+    body.className = 'main-list-feature-body';
+
+    var title = document.createElement('p');
+    title.className = 'main-list-feature-title';
+    title.textContent = item.name || t('제목 없음');
+    body.appendChild(title);
+    body.appendChild(createTagPills(item, 3));
+
+    var meta = document.createElement('div');
+    meta.className = 'main-list-feature-meta';
+    var idSpan = document.createElement('span');
+    idSpan.textContent = favId != null ? '| ' + favId : '';
+    meta.appendChild(idSpan);
+    var count = document.createElement('span');
+    count.textContent = (hasAudioNovel(item) ? '🎧 ' : '') + countLabel(item);
+    meta.appendChild(count);
+    body.appendChild(meta);
+    card.appendChild(body);
+
+    var progress = document.createElement('span');
+    progress.className = 'main-list-progress';
+    progress.setAttribute('aria-hidden', 'true');
+    card.appendChild(progress);
+
+    card.addEventListener('click', function () { openItemDetail(item, favType); });
+    return card;
+  }
+
+  // 최신 등록 섹션. items 는 최신순 배열(최대 15건 정도).
+  //   options.className : 섹션에 더 붙일 클래스(번역은 'recent-translation')
+  //   options.warning   : 제목 아래에 번역 주의 문구를 둔다
+  //   options.cardOptions.blurPhoto : 사진을 흐린다(번역)
+  function createSpotlightSection(title, items, href, favType, options) {
     options = options || {};
-    var section = document.createElement('div');
-    section.className = 'recent';
+    var blurPhoto = !!(options.cardOptions && options.cardOptions.blurPhoto);
+
+    var section = document.createElement('section');
+    section.className = 'main-list';
     if (options.className) section.classList.add(options.className);
-
-    var heading = href ? document.createElement('a') : document.createElement('div');
-    heading.className = 'content-heading';
-    if (href) heading.href = href;
-
-    var label = document.createElement('span');
-    label.textContent = title;
-    heading.appendChild(label);
-
-    var arrow = document.createElement('span');
-    arrow.className = 'content-heading-arrow';
-    arrow.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    heading.appendChild(arrow);
-
-    section.appendChild(heading);
-
+    section.appendChild(createListHead(title, href));
     if (options.warning) section.appendChild(createTranslationWarning());
 
-    var list = document.createElement('div');
-    list.className = 'post-list';
+    var body = document.createElement('div');
+    body.className = 'main-list-body';
+    section.appendChild(body);
 
-    (items || []).forEach(function (item) {
-      list.appendChild(createCard(item, favType, options.cardOptions));
+    var featureSlot = document.createElement('div');
+    featureSlot.className = 'main-list-feature-slot';
+    body.appendChild(featureSlot);
+
+    var scroller = document.createElement('div');
+    scroller.className = 'main-list-scroller';
+    body.appendChild(scroller);
+
+    var rows = items.map(function (item) {
+      var row = createListRow(item, favType, { blurPhoto: blurPhoto });
+      scroller.appendChild(row);
+      return row;
     });
 
-    section.appendChild(list);
+    var current = -1;
+    var progressEl = null;
+
+    function show(index, animate) {
+      current = index;
+      var card = createFeatureCard(items[index], favType, { blurPhoto: blurPhoto, isNewest: index === 0 });
+      if (animate) card.classList.add('is-entering');
+      featureSlot.innerHTML = '';
+      featureSlot.appendChild(card);
+      progressEl = card.querySelector('.main-list-progress');
+
+      rows.forEach(function (row, i) {
+        row.classList.toggle('is-current', i === index);
+        if (i === index) row.setAttribute('aria-current', 'true');
+        else row.removeAttribute('aria-current');
+      });
+      // 강조된 행이 목록 밖에 있으면 목록만 스크롤한다(페이지는 그대로).
+      var row = rows[index];
+      var top = row.offsetTop;
+      if (top < scroller.scrollTop || top + row.offsetHeight > scroller.scrollTop + scroller.clientHeight) {
+        scroller.scrollTo({ top: top, behavior: animate ? 'smooth' : 'auto' });
+      }
+    }
+
+    show(0, false);
+    if (items.length < 2) {
+      section.classList.add('is-single');
+      return section;
+    }
+
+    var spotlight = {
+      section: section,
+      hovering: false,
+      heldUntil: 0,
+      advance: function () { show((current + 1) % items.length, true); },
+      setProgress: function (ratio) {
+        if (progressEl) progressEl.style.transform = 'scaleX(' + ratio + ')';
+      }
+    };
+    section.addEventListener('mouseenter', function () { spotlight.hovering = true; syncSpotlightPause(); });
+    section.addEventListener('mouseleave', function () { spotlight.hovering = false; syncSpotlightPause(); });
+    ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(function (type) {
+      scroller.addEventListener(type, function () { spotlight.heldUntil = Date.now() + SPOTLIGHT_HOLD_MS; }, { passive: true });
+    });
+    registerSpotlight(spotlight);
+
     return section;
   }
 
-  // 5초마다 다른 랜덤 항목 하나를 보여주는 스포트라이트 섹션.
-  // 최신 등록과 달리 전체 목록에서 뽑아야 하므로 dataUrl 전체를 fetch한다
-  // (Series.json ~170KB, HOF.json ~14KB — Recent.json 최적화 때 피했던
-  // 큰 파일이지만, 랜덤 뽑기 특성상 전체를 안 받으면 뽑을 수 없다).
-  function createRandomSection(title, dataUrl, href, favType) {
-    var section = document.createElement('div');
-    section.className = 'recent';
+  // 최신 문학과 최신 번역이 따로 돌면 두 카드가 제각각 넘어가 정신없으므로
+  // 시계 하나를 같이 쓴다 — 두 섹션이 같은 순간에 다음 글로 넘어가고,
+  // 한쪽에 마우스를 올리거나 목록을 만지면 둘 다 함께 멈춘다. 번역 섹션은
+  // 응답이 늦게 와서 나중에 합류하는데, 합류한 다음 순간부터 박자가 맞는다.
+  var spotlights = [];
+  var spotlightElapsed = 0;
+  var spotlightTimer = null;
 
-    var heading = href ? document.createElement('a') : document.createElement('div');
-    heading.className = 'content-heading';
-    if (href) heading.href = href;
+  function isSpotlightPaused() {
+    var now = Date.now();
+    return spotlights.some(function (s) { return s.hovering || now < s.heldUntil; });
+  }
 
-    var label = document.createElement('span');
-    label.textContent = title;
-    heading.appendChild(label);
+  function syncSpotlightPause() {
+    var paused = isSpotlightPaused();
+    spotlights.forEach(function (s) { s.section.classList.toggle('is-paused', paused); });
+  }
 
-    var arrow = document.createElement('span');
-    arrow.className = 'content-heading-arrow';
-    arrow.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M1.5 1.5L8 8L1.5 14.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    heading.appendChild(arrow);
+  function registerSpotlight(spotlight) {
+    spotlights.push(spotlight);
+    spotlight.setProgress(spotlightElapsed / SPOTLIGHT_INTERVAL_MS);
+    if (spotlightTimer) return;
+    spotlightTimer = setInterval(function () {
+      spotlights = spotlights.filter(function (s) { return s.section.isConnected; });
+      syncSpotlightPause();
+      if (document.hidden || isSpotlightPaused()) return;
+      spotlightElapsed += SPOTLIGHT_TICK_MS;
+      if (spotlightElapsed >= SPOTLIGHT_INTERVAL_MS) {
+        spotlightElapsed = 0;
+        spotlights.forEach(function (s) { s.advance(); });
+        return;
+      }
+      spotlights.forEach(function (s) { s.setProgress(spotlightElapsed / SPOTLIGHT_INTERVAL_MS); });
+    }, SPOTLIGHT_TICK_MS);
+  }
 
-    section.appendChild(heading);
+  // 랜덤 픽 — 문학/번역/시리즈/명예관에서 한 편씩, 칸마다 5초씩 엇갈려
+  // 다른 글로 바뀐다. 칸마다 전체 목록을 받아야 뽑을 수 있어 pageData
+  // 파일을 통째로 받는다(Novel/Translation 은 오늘의 랜덤과 같은 요청을
+  // fetchJsonCached 가 공유한다).
+  var RANDOM_PICKS = [
+    { label: t('랜덤 문학'), dataUrl: '../data/pageData/Novel.json', favType: 'novel' },
+    { label: t('랜덤 번역'), dataUrl: '../data/pageData/Translation.json', favType: 'translation' },
+    { label: t('랜덤 시리즈'), dataUrl: '../data/pageData/Series.json', favType: 'series' },
+    { label: t('랜덤 명예관'), dataUrl: '../data/pageData/HOF.json', favType: 'hof' }
+  ];
 
-    var list = document.createElement('div');
-    list.className = 'post-list';
-    section.appendChild(list);
+  function createRandomPickSection() {
+    var section = document.createElement('section');
+    section.className = 'main-list main-list-random';
 
-    fetchJson(dataUrl)
-      .then(function (items) {
-        items = filterMature(Array.isArray(items) ? items : []);
-        if (!items.length) {
-          section.remove();
-          return;
-        }
+    var head = createListHead(t('🎲 랜덤 픽'));
+    var rouletteBtn = document.createElement('button');
+    rouletteBtn.type = 'button';
+    rouletteBtn.className = 'main-list-more';
+    rouletteBtn.textContent = t('룰렛 돌리기') + ' ';
+    rouletteBtn.insertAdjacentHTML('beforeend', LIST_ARROW);
+    rouletteBtn.addEventListener('click', function () {
+      if (global.RouletteModal) global.RouletteModal.open();
+    });
+    head.appendChild(rouletteBtn);
+    section.appendChild(head);
 
-        var lastIndex = -1;
-        function pickItem() {
-          if (items.length === 1) return items[0];
-          var idx;
-          do { idx = Math.floor(Math.random() * items.length); } while (idx === lastIndex);
-          lastIndex = idx;
-          return items[idx];
-        }
+    var grid = document.createElement('div');
+    grid.className = 'main-list-random-grid';
+    section.appendChild(grid);
 
-        function insertCard() {
-          var card = createCard(pickItem(), favType);
-          card.style.opacity = '0';
-          list.appendChild(card);
-          // 두 번의 rAF로 opacity:0 스타일이 먼저 반영된 뒤에 전환을 걸어야
-          // 브라우저가 초기값과 최종값을 다른 프레임으로 인식해 트랜지션이 재생된다
-          requestAnimationFrame(function () {
-            requestAnimationFrame(function () {
-              card.style.opacity = '1';
-            });
-          });
-        }
+    var pending = RANDOM_PICKS.length;
+    function settle() {
+      pending -= 1;
+      if (!pending && !grid.children.length) section.remove();
+    }
 
-        // 백그라운드 탭에서는 타이머가 지연됐다가 한꺼번에 몰아서 실행될 수
-        // 있다 — 그러면 이전 showNext() 의 300ms 제거 타이머가 아직 안 끝난
-        // 채로 다음 showNext() 가 또 시작돼서, oldCard 가 이미 다른 호출에
-        // 의해 제거된 상태라 removeChild 는 조용히 스킵되는데 insertCard() 는
-        // 그대로 실행돼 카드가 지워지지 않고 계속 쌓였다. isTransitioning 으로
-        // 겹치는 호출을 막고, 혹시 이미 쌓여있는 카드가 있어도 매 주기마다
-        // list 에 남아있는 자식을 전부 정리해서 항상 카드 1개만 남긴다.
-        var isTransitioning = false;
-        function showNext() {
-          if (isTransitioning) return;
-          var stale = Array.prototype.slice.call(list.children);
-          if (!stale.length) {
-            insertCard();
-            return;
+    RANDOM_PICKS.forEach(function (pick, order) {
+      var slot = document.createElement('div');
+      slot.className = 'main-list-random-slot';
+      grid.appendChild(slot);
+
+      fetchJson(pick.dataUrl)
+        .then(function (items) {
+          items = filterMature(Array.isArray(items) ? items : []);
+          if (!items.length) { slot.remove(); settle(); return; }
+
+          // 번역은 최근 등록 번역과 같은 기준으로 사진을 흐린다.
+          var blurPhoto = pick.favType === 'translation' &&
+            (!global.ContentSettings || global.ContentSettings.isTranslationCensored());
+          var lastIndex = -1;
+          function render() {
+            var idx = Math.floor(Math.random() * items.length);
+            if (items.length > 1 && idx === lastIndex) idx = (idx + 1) % items.length;
+            lastIndex = idx;
+            slot.innerHTML = '';
+            slot.appendChild(createListRow(items[idx], pick.favType, { blurPhoto: blurPhoto, kindLabel: pick.label }));
           }
-          isTransitioning = true;
-          stale.forEach(function (el) { el.style.opacity = '0'; });
+          render();
+          settle();
+          if (items.length < 2) return;
+
+          // 칸마다 시작 시각을 엇갈려 네 칸이 한꺼번에 바뀌지 않게 한다.
+          // 마우스를 올린 칸은 누르려는 글이 바뀌지 않도록 그대로 둔다.
           setTimeout(function () {
-            stale.forEach(function (el) { if (el.parentNode === list) list.removeChild(el); });
-            insertCard();
-            isTransitioning = false;
-          }, 300);
-        }
-
-        // gridPage.js의 검색 placeholder 타이핑 로직과 같은 이유로, 백그라운드
-        // 탭에서는 회전을 멈춘다 — 안 그러면 setInterval이 탭을 벗어나도
-        // 영구히 돌면서 불필요한 DOM 작업을 계속 쌓는다.
-        var rotateTimer = null;
-        function stopRotate() {
-          if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
-        }
-        function startRotate() {
-          if (!rotateTimer) rotateTimer = setInterval(showNext, 5000);
-        }
-        function syncRotate() {
-          if (document.hidden) stopRotate();
-          else startRotate();
-        }
-        document.addEventListener('visibilitychange', syncRotate);
-
-        showNext();
-        syncRotate();
-      })
-      .catch(function () { section.remove(); });
+            setInterval(function () {
+              if (document.hidden || slot.matches(':hover') || !slot.isConnected) return;
+              slot.classList.add('is-swapping');
+              setTimeout(function () {
+                render();
+                slot.classList.remove('is-swapping');
+              }, 250);
+            }, SPOTLIGHT_INTERVAL_MS);
+          }, order * (SPOTLIGHT_INTERVAL_MS / RANDOM_PICKS.length));
+        })
+        .catch(function () { slot.remove(); settle(); });
+    });
 
     return section;
   }
@@ -511,7 +670,7 @@
   //   3. contestPromoEl: 진행 중인 대회 홍보. Contest.json
   //   4. noticeBoardEl : 최근 공지사항 목록 + 최신 업데이트 카드.
   //                      notice/index.json, changelog/index.json
-  //   5. dailyGiftEl   : 오늘의 문학 / 번역 선물상자. 상자/애니메이션/카운트
+  //   5. dailyGiftEl   : 오늘의 랜덤 문학 / 번역. 위젯 마크업/열기/카운트
   //                      다운/그날의 뽑기는 dailyGift.js가 맡는다.
   // 끌올 배너는 끌올이 없을 때 hidden 으로 자리만 지킨다.
   var audioPromoEl = null;
@@ -535,31 +694,100 @@
     });
   }
 
+  // 끌올 카드 — 표지를 카드 전체에 깔고 왼쪽 아래로 갈수록 어둡게 눌러
+  // 그 위에 흰 글씨를 얹는다(.main-hero 처럼 라이트 모드에서도 어두운 판).
+  // 북마크·끌올 버튼은 다른 표지 카드와 같은 자리(오른쪽 위)에 둔다.
+  function buildBumpCard(item, favType) {
+    var card = document.createElement('article');
+    card.className = 'bump-card';
+
+    var art = document.createElement('div');
+    art.className = 'bump-card-art';
+    art.setAttribute('aria-hidden', 'true');
+    if (item.image) {
+      // 카드가 넓어 600px 썸네일은 흐려 보인다 — 썸네일을 먼저 칠하고
+      // 1200px 중간 이미지가 오면 바꿔 칠한다(상세 모달과 같은 방식).
+      if (global.revealBackgroundProgressive) {
+        global.revealBackgroundProgressive(art, item.image);
+      } else if (global.lazyLoadBackground) {
+        global.lazyLoadBackground(art, item.image);
+      }
+    } else if (global.TagConfig.applyTextCover) {
+      global.TagConfig.applyTextCover(art, { name: item.name, author: item.author, tags: item.tags, text: false });
+    }
+    card.appendChild(art);
+
+    var badge = document.createElement('span');
+    badge.className = 'bump-card-badge';
+    badge.textContent = t('🔥 지금 끌올 중');
+    card.appendChild(badge);
+
+    var favId = item.posts && item.posts[0] && item.posts[0].id;
+    if (favId != null && global.BookmarkPicker) {
+      card.appendChild(global.BookmarkPicker.createButton(favType, favId));
+    }
+    if (favId != null && global.BumpButton) {
+      card.appendChild(global.BumpButton.createButton(favType, favId, item.name));
+    }
+
+    var body = document.createElement('div');
+    body.className = 'bump-card-body';
+
+    var typeLabels = (global.LibraryConfig && global.LibraryConfig.TYPE_LABELS) || {};
+    var eyebrow = document.createElement('p');
+    eyebrow.className = 'bump-card-eyebrow';
+    eyebrow.textContent = typeLabels[favType] || '';
+    if (eyebrow.textContent) body.appendChild(eyebrow);
+
+    var title = document.createElement('p');
+    title.className = 'bump-card-title';
+    title.textContent = item.name || t('제목 없음');
+    body.appendChild(title);
+
+    var meta = document.createElement('div');
+    meta.className = 'bump-card-meta';
+
+    var tagsWrap = document.createElement('div');
+    tagsWrap.className = 'bump-card-tags';
+    sortTags(item.tags).slice(0, 3).forEach(function (tag) {
+      var pill = document.createElement('span');
+      pill.className = 'series-card-tag';
+      pill.dataset.tag = tag;
+      pill.textContent = (TAG_EMOJI[tag] || DEFAULT_EMOJI) + ' ' + tag;
+      tagsWrap.appendChild(pill);
+    });
+    meta.appendChild(tagsWrap);
+
+    var count = document.createElement('span');
+    count.className = 'bump-card-count';
+    count.textContent = countLabel(item);
+    meta.appendChild(count);
+
+    var chip = document.createElement('span');
+    chip.className = 'bump-card-countdown';
+    chip.hidden = true;
+    chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+    var chipText = document.createElement('span');
+    chipText.className = 'bump-card-countdown-text';
+    chip.appendChild(chipText);
+    meta.appendChild(chip);
+
+    body.appendChild(meta);
+    card.appendChild(body);
+
+    card.addEventListener('click', function () { openItemDetail(item, favType); });
+    return card;
+  }
+
+  // 지금 끌올된 글 한 편을 표지 위에 제목·태그를 얹은 넓은 카드로 보여준다.
+  // 끌올이 없으면 hidden 으로 자리만 지킨다. 카드 마크업은 buildBumpCard()가,
+  // 활성 항목 조회와 교체 카운트다운은 이 함수가 맡는다.
   function createBumpBanner() {
     var section = document.createElement('div');
-    section.className = 'recent bump-banner';
+    section.className = 'bump-banner';
     section.hidden = true;
 
-    var headingRow = document.createElement('div');
-    headingRow.className = 'bump-banner-heading-row';
-
-    var heading = document.createElement('div');
-    heading.className = 'content-heading';
-    var label = document.createElement('span');
-    label.textContent = t('🔥 지금 끌올된 문학');
-    heading.appendChild(label);
-    headingRow.appendChild(heading);
-
-    var countdown = document.createElement('span');
-    countdown.className = 'bump-banner-countdown';
-    headingRow.appendChild(countdown);
-
-    section.appendChild(headingRow);
-
-    var list = document.createElement('div');
-    list.className = 'post-list';
-    section.appendChild(list);
-
+    var countdown = null; // 지금 카드 안의 카운트다운 글자 요소
     var currentKey = null; // "type:id" — 같은 항목이면 카드를 다시 안 그리고 카운트다운만 갱신
     var countdownTimer = null;
 
@@ -568,18 +796,21 @@
     }
 
     // endAt은 다음 끌올로 교체되는 시각이다. 대기자가 없으면 null이고,
-    // 그동안은 끌올이 끝나지 않으므로 카운트다운을 비워 둔다.
+    // 그동안은 끌올이 끝나지 않으므로 카운트다운 칩을 숨긴다.
     function startCountdown(endAt) {
       stopCountdown();
-      if (!endAt) { countdown.textContent = ''; return; }
+      if (!countdown) return;
+      var chip = countdown.parentNode;
+      if (!endAt) { chip.hidden = true; return; }
       function pad(n) { return (n < 10 ? '0' : '') + n; }
       function tick() {
         var remain = endAt - Date.now();
-        if (remain <= 0) { countdown.textContent = ''; stopCountdown(); return; }
+        if (remain <= 0) { chip.hidden = true; stopCountdown(); return; }
         var h = Math.floor(remain / 3600000);
         var m = Math.floor((remain % 3600000) / 60000);
         var s = Math.floor((remain % 60000) / 1000);
         countdown.textContent = t('교체까지 {time}', { time: (h ? h + ':' + pad(m) : m) + ':' + pad(s) });
+        chip.hidden = false;
       }
       tick();
       countdownTimer = setInterval(tick, 1000);
@@ -598,9 +829,12 @@
       fetchJson('../data/pageData/Lookup.json').then(function (lookup) {
         if (currentKey !== key) return; // 그 사이 활성 항목이 또 바뀜
         var entry = lookup && lookup[active.type] && lookup[active.type][String(active.id)];
-        list.innerHTML = '';
+        section.innerHTML = '';
+        countdown = null;
         if (!entry) { section.hidden = true; return; }
-        list.appendChild(createCard(entry, active.type));
+        var card = buildBumpCard(entry, active.type);
+        countdown = card.querySelector('.bump-card-countdown-text');
+        section.appendChild(card);
         section.hidden = false;
         startCountdown(active.endAt);
       }).catch(function () {
@@ -906,7 +1140,8 @@
       primaryLabel: t('오늘의 문학'),
       secondaryLabel: t('오늘의 번역'),
       filterItems: filterMature,
-      renderCard: function (item, favType) { return createCard(item, favType); }
+      countLabel: countLabel,
+      openItem: openItemDetail
     });
     placeTopWidgets();
   }
@@ -970,7 +1205,7 @@
 
       // 1. 최신 등록 문학
       if (novels.length) {
-        contentEl.appendChild(createRecentSection(t('최신 등록 문학'), novels, '/novel', 'novel'));
+        contentEl.appendChild(createSpotlightSection(t('최신 등록 문학'), novels, '/novel', 'novel'));
       }
 
       // 번역 데이터는 랜덤 번역과 같은 요청을 공유한다. 응답이 늦어도
@@ -986,9 +1221,9 @@
             return;
           }
           // Translation.json은 번역 빌더가 게시글 ID 내림차순으로 생성한다.
-          recentTranslationSlot.replaceWith(createRecentSection(
+          recentTranslationSlot.replaceWith(createSpotlightSection(
             t('최근 등록 번역'),
-            translations.slice(0, 5),
+            translations.slice(0, RECENT_LIST_COUNT),
             '/novel?tab=translation',
             'translation',
             {
@@ -1001,17 +1236,9 @@
         })
         .catch(function () { recentTranslationSlot.remove(); });
 
-      // 2. 랜덤 문학 — 5초마다 다른 문학으로 자동 전환
-      contentEl.appendChild(createRandomSection(t('랜덤 문학'), '../data/pageData/Novel.json', '/novel', 'novel'));
-
-      // 랜덤 번역은 랜덤 문학과 랜덤 시리즈 사이에 배치한다.
-      contentEl.appendChild(createRandomSection(t('랜덤 번역'), '../data/pageData/Translation.json', '/novel?tab=translation', 'translation'));
-
-      // 3. 랜덤 시리즈 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection(t('랜덤 시리즈'), '../data/pageData/Series.json', '/series', 'series'));
-
-      // 4. 랜덤 명예관 — 동일하게 5초마다 자동 전환
-      contentEl.appendChild(createRandomSection(t('랜덤 명예관'), '../data/pageData/HOF.json', '/hof', 'hof'));
+      // 2. 랜덤 픽 — 랜덤 문학/번역/시리즈/명예관을 한 카드에 모아 칸마다
+      //    5초씩 엇갈려 바꾼다(RANDOM_PICKS 순서대로).
+      contentEl.appendChild(createRandomPickSection());
     })
     .catch(function () {});
 

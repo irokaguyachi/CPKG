@@ -1,254 +1,419 @@
 /* ==========================================================================
    오늘의 랜덤 문학 (Daily Gift)
-   src/js/components/dailyGift.js 가 만들고, src/js/pages/mainPage.js 가 #content 최상단에
-   끼워 넣는다. 닫힌 선물상자를 탭하면 리본이 풀리면서 그날의 랜덤 문학과
-   번역 한 편씩, 자정(KST)까지 남은 카운트다운이 나타난다. 하루 동안 같은
-   글이 유지되고, KST 자정이 지나면 상자가 다시 닫힌 채로 새 글이 뽑힌다.
+   src/js/components/dailyGift.js 가 만들고, src/js/pages/mainPage.js 가 공지
+   보드 바로 아래에 끼워 넣는다. 공지 보드(main-page.css .notice-board)와
+   같은 2단 그리드 — 왼쪽 카드엔 그날의 문학·번역 한 편씩을 썸네일 행으로,
+   오른쪽 카드엔 KST 자정까지 남은 카운트다운과 버튼을 둔다. 닫힌 상태에선
+   썸네일을 흐리고 제목 자리를 막대로 가려 두었다가 열면 풀린다.
    기능을 통째로 걷어낼 때는 이 파일, dailyGift.js, mainPage.html의 <link>/
-   <script>, mainPage.js의 placeDailyGift() 호출부만 지우면 된다.
+   <script>, mainPage.js의 DailyGift.create() 호출부만 지우면 된다.
    ========================================================================== */
 
 .daily-gift {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
-/* ---- 닫힌 선물상자 ---- */
-.daily-gift-box {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  min-height: 148px;
-  padding: 26px 20px;
-  border: none;
-  border-radius: 18px;
-  /* 포장지 느낌 — 사이트 민트 톤에 대각선 줄무늬를 옅게 얹는다. */
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(255, 255, 255, 0.10) 0 14px,
-      rgba(255, 255, 255, 0) 14px 28px
-    ),
-    linear-gradient(135deg, var(--mint-hover) 0%, #00bfc2 100%);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
-  color: #ffffff;
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform 0.25s var(--ease-out-site), box-shadow 0.25s ease;
-}
-.daily-gift-box:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.24);
-}
-.daily-gift-box:focus-visible {
-  outline: 3px solid #ffffff;
-  outline-offset: 2px;
-}
-
-/* 리본 — 십자로 두르는 두 개의 밝은 띠. */
-.daily-gift-ribbon-v,
-.daily-gift-ribbon-h {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.28);
-  pointer-events: none;
-}
-.daily-gift-ribbon-v {
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 30px;
-  transform: translateX(-50%);
-}
-.daily-gift-ribbon-h {
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 30px;
-  transform: translateY(-50%);
-}
-
-/* 뚜껑 — 열릴 때 위로 날아간다. */
-.daily-gift-lid {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 30px;
-  background: rgba(255, 255, 255, 0.16);
-  pointer-events: none;
-}
-
-.daily-gift-bow {
-  position: relative;
-  font-size: 46px;
-  line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-.daily-gift-box-label {
-  position: relative;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
-}
-
-.daily-gift-box-cta {
-  position: relative;
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
-  animation: dg-cta-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes dg-cta-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-/* ---- 여는 중 ---- */
-.daily-gift[data-state="opening"] .daily-gift-box {
-  animation: dg-box-burst 0.5s var(--ease-out-site) forwards;
-  pointer-events: none;
-}
-.daily-gift[data-state="opening"] .daily-gift-lid {
-  animation: dg-lid-off 0.5s var(--ease-out-site) forwards;
-}
-.daily-gift[data-state="opening"] .daily-gift-bow {
-  animation: dg-lid-off 0.45s var(--ease-out-site) forwards;
-}
-
-@keyframes dg-box-burst {
-  0% { transform: scale(1); }
-  35% { transform: scale(0.96); }
-  100% { transform: scale(1.06); opacity: 0; }
-}
-@keyframes dg-lid-off {
-  0% { transform: translateY(0) rotate(0); opacity: 1; }
-  100% { transform: translateY(-60px) rotate(-12deg); opacity: 0; }
-}
-
-/* ---- 열린 뒤 ---- */
-/* 라이트 모드에서 흰 페이지 배경에 묻히지 않도록, 열린 뒤에도 선물상자의
-   민트 정체성을 유지한다 — 옅은 민트 지면 + 또렷한 테두리 + 민트빛 그림자로
-   "특별한 칸"이라는 인상을 남긴다(audio promo처럼 거의 흰색인 배경은 이
-   대비 문제 때문에 일부러 피했다). */
-.daily-gift-reveal {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px 18px 14px;
-  border: 1px solid rgba(0, 178, 172, 0.55);
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(0, 230, 184, 0.22), rgba(0, 230, 184, 0.06)),
-    #ecfdf7;
-  box-shadow: 0 8px 22px rgba(0, 178, 172, 0.20);
-}
-.daily-gift[data-state="open"] .daily-gift-reveal {
-  animation: dg-reveal-in 0.4s var(--ease-out-site);
-}
-.daily-gift.is-quiet[data-state="open"] .daily-gift-reveal {
-  animation: none;
-}
-
-@keyframes dg-reveal-in {
-  0% { opacity: 0; transform: scale(0.96); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.daily-gift-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
+/* 카드 바탕 — .notice-board-card 와 같은 값 */
+.daily-gift-card {
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
 .daily-gift-title {
-  margin: 0;
+  margin: 0 0 6px;
   font-size: 20px;
   font-weight: 800;
   color: #000000;
 }
 
-.daily-gift-countdown {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.55);
+/* 열림/닫힘에 따라 하나만 보이는 짝 요소들 */
+.daily-gift[data-state="closed"] .daily-gift-when-open,
+.daily-gift[data-state="open"] .daily-gift-when-closed {
+  display: none;
 }
-.daily-gift-countdown-time {
-  margin-left: 4px;
+
+/* ---- 왼쪽: 두 글의 행 ---- */
+.daily-gift-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.daily-gift-rows li + li {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.daily-gift-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.daily-gift-row:focus-visible {
+  outline: 2px solid #00bfc2;
+  outline-offset: 2px;
+}
+
+.daily-gift-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 148px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #d9d9d9;
+}
+
+.daily-gift-thumb-img {
+  position: absolute;
+  inset: 0;
+  background-color: inherit;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: transform 0.35s var(--ease-out-site), filter 0.6s ease;
+}
+.daily-gift[data-state="open"] .daily-gift-row:hover .daily-gift-thumb-img {
+  transform: scale(1.05);
+}
+
+/* 이미지 없는 글의 텍스트 표지 — 작은 썸네일이라 이모지를 왼쪽 위에 작게 */
+.daily-gift-thumb .text-cover-emoji {
+  top: 10px;
+  right: auto;
+  left: 14px;
+  font-size: 26px;
+  opacity: 0.85;
+  transform: none;
+}
+
+.daily-gift-thumb-q {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: opacity 0.4s ease;
+}
+
+.daily-gift-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.daily-gift-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.daily-gift-kind {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: #00e6b8;
+  color: #032a21;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.daily-gift-kind.is-translation {
+  background: #5c9aff;
+  color: #06152e;
+}
+
+.daily-gift-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 800;
+  color: #000000;
+  transition: color 0.2s ease;
+}
+.daily-gift[data-state="open"] .daily-gift-row:hover .daily-gift-name {
+  color: #00a8ab;
+}
+
+.daily-gift-id {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.daily-gift-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.daily-gift-tags:empty {
+  display: none;
+}
+
+.daily-gift-count {
+  flex-shrink: 0;
+  font-size: 15px;
   font-weight: 700;
+  color: rgba(0, 0, 0, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 제목·태그 자리를 가리는 막대 */
+.daily-gift-mask {
+  display: none;
+  width: 62%;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.daily-gift-mask.is-short {
+  width: 38%;
+  height: 10px;
+}
+
+/* 닫혀 있거나 아직 글이 도착하지 않은 행: 흐린 썸네일 + 막대만 */
+.daily-gift[data-state="closed"] .daily-gift-thumb-img,
+.daily-gift-row:not(.is-filled) .daily-gift-thumb-img {
+  filter: blur(12px) brightness(0.8);
+  transform: scale(1.15);
+}
+.daily-gift[data-state="closed"] .daily-gift-mask,
+.daily-gift-row:not(.is-filled) .daily-gift-mask {
+  display: block;
+}
+.daily-gift[data-state="closed"] :is(.daily-gift-name, .daily-gift-id, .daily-gift-tags, .daily-gift-count, .daily-gift-actions),
+.daily-gift-row:not(.is-filled) :is(.daily-gift-name, .daily-gift-id, .daily-gift-tags, .daily-gift-count, .daily-gift-actions) {
+  display: none;
+}
+.daily-gift[data-state="open"] .daily-gift-row.is-filled .daily-gift-thumb-q {
+  opacity: 0;
+}
+
+/* 열리는 순간 글자들이 살짝 떠오른다(오늘 이미 열어 둔 재방문은 생략) */
+.daily-gift[data-state="open"]:not(.is-quiet) :is(.daily-gift-name, .daily-gift-id, .daily-gift-tags, .daily-gift-count, .daily-gift-actions, .daily-gift-clock) {
+  animation: dg-rise 0.45s var(--ease-out-site) both;
+}
+.daily-gift[data-state="open"]:not(.is-quiet) li + li :is(.daily-gift-name, .daily-gift-id, .daily-gift-tags, .daily-gift-count, .daily-gift-actions) {
+  animation-delay: 0.08s;
+}
+.daily-gift.is-quiet .daily-gift-thumb-img {
+  transition: none;
+}
+
+@keyframes dg-rise {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* ---- 오른쪽: 카운트다운 카드 (.notice-board-now 와 같은 뼈대) ---- */
+.daily-gift-side {
+  display: flex;
+  flex-direction: column;
+}
+
+.daily-gift-side-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.daily-gift-side-thumb {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 84px;
+  height: 52px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 25% 20%, rgba(0, 255, 204, 0.45), transparent 60%),
+    radial-gradient(circle at 85% 90%, rgba(0, 191, 194, 0.35), transparent 55%),
+    #17181c;
+  font-size: 24px;
+}
+
+.daily-gift-side-heading {
+  min-width: 0;
+}
+
+.daily-gift-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #00979a;
+}
+
+.daily-gift-side-title {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #000000;
+}
+
+.daily-gift-clock {
+  display: block;
+  margin-top: 16px;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
   color: #00a3a6;
 }
 
-/* 뽑힌 글 카드 자리 — .post-row 의 hover translateY 와 그림자가 잘리지
-   않도록 위아래로 약간 여유를 준다(mainPage 의 .post-list 와 같은 취지). */
-.daily-gift-card-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 4px 2px 8px;
+.daily-gift-side-desc {
+  flex: 1;
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.7);
+  word-break: keep-all;
 }
 
-.daily-gift-card-label {
-  margin: 3px 2px 0;
-  color: rgba(0, 0, 0, 0.52);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
+.daily-gift-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 42px;
+  margin-top: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: #00e6b8;
+  color: #032a21;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s ease, background-color 0.2s ease;
+}
+.daily-gift-cta:hover {
+  filter: brightness(1.06);
+}
+.daily-gift-cta:focus-visible {
+  outline: 2px solid #00bfc2;
+  outline-offset: 2px;
+}
+.daily-gift-cta.is-ghost {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.8);
+}
+.daily-gift-cta.is-ghost:hover {
+  filter: none;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* ---- 다크 모드 (이 컴포넌트만의 규칙을 여기 함께 둔다) ---- */
-[data-theme="dark"] .daily-gift-box {
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5);
-}
-[data-theme="dark"] .daily-gift-reveal {
-  border-color: rgba(0, 255, 204, 0.35);
-  background:
-    linear-gradient(135deg, rgba(0, 255, 204, 0.12), rgba(0, 255, 204, 0)),
-    var(--dark-surface);
+[data-theme="dark"] .daily-gift-card {
+  background: var(--dark-surface);
+  border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
 }
-[data-theme="dark"] .daily-gift-title {
-  color: var(--dark-text);
+[data-theme="dark"] .daily-gift-title,
+[data-theme="dark"] .daily-gift-name,
+[data-theme="dark"] .daily-gift-side-title {
+  color: var(--dark-emphasis);
 }
-[data-theme="dark"] .daily-gift-countdown {
-  color: rgba(255, 255, 255, 0.55);
+[data-theme="dark"] .daily-gift-rows li + li {
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
-[data-theme="dark"] .daily-gift-countdown-time {
+[data-theme="dark"] .daily-gift-thumb {
+  background-color: #25272d;
+}
+[data-theme="dark"] .daily-gift[data-state="open"] .daily-gift-row:hover .daily-gift-name {
+  color: #00C5C1;
+}
+[data-theme="dark"] .daily-gift-id {
+  color: rgba(255, 255, 255, 0.4);
+}
+[data-theme="dark"] .daily-gift-count {
+  color: rgba(255, 255, 255, 0.75);
+}
+[data-theme="dark"] .daily-gift-mask {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .daily-gift-side-thumb {
+  background:
+    radial-gradient(circle at 25% 20%, rgba(0, 255, 204, 0.45), transparent 60%),
+    radial-gradient(circle at 85% 90%, rgba(0, 191, 194, 0.35), transparent 55%),
+    #25272d;
+}
+[data-theme="dark"] .daily-gift-eyebrow {
+  color: #00e6b8;
+}
+[data-theme="dark"] .daily-gift-clock {
   color: var(--mint);
 }
-[data-theme="dark"] .daily-gift-card-label {
-  color: rgba(255, 255, 255, 0.58);
+[data-theme="dark"] .daily-gift-side-desc {
+  color: rgba(255, 255, 255, 0.75);
+}
+[data-theme="dark"] .daily-gift-cta.is-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dark-text);
+}
+[data-theme="dark"] .daily-gift-cta.is-ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 900px) {
+  .daily-gift {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 520px) {
-  .daily-gift-box {
-    min-height: 128px;
-    padding: 20px 16px;
+  .daily-gift-card {
+    padding: 18px;
   }
-  .daily-gift-bow {
+  .daily-gift-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .daily-gift-thumb {
+    width: 104px;
+    height: 68px;
+  }
+  .daily-gift-line {
+    flex-wrap: wrap;
+    row-gap: 5px;
+  }
+  .daily-gift-name {
+    flex-basis: 100%;
+    font-size: 15px;
+  }
+  .daily-gift-id,
+  .daily-gift-count {
+    display: none;
+  }
+  .daily-gift-clock {
     font-size: 34px;
-  }
-  .daily-gift-title {
-    font-size: 17px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .daily-gift-box-cta,
-  .daily-gift[data-state="opening"] .daily-gift-box,
-  .daily-gift[data-state="opening"] .daily-gift-lid,
-  .daily-gift[data-state="opening"] .daily-gift-bow,
-  .daily-gift[data-state="open"] .daily-gift-reveal {
+  .daily-gift-thumb-img,
+  .daily-gift-thumb-q {
+    transition: none;
+  }
+  .daily-gift[data-state="open"] :is(.daily-gift-name, .daily-gift-id, .daily-gift-tags, .daily-gift-count, .daily-gift-actions, .daily-gift-clock) {
     animation: none;
   }
 }

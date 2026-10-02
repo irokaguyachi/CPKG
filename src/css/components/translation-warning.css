@@ -41,6 +41,32 @@
   line-height: 1.55;
 }
 
+/* 메인 목록 카드 안에 들어가는 얇은 띠(mainPage.js createTranslationWarning).
+   제목과 설명을 한 줄로 붙이고 왼쪽 굵은 막대·그림자를 뺀다. */
+.translation-warning.is-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px 14px;
+  border-color: rgba(187, 30, 45, 0.22);
+  border-radius: 10px;
+  background: rgba(220, 40, 60, 0.07);
+  box-shadow: none;
+}
+.translation-warning.is-compact::before {
+  display: none;
+}
+.translation-warning.is-compact .translation-warning-title {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.translation-warning.is-compact .translation-warning-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 [data-theme="dark"] .translation-warning {
   border-color: rgba(255, 105, 115, 0.38);
   background: linear-gradient(112deg, rgba(106, 17, 31, 0.52) 0%, rgba(145, 27, 43, 0.38) 50%, rgba(70, 14, 27, 0.56) 100%);
@@ -53,6 +79,12 @@
 
 [data-theme="dark"] .translation-warning-text {
   color: rgba(255, 232, 233, 0.84);
+}
+
+[data-theme="dark"] .translation-warning.is-compact {
+  border-color: rgba(255, 90, 99, 0.22);
+  background: rgba(255, 90, 99, 0.1);
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
@@ -69,5 +101,19 @@
   .translation-warning-text {
     margin-top: 4px;
     font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .translation-warning.is-compact {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    margin-bottom: 12px;
+    padding: 9px 12px;
+    border-radius: 10px;
+  }
+  .translation-warning.is-compact .translation-warning-title,
+  .translation-warning.is-compact .translation-warning-text {
+    font-size: 12px;
   }
 }

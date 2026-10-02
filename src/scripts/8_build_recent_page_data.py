@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 메인 페이지 데이터 생성 스크립트 (8_build_recent_page_data.py)
-- Novel.json 의 앞 5건만 뽑아 Recent.json 을 만듭니다.
-- 메인 페이지(mainPage.js)는 "최신 등록 문학 5장" 카드만 그리는데,
+- Novel.json 의 앞 15건만 뽑아 Recent.json 을 만듭니다.
+- 메인 페이지(mainPage.js)는 "최신 등록 문학" 15건(큰 카드 + 스크롤 목록)만 그리는데,
   예전엔 그걸 위해 Novel.json(약 600KB)을 통째로 받아 slice(0, 10)만
   썼습니다. 랜딩 페이지라 방문자당 무조건 발생하는 요청이어서, 사이트
   전체에서 투자 대비 절감폭이 가장 큰 자리였습니다(TRAFFIC_SECURITY_AUDIT.md T1).
@@ -41,7 +41,7 @@ out_path = os.path.join(page_data_dir, "Recent.json")
 
 # 메인 페이지 "최신 등록 문학" 카드 개수 — mainPage.js 는 이 값을 그대로
 # Recent.json 에서 받아 쓰므로 여기만 바꾸면 카드 수가 함께 바뀝니다.
-RECENT_COUNT = 5
+RECENT_COUNT = 15
 
 
 def load_list(path):

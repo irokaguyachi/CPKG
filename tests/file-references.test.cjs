@@ -86,8 +86,9 @@ test('daily gift includes one daily literature and one daily translation', () =>
   const dailyGift = fs.readFileSync(path.join(src, 'js', 'components', 'dailyGift.js'), 'utf8');
   assert.match(main, /secondaryDataUrl:\s*['"]\.\.\/data\/pageData\/Translation\.json['"]/);
   assert.match(main, /secondaryFavType:\s*['"]translation['"]/);
-  assert.match(main, /renderCard:\s*function \(item, favType\)/);
-  assert.match(dailyGift, /오늘의 랜덤 문학 \/ 번역!/);
+  assert.match(main, /countLabel:\s*countLabel/);
+  assert.match(main, /openItem:\s*openItemDetail/);
+  assert.match(dailyGift, /t\('오늘의 랜덤 문학 \/ 번역'\)/);
   assert.match(dailyGift, /Promise\.all\(\[loadItems\(opts\.dataUrl\), loadItems\(opts\.secondaryDataUrl\)\]\)/);
   assert.match(dailyGift, /opts\.secondaryLabel \|\| t\('오늘의 번역'\)/);
 });
