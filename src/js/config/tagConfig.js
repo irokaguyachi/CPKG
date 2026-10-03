@@ -72,12 +72,20 @@
   //         (상세 모달처럼 제목이 이미 그 위에 올라가는 자리)
   var COVER_FALLBACK_TAGS = ['짧문', '소설', '장편', '단편', '대회', '명예관'];
 
-  function coverTag(tags) {
+  // 대표 태그 순서대로 최대 n개 — 장르 태그를 먼저, 모자라면 분량·대회
+  // 태그로 채운다. 상세 모달(postDetailSeries.js)이 배경 그라데이션 색 두
+  // 개를 고를 때도 쓴다.
+  function coverTags(tags, n) {
     var known = sortTags(tags).filter(function (t) {
       return Object.prototype.hasOwnProperty.call(TAG_EMOJI, t);
     });
     var genre = known.filter(function (t) { return COVER_FALLBACK_TAGS.indexOf(t) === -1; });
-    return genre[0] || known[0] || null;
+    var rest = known.filter(function (t) { return COVER_FALLBACK_TAGS.indexOf(t) !== -1; });
+    return genre.concat(rest).slice(0, n || 1);
+  }
+
+  function coverTag(tags) {
+    return coverTags(tags, 1)[0] || null;
   }
 
   function span(className, text) {
@@ -124,6 +132,7 @@
     TAG_ORDER: TAG_ORDER,
     sortTags: sortTags,
     maskAuthor: maskAuthor,
+    coverTags: coverTags,
     applyTextCover: applyTextCover
   };
 })(window);

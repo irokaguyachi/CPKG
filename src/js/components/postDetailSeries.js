@@ -3,7 +3,6 @@
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4L20 20M20 4L4 20" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>';
 
   var overlayEl = null;
-  var openCard = null;
 
   // 오버레이가 뷰포트를 덮고 있어도 그 위에서 휠을 굴리면 배경 페이지가
   // 대신 스크롤됐다 — 오버레이 자체는 스크롤 대상이 아니라서 브라우저가
@@ -18,34 +17,18 @@
     document.body.style.overflow = '';
   }
 
-  // The card is sized in vw (80.8333 x 55.4167) and then transform-scaled, so
-  // on a short/wide window its scaled height can exceed the viewport. The
-  // overlay centres it and cannot scroll, so the excess was simply cut off the
-  // top and bottom with no way to reach it. Shrink the scale just enough to
-  // fit; on normal windows this stays at the designed 0.62.
-  var BASE_SCALE = 0.62;
-  var DESIGN_W_VW = 80.8333;
-  var DESIGN_H_VW = 55.4167;
+  // PC 모달은 예전엔 1552x1064 로 그린 뒤 0.62배로 줄여 띄웠다(창이 낮으면
+  // 비율을 더 줄이는 applyFitScale 도 있었다). 지금은 modal-series.css 의 PC
+  // 블록이 min(980px, 92vw) x min(640px, 85vh) 실제 크기로 그리므로 축소가 없다.
 
-  function applyFitScale(card) {
-    if (!card) return;
-    if (window.innerWidth <= 1080) {
-      card.style.removeProperty('--pds-scale');
-      return;
-    }
-    var unit = window.innerWidth / 100;
-    var scale = Math.min(
-      BASE_SCALE,
-      (window.innerWidth * 0.96) / (DESIGN_W_VW * unit),
-      (window.innerHeight * 0.92) / (DESIGN_H_VW * unit)
-    );
-    card.style.setProperty('--pds-scale', scale);
+  // 모달 배경에 깔 대표 장르 태그 색 — 장르 태그가 둘이면 두 번째 색을
+  // 반대쪽 모서리에 깐다. 색이 정해진 태그가 없으면 기본 색 하나만 쓴다.
+  function applyTagTint(card, tags) {
+    var picked = (global.TagConfig && global.TagConfig.coverTags) ? global.TagConfig.coverTags(tags, 2) : [];
+    if (!picked.length) return;
+    card.style.setProperty('--pds-tint-1', 'var(--tag-glow-' + picked[0] + ')');
+    card.style.setProperty('--pds-tint-2', 'var(--tag-glow-' + (picked[1] || picked[0]) + ')');
   }
-
-  window.addEventListener('resize', function () {
-    if (openCard) applyFitScale(openCard);
-  });
-
 
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
@@ -439,7 +422,6 @@
 
     card.appendChild(notice);
 
-    openCard = null;
     overlay.appendChild(card);
     void card.offsetWidth;
     overlay.classList.add('is-open');
@@ -478,6 +460,7 @@
 
     var card = document.createElement('div');
     card.className = 'post-detail-series';
+    applyTagTint(card, data.tags);
 
     var handle = document.createElement('div');
     handle.className = 'pds-sheet-handle';
@@ -533,7 +516,19 @@
     var episodeCountEl = document.createElement('span');
     episodeCountEl.className = 'pds-series-episode-count';
     // 화수(개수)라서 회차 뱃지용 '{n} 화'(n화째)와 다른 키를 쓴다.
-    episodeCountEl.textContent = t('{n}화', { n: (data.episodes || []).length });
+    var allEpisodes = data.episodes || [];
+    episodeCountEl.textContent = t('{n}화', { n: allEpisodes.length });
+    // PC 에서만 화수 뒤에 원문 글 번호 범위를 붙인다(모바일은 CSS 로 숨김).
+    var firstId = allEpisodes.length ? allEpisodes[0].dcId : null;
+    var lastId = allEpisodes.length ? allEpisodes[allEpisodes.length - 1].dcId : null;
+    if (firstId != null) {
+      var rangeEl = document.createElement('span');
+      rangeEl.className = 'pds-series-range';
+      rangeEl.textContent = ' · ' + (allEpisodes.length > 1 && lastId != null && lastId !== firstId
+        ? t('글 #{a} ~ #{b}', { a: firstId, b: lastId })
+        : t('글 #{a}', { a: firstId }));
+      episodeCountEl.appendChild(rangeEl);
+    }
     name.appendChild(episodeCountEl);
     seriesInfo.appendChild(name);
 
@@ -646,7 +641,18 @@
 
     updateSortButtonUI();
 
-    toolbar.appendChild(sortBtn);
+    // 목록 머리의 "회차 N" — PC 에서만 보인다(모바일 시트는 제목 옆 배지로 충분).
+    var toolbarTitle = document.createElement('p');
+    toolbarTitle.className = 'pds-toolbar-title';
+    toolbarTitle.textContent = t('회차');
+    var toolbarCount = document.createElement('span');
+    toolbarCount.textContent = String(episodes.length);
+    toolbarTitle.appendChild(toolbarCount);
+    toolbar.appendChild(toolbarTitle);
+    // 한 편짜리 글은 순서를 바꿀 게 없다 — 모바일에선 "회차" 머리도 숨기므로
+    // 툴바 줄 자체를 접는다(modal-series.css 의 .pds-toolbar.is-single).
+    if (episodes.length > 1) toolbar.appendChild(sortBtn);
+    else toolbar.classList.add('is-single');
     rightPanel.appendChild(toolbar);
     rightPanel.appendChild(list);
     card.appendChild(rightPanel);
@@ -658,8 +664,6 @@
     // open transition still has a start value to animate from) — that way the
     // marquee visibility observer measures against the modal's real on-screen
     // geometry instead of its hidden, pre-open state.
-    openCard = card;
-    applyFitScale(card);
     overlay.appendChild(card);
     void card.offsetWidth;
     overlay.classList.add('is-open');
@@ -780,6 +784,20 @@
       item.appendChild(audioBadge);
     }
 
+    // PC 목차 줄의 오른쪽 두 칸(글 번호, 이동 화살표). 모바일은 제목 안의
+    // .pds-episode-id 와 링크 줄을 그대로 쓰므로 CSS 로 숨긴다.
+    if (ep.dcId != null) {
+      var dcIdEl = document.createElement('span');
+      dcIdEl.className = 'pds-episode-dcid';
+      dcIdEl.textContent = '#' + ep.dcId;
+      item.appendChild(dcIdEl);
+    }
+    var arrow = document.createElement('span');
+    arrow.className = 'pds-episode-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = ep.reader ? '→' : '↗';
+    item.appendChild(arrow);
+
     return item;
   }
 
@@ -787,7 +805,6 @@
     if (!overlayEl) return;
     closeTagPicker();
     clearMatureUnlockListener();
-    openCard = null;
     overlayEl.classList.remove('is-open');
     unlockScroll();
     // closing only fades the overlay out — the card stays in the document, so

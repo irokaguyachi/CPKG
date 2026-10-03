@@ -330,47 +330,6 @@ html.theme-transitioning *:after {
   backdrop-filter: blur(6px);
 }
 
-[data-theme="dark"] .post-detail-series {
-  background: var(--dark-surface);
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 19px 58px rgba(0, 0, 0, 0.8);
-}
-
-[data-theme="dark"] .pds-image {
-  background-color: #25272d;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-}
-
-[data-theme="dark"] .pds-gradient {
-  background: linear-gradient(90deg, rgba(28, 29, 34, 0) 0%, var(--dark-surface) 45%);
-}
-
-@media (max-width: 1080px) {
-  [data-theme="dark"] .post-detail-series {
-    border-bottom: none;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
-  }
-  [data-theme="dark"] .pds-gradient {
-    background: linear-gradient(180deg, rgba(28, 29, 34, 0.1) 0%, var(--dark-surface) 100%);
-  }
-  [data-theme="dark"] .pds-series-episode-count {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: var(--dark-emphasis);
-  }
-}
-
-[data-theme="dark"] .pds-series-name {
-  color: var(--dark-emphasis);
-}
-
-[data-theme="dark"] .pds-series-episode-count {
-  color: var(--dark-emphasis);
-  opacity: 0.95;
-}
-
 [data-theme="dark"] .pds-mature-notice-title {
   color: var(--dark-emphasis);
 }
@@ -395,72 +354,117 @@ html.theme-transitioning *:after {
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-[data-theme="dark"] .pds-right-panel {
-  background: var(--dark-surface);
-}
+/* 아래 상세 모달 다크 규칙은 모바일 시트(1080px 이하) 전용이다. PC 의
+   표지 + 목차 배치는 modal-series.css 의 --pds-* 변수로 다크 색을 받는다 —
+   이 규칙들이 PC 에도 걸리면 그쪽 배경 그라데이션과 목차 줄 모양을 덮어쓴다. */
+@media (max-width: 1080px) {
+  [data-theme="dark"] .post-detail-series {
+    background: var(--dark-surface);
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 19px 58px rgba(0, 0, 0, 0.8);
+  }
 
-[data-theme="dark"] .pds-toolbar {
-  background: var(--dark-surface);
-}
+  [data-theme="dark"] .pds-image {
+    background-color: #25272d;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
 
-[data-theme="dark"] .pds-sort-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 0.5px solid rgba(255, 255, 255, 0.18);
-  color: var(--dark-text);
-}
+  [data-theme="dark"] .pds-gradient {
+    background: linear-gradient(90deg, rgba(28, 29, 34, 0) 0%, var(--dark-surface) 45%);
+  }
 
-[data-theme="dark"] .pds-sort-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: var(--dark-emphasis);
-}
+  [data-theme="dark"] .post-detail-series {
+    border-bottom: none;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+  }
+  [data-theme="dark"] .pds-gradient {
+    background: linear-gradient(180deg, rgba(28, 29, 34, 0.1) 0%, var(--dark-surface) 100%);
+  }
+  [data-theme="dark"] .pds-series-episode-count {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--dark-emphasis);
+  }
 
-[data-theme="dark"] .pds-list {
-  background: var(--dark-surface);
-}
+  [data-theme="dark"] .pds-series-name {
+    color: var(--dark-emphasis);
+  }
 
-[data-theme="dark"] .pds-episode-item {
-  background: #25272e;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
+  [data-theme="dark"] .pds-series-episode-count {
+    color: var(--dark-emphasis);
+    opacity: 0.95;
+  }
 
-[data-theme="dark"] .pds-episode-item:hover {
-  background: #2d3038;
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-}
+  [data-theme="dark"] .pds-right-panel {
+    background: var(--dark-surface);
+  }
 
-/* modal-series.css의 .is-audio-novel 배경과 특이도가 같아서(둘 다 클래스
-   2개), 이 규칙이 없으면 로드 순서상 위 기본 다크 배경이 이겨버린다. */
-[data-theme="dark"] .pds-episode-item.is-audio-novel {
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(37, 39, 46, 0));
-  border-color: rgba(0, 255, 204, 0.4);
-}
-[data-theme="dark"] .pds-episode-item.is-audio-novel:hover {
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.2), rgba(45, 48, 56, 0));
-}
+  [data-theme="dark"] .pds-toolbar {
+    background: var(--dark-surface);
+  }
 
-[data-theme="dark"] .pds-episode-title {
-  color: var(--dark-emphasis);
-  font-weight: 500;
-}
+  [data-theme="dark"] .pds-sort-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 0.5px solid rgba(255, 255, 255, 0.18);
+    color: var(--dark-text);
+  }
 
-[data-theme="dark"] .pds-episode-title.is-marquee::after {
-  background: linear-gradient(to right, rgba(37, 39, 46, 0), #25272e);
-}
+  [data-theme="dark"] .pds-sort-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: var(--dark-emphasis);
+  }
 
-[data-theme="dark"] .pds-episode-id {
-  color: rgba(255, 255, 255, 0.5);
-}
+  [data-theme="dark"] .pds-list {
+    background: var(--dark-surface);
+  }
 
-[data-theme="dark"] .pds-episode-link {
-  color: rgba(255, 255, 255, 0.45);
-}
+  [data-theme="dark"] .pds-episode-item {
+    background: #25272e;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
 
-[data-theme="dark"] .pds-episode-badge {
-  color: var(--dark-emphasis);
-  font-weight: 600;
+  [data-theme="dark"] .pds-episode-item:hover {
+    background: #2d3038;
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  /* modal-series.css의 .is-audio-novel 배경과 특이도가 같아서(둘 다 클래스
+     2개), 이 규칙이 없으면 로드 순서상 위 기본 다크 배경이 이겨버린다. */
+  [data-theme="dark"] .pds-episode-item.is-audio-novel {
+    background: linear-gradient(135deg, rgba(0, 255, 204, 0.14), rgba(37, 39, 46, 0));
+    border-color: rgba(0, 255, 204, 0.4);
+  }
+
+  [data-theme="dark"] .pds-episode-item.is-audio-novel:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 204, 0.2), rgba(45, 48, 56, 0));
+  }
+
+  [data-theme="dark"] .pds-episode-title {
+    color: var(--dark-emphasis);
+    font-weight: 500;
+  }
+
+  [data-theme="dark"] .pds-episode-title.is-marquee::after {
+    background: linear-gradient(to right, rgba(37, 39, 46, 0), #25272e);
+  }
+
+  [data-theme="dark"] .pds-episode-id {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  [data-theme="dark"] .pds-episode-link {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  [data-theme="dark"] .pds-episode-badge {
+    color: var(--dark-emphasis);
+    font-weight: 600;
+  }
 }
 
 /* Site Footer */

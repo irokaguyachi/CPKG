@@ -4,7 +4,6 @@
 }
 
 .post-detail-series {
-  --pds-scale: 0.62;
   position: relative;
   display: flex;
   width: 1552px;
@@ -12,11 +11,15 @@
   background: #ffffff;
   border-radius: 15px;
   overflow: hidden;
-  transform: scale(calc(var(--pds-scale) * 0.96));
-  transition: transform 0.3s ease;
 }
-.pds-overlay.is-open .post-detail-series {
-  transform: scale(var(--pds-scale));
+
+/* PC 표지 + 목차 배치에서만 쓰는 조각 — 모바일 시트에서는 숨긴다
+   (파일 맨 아래 min-width: 1081px 블록이 다시 보이게 한다). */
+.pds-toolbar-title,
+.pds-series-range,
+.pds-episode-dcid,
+.pds-episode-arrow {
+  display: none;
 }
 
 .pds-close {
@@ -816,6 +819,10 @@
     background: #ffffff;
   }
 
+  .pds-toolbar.is-single {
+    display: none;
+  }
+
   .pds-sort-btn {
     padding: 6px 14px;
     font-size: 13px;
@@ -908,5 +915,362 @@
     top: auto;
     bottom: 10px;
     transform: none;
+  }
+}
+
+/* ==========================================================================
+   PC (1081px 이상) — 표지 + 목차 배치
+   왼쪽 칸에 표지 카드·제목·태그, 오른쪽 칸에 회차 목차를 둔다. 배경에는
+   대표 장르 태그 색(--pds-tint-1, 장르 태그가 둘이면 --pds-tint-2)을
+   잔잔하게 번지게 깐다 — postDetailSeries.js 의 applyTagTint() 가 tags.css 의
+   --tag-glow-<태그> 를 넣어 준다. 1080px 이하 모바일 시트는 위의 기본 규칙과
+   max-width 블록이 그대로 맡고, 이 블록은 손대지 않는다.
+   다크 모드 값은 바로 아래 [data-theme="dark"] 변수만 바꾼다(theme.css 의
+   .pds-* 다크 규칙은 모바일 전용으로 묶여 있다).
+   ========================================================================== */
+.post-detail-series {
+  --pds-surface: #ffffff;
+  --pds-side: rgba(0, 0, 0, 0.025);
+  --pds-text: #16171a;
+  --pds-muted: rgba(0, 0, 0, 0.5);
+  --pds-faint: rgba(0, 0, 0, 0.35);
+  --pds-line: rgba(0, 0, 0, 0.08);
+  --pds-hover: rgba(0, 0, 0, 0.04);
+  --pds-tint-1: var(--tag-glow-default, 140, 150, 175);
+  --pds-tint-2: var(--pds-tint-1);
+  --pds-tint-a: 0.16;
+  --pds-tint-b: 0.1;
+  --pds-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+[data-theme="dark"] .post-detail-series {
+  --pds-surface: var(--dark-surface);
+  --pds-side: rgba(0, 0, 0, 0.18);
+  --pds-text: var(--dark-emphasis);
+  --pds-muted: rgba(255, 255, 255, 0.5);
+  --pds-faint: rgba(255, 255, 255, 0.32);
+  --pds-line: rgba(255, 255, 255, 0.07);
+  --pds-hover: rgba(255, 255, 255, 0.05);
+  --pds-tint-a: 0.22;
+  --pds-tint-b: 0.14;
+}
+
+@media (min-width: 1081px) {
+  .pds-overlay {
+    padding: 24px;
+  }
+
+  .post-detail-series {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    width: min(980px, 92vw);
+    height: min(640px, 85vh);
+    color: var(--pds-text);
+    background:
+      radial-gradient(120% 90% at 0% 0%, rgba(var(--pds-tint-1), var(--pds-tint-a)), transparent 60%),
+      radial-gradient(90% 80% at 100% 100%, rgba(var(--pds-tint-2), var(--pds-tint-b)), transparent 65%),
+      var(--pds-surface);
+    border: 1px solid rgba(var(--pds-tint-1), 0.22);
+    border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+    transform: translateY(10px) scale(0.98);
+    transition: transform 0.3s var(--ease-out-site);
+  }
+  .pds-overlay.is-open .post-detail-series {
+    transform: none;
+  }
+
+  /* 왼쪽 칸 바탕 — 표지·정보 영역을 목차와 살짝 구분한다 */
+  .post-detail-series::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 340px;
+    background: var(--pds-side);
+    border-right: 1px solid rgba(var(--pds-tint-1), 0.16);
+    pointer-events: none;
+  }
+
+  /* 후방주의 안내 화면은 2단 배치를 쓰지 않는다 */
+  .pds-mature-blocked {
+    display: flex;
+    width: auto;
+    height: auto;
+    background: var(--pds-surface);
+    border-color: var(--pds-line);
+  }
+  .pds-mature-blocked::before {
+    display: none;
+  }
+
+  .pds-close {
+    top: 14px;
+    right: 14px;
+  }
+
+  .pds-image {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin: 28px 28px 0;
+    border: 1px solid var(--pds-line);
+    border-radius: 12px;
+    box-shadow: 0 14px 36px rgba(var(--pds-tint-1), 0.18);
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .pds-image-effect,
+  .pds-gradient {
+    display: none;
+  }
+
+  .pds-series-info {
+    grid-column: 1;
+    grid-row: 2;
+    position: relative;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px 28px 28px;
+    overflow-y: auto;
+    pointer-events: auto;
+    z-index: 1;
+  }
+
+  .pds-series-name {
+    position: static;
+    width: auto;
+    max-width: none;
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--pds-text);
+    text-shadow: none;
+  }
+
+  .pds-series-name-text {
+    -webkit-line-clamp: 3;
+  }
+
+  .pds-series-episode-count {
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--pds-muted);
+    text-shadow: none;
+  }
+
+  .pds-series-range {
+    display: inline;
+  }
+
+  .pds-tags-group {
+    position: static;
+    width: auto;
+    max-width: none;
+    gap: 18px;
+  }
+
+  .pds-tags-label {
+    display: block;
+    margin: 0 0 8px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pds-muted);
+    background: none;
+    border: 0;
+    backdrop-filter: none;
+  }
+
+  .pds-tags-pills {
+    gap: 6px;
+  }
+
+  .pds-tag-pill {
+    padding: 5px 12px;
+    font-size: 13px;
+  }
+  .pds-tag-pill.is-voted {
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
+  .pds-tag-pill.pds-tag-more {
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px dashed var(--pds-faint);
+    color: var(--pds-muted);
+  }
+  .pds-tag-pill.pds-tag-more:hover {
+    background: var(--pds-hover);
+  }
+
+  .pds-tags-error {
+    padding: 0;
+    color: #e5484d;
+    background: none;
+    border: 0;
+    backdrop-filter: none;
+  }
+
+  .pds-right-panel {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    height: auto;
+    min-height: 0;
+    background: transparent;
+  }
+
+  .pds-toolbar {
+    justify-content: space-between;
+    gap: 12px;
+    padding: 22px 64px 12px 28px;
+    background: transparent;
+  }
+
+  .pds-toolbar-title {
+    display: block;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--pds-text);
+  }
+  .pds-toolbar-title span {
+    margin-left: 6px;
+    font-weight: 500;
+    color: var(--pds-muted);
+  }
+
+  .pds-sort-btn {
+    padding: 6px 12px;
+    font-size: 12.5px;
+    color: var(--pds-text);
+    background: var(--pds-hover);
+    border: 1px solid var(--pds-line);
+  }
+  .pds-sort-btn:hover {
+    background: rgba(var(--pds-tint-1), 0.14);
+    border-color: rgba(var(--pds-tint-1), 0.35);
+    transform: none;
+  }
+  .pds-sort-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* 마지막 줄이 아래 가장자리에서 사라지듯 흐려지게 — 배경이 그라데이션이라
+     단색 덮개 대신 마스크로 처리한다 */
+  .pds-list {
+    align-items: stretch;
+    gap: 2px;
+    padding: 0 16px 40px;
+    background: transparent;
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(#000 calc(100% - 40px), transparent);
+  }
+
+  /* 회차 한 줄: 화 | 제목 | (AUDIO) | 글 번호 | 화살표 */
+  .pds-episode-item {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto auto 16px;
+    align-items: center;
+    column-gap: 12px;
+    width: auto;
+    height: auto;
+    min-height: 52px;
+    padding: 0 12px;
+    color: var(--pds-text);
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    box-shadow: none;
+    transition: background-color 0.15s ease;
+  }
+  .pds-episode-item:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(var(--pds-tint-1), 0.12);
+  }
+  .pds-episode-item.is-audio-novel {
+    background: rgba(0, 200, 160, 0.08);
+    border: 0;
+  }
+  .pds-episode-item.is-audio-novel:hover {
+    background: rgba(0, 200, 160, 0.15);
+  }
+
+  .pds-episode-badge {
+    grid-column: 1;
+    grid-row: 1;
+    position: static;
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--pds-muted);
+    white-space: nowrap;
+  }
+  .pds-episode-item:hover .pds-episode-badge {
+    color: rgb(var(--pds-tint-1));
+  }
+
+  .pds-episode-title {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    left: auto;
+    top: auto;
+    right: auto;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pds-text);
+  }
+  /* 글 번호는 오른쪽 칸(.pds-episode-dcid)에 따로 보인다 */
+  .pds-episode-title .pds-episode-id {
+    display: none;
+  }
+  /* 넘치는 제목의 오른쪽 끝 흐림도 배경색 덮개 대신 마스크로 */
+  .pds-episode-title.is-marquee {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  }
+  .pds-episode-title.is-marquee::after {
+    background: none;
+  }
+
+  .pds-episode-link {
+    display: none;
+  }
+
+  .pds-episode-audio-badge {
+    grid-column: 3;
+    grid-row: 1;
+    position: static;
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  .pds-episode-dcid {
+    grid-column: 4;
+    grid-row: 1;
+    display: block;
+    font-family: var(--pds-mono);
+    font-size: 12px;
+    color: var(--pds-faint);
+  }
+
+  .pds-episode-arrow {
+    grid-column: 5;
+    grid-row: 1;
+    display: block;
+    font-size: 14px;
+    color: var(--pds-faint);
   }
 }
