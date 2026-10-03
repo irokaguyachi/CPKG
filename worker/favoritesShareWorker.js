@@ -554,6 +554,288 @@ async function handleTagsSnapshot(request, env) {
   return new Response(object.body, { headers: headers });
 }
 
+// ---- 우주 미니게임 랭킹(/game/*) ----
+// 푸터 우주 장면의 「카구야 유성 피하기」(src/js/components/spaceGame.js)
+// 기록을 전체/주간 순위로 모은다. 로그인 없이 닉네임만으로 참여하므로,
+// 플레이어는 브라우저가 만든 무작위 playerId로 구분하고 서버에는 해시만
+// 남긴다. 게임은 브라우저에서 돌아서 완벽히 막을 수는 없지만, 아래 세
+// 단계로 "게임을 하지 않고 API만 두드린 기록"과 "멈추거나 느리게 만든 판"을
+// 거른다.
+//   1) /game/start  — 판 시작. 서버가 잰 시작 시각을 담은 서명 토큰(run)을 준다.
+//   2) /game/end    — GAME OVER 순간 클라이언트가 바로 보낸다. 시작부터 지금까지
+//      서버가 잰 시간과 기록을 비교해서, 기록이 더 길거나(위조) 실제 시간이 기록보다
+//      한참 길면(일시정지·슬로우 모션) 거부하고, 통과하면 기록을 담은 서명
+//      토큰(result)을 준다.
+//   3) /game/submit — 닉네임을 넣고 result 토큰으로 등록한다. 판 하나는 한 번만
+//      등록되도록 이때만 D1(game_runs)에 그 판의 nonce 를 적는다.
+// start/end 는 D1 에 전혀 쓰지 않는다 — 판마다 D1 쓰기가 생기면 요청을 계속
+// 두드리는 것만으로 같은 D1 을 쓰는 태그 투표·끌올의 하루 쓰기 한도까지 갉아먹힌다.
+// 토큰 서명 키는 시크릿 GAME_TOKEN_SECRET(`npx wrangler secret put
+// GAME_TOKEN_SECRET`)이고, 없으면 랭킹 API 전체가 503 으로 닫힌다.
+// 스키마는 worker/game_schema.sql.
+const GAME_PLAYER_RE = /^[A-Za-z0-9_-]{16,64}$/;
+const GAME_TOKEN_RE = /^[A-Za-z0-9_-]{16,400}\.[A-Za-z0-9_-]{43}$/;
+const GAME_NONCE_LENGTH = 16;
+const GAME_RUN_TTL_MS = 2 * 3600000;   // 시작한 지 이보다 오래된 판은 끝낼 수 없고, 끝난 지 이보다 오래된 결과는 등록할 수 없다
+// 게임 시간은 시작 요청 뒤 카운트다운(2.8초)이 끝나야 흐르기 시작한다. 그중
+// 1초만 요구해서 시작·종료 요청의 네트워크 지연 차이는 넉넉히 봐준다.
+const GAME_MIN_OVERHEAD_MS = 1000;
+// 실제로 흐른 시간이 "기록 × 1.1 + 6초"보다 길면 멈추거나 느려진 판으로 본다.
+// 6초는 카운트다운(2.8초)과 네트워크 지연, 가끔 끊기는 프레임을 봐주는 몫이다.
+// 게임은 한 프레임에 0.1초까지만 흘러서, 프레임이 10fps 아래로 떨어지면 판
+// 전체가 느려진다 — 일부러 느리게 만들어 쉽게 피하는 것을 여기서 거른다.
+// 게임 중에 다른 탭으로 가도 게임 시간이 멈추므로 같은 이유로 걸린다.
+const GAME_SLOW_RATIO = 1.1;
+const GAME_SLOW_SLACK_MS = 6000;
+const GAME_MAX_SCORE_MS = 3600000;
+const GAME_NICKNAME_MAX = 10;          // 글자(코드 포인트) 수 — spaceRanking.js 의 NICKNAME_MAX 와 맞춘다
+const GAME_BOARD_SIZE = 10;
+const GAME_KST_OFFSET_MS = 9 * 3600000;
+
+function cleanGamePlayerId(raw) {
+  return (typeof raw === 'string' && GAME_PLAYER_RE.test(raw)) ? raw : null;
+}
+
+function cleanGameToken(raw) {
+  return (typeof raw === 'string' && GAME_TOKEN_RE.test(raw)) ? raw : null;
+}
+
+// 제어 문자·폭 없는 문자·방향 바꾸는 문자를 지우고 공백을 하나로 줄인다.
+// 남은 글자가 1~10자여야 한다.
+function cleanGameNickname(raw) {
+  if (typeof raw !== 'string' || raw.length > 64) return null;
+  var name = raw.normalize('NFC')
+    .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  var length = Array.from(name).length;
+  return length >= 1 && length <= GAME_NICKNAME_MAX ? name : null;
+}
+
+async function gamePlayerHash(playerId) {
+  return sha256Hex('spacegame:' + playerId);
+}
+
+// 주간 순위의 기간 키 — 그 주 월요일(한국 시간) 날짜. 1970-01-01 은 목요일이라
+// (날짜 번호 + 3) % 7 이 월요일부터 지난 날 수다.
+function gameWeekKey(now) {
+  var day = Math.floor((now + GAME_KST_OFFSET_MS) / DAY_MS);
+  var monday = day - ((day + 3) % 7);
+  return 'w' + new Date(monday * DAY_MS).toISOString().slice(0, 10);
+}
+
+// ---- 서명 토큰: base64url(JSON) + '.' + base64url(HMAC-SHA256) ----
+// 토큰 안의 값은 ASCII 뿐이라 btoa 로 바로 인코딩한다.
+
+function base64UrlEncode(bytes) {
+  var binary = '';
+  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlDecode(text) {
+  var binary = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function gameTokenKey(env) {
+  if (!env.GAME_TOKEN_SECRET) return null;
+  return crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(env.GAME_TOKEN_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']
+  );
+}
+
+async function signGameToken(key, payload) {
+  var body = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  var sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  return body + '.' + base64UrlEncode(new Uint8Array(sig));
+}
+
+// 서명이 맞고 종류(kind)와 플레이어가 일치할 때만 내용을 돌려준다. 그 밖에는 null.
+async function readGameToken(key, token, kind, playerHash) {
+  var dot = token.indexOf('.');
+  var body = token.slice(0, dot);
+  try {
+    var ok = await crypto.subtle.verify(
+      'HMAC', key, base64UrlDecode(token.slice(dot + 1)), new TextEncoder().encode(body)
+    );
+    if (!ok) return null;
+    var payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(body)));
+    if (!payload || payload.k !== kind || payload.p !== playerHash) return null;
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+// 전체·주간 상위 10명과(playerHash 가 있으면) 내 순위를 한 번의 batch 로 읽는다.
+// 점수가 같으면 먼저 세운 사람이 위다.
+async function readGameRanking(env, playerHash, now) {
+  var week = gameWeekKey(now);
+  var periods = ['all', week];
+  var statements = [];
+  for (var i = 0; i < periods.length; i++) {
+    statements.push(env.TAGS_DB.prepare(
+      'SELECT nickname, score_ms FROM game_scores WHERE period = ? ORDER BY score_ms DESC, achieved_at ASC LIMIT ?'
+    ).bind(periods[i], GAME_BOARD_SIZE));
+    if (playerHash) {
+      statements.push(env.TAGS_DB.prepare(
+        'SELECT s.score_ms, (SELECT COUNT(*) FROM game_scores o WHERE o.period = s.period AND ' +
+        '(o.score_ms > s.score_ms OR (o.score_ms = s.score_ms AND o.achieved_at < s.achieved_at))) + 1 AS rank ' +
+        'FROM game_scores s WHERE s.period = ? AND s.player_hash = ?'
+      ).bind(periods[i], playerHash));
+    }
+  }
+  var results = await env.TAGS_DB.batch(statements);
+  var step = playerHash ? 2 : 1;
+  var boards = {};
+  var me = {};
+  ['all', 'weekly'].forEach(function (name, index) {
+    var rows = results[index * step].results || [];
+    boards[name] = rows.map(function (row, rank) {
+      return { rank: rank + 1, nickname: row.nickname, scoreMs: row.score_ms };
+    });
+    var mine = playerHash ? (results[index * step + 1].results || [])[0] : null;
+    me[name] = mine ? { rank: mine.rank, scoreMs: mine.score_ms } : null;
+  });
+  return { week: week, all: boards.all, weekly: boards.weekly, me: playerHash ? me : null };
+}
+
+// 조회는 공개 정보라 레이트리밋을 걸지 않는다(/tags/get, /bump/get 과 같은
+// 방침). playerId 를 함께 보내면 내 순위도 알려준다 — URL 에 남지 않도록 POST.
+async function handleGameRanking(request, env) {
+  var body = await readJsonBody(request, 256);
+  if (body.error) return body.error;
+  var playerHash = null;
+  if (body.value && body.value.playerId != null) {
+    var playerId = cleanGamePlayerId(body.value.playerId);
+    if (playerId === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+    playerHash = await gamePlayerHash(playerId);
+  }
+  try {
+    return jsonResponse(request, await readGameRanking(env, playerHash, Date.now()));
+  } catch (e) {
+    return jsonResponse(request, { error: 'ranking unavailable' }, 503);
+  }
+}
+
+async function handleGameStart(request, env) {
+  if (!(await checkLimit(env.RL_GAME, clientIp(request)))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+  var body = await readJsonBody(request, 256);
+  if (body.error) return body.error;
+  var playerId = cleanGamePlayerId(body.value && body.value.playerId);
+  if (playerId === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  var key = await gameTokenKey(env);
+  if (!key) return jsonResponse(request, { error: 'ranking unavailable' }, 503);
+
+  var runToken = await signGameToken(key, {
+    k: 'run',
+    p: await gamePlayerHash(playerId),
+    n: generateToken(GAME_NONCE_LENGTH),
+    s: Date.now()
+  });
+  return jsonResponse(request, { runToken: runToken }, 201);
+}
+
+// GAME OVER 순간에 불린다. 여기서 시간 검사를 끝내 두므로, 닉네임을 고르느라
+// 등록이 늦어져도 기록이 무효가 되지 않는다. 같은 판으로 여러 번 불러도 결과
+// 토큰들의 nonce 가 같아서 등록은 그중 한 번만 된다.
+async function handleGameEnd(request, env) {
+  if (!(await checkLimit(env.RL_GAME, clientIp(request)))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+  var body = await readJsonBody(request, 768);
+  if (body.error) return body.error;
+  var raw = body.value || {};
+  var playerId = cleanGamePlayerId(raw.playerId);
+  var runToken = cleanGameToken(raw.runToken);
+  var scoreMs = raw.scoreMs;
+  if (playerId === null || runToken === null || typeof scoreMs !== 'number' || !Number.isInteger(scoreMs) ||
+      scoreMs < 1 || scoreMs > GAME_MAX_SCORE_MS) {
+    return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+  var key = await gameTokenKey(env);
+  if (!key) return jsonResponse(request, { error: 'ranking unavailable' }, 503);
+
+  var now = Date.now();
+  var playerHash = await gamePlayerHash(playerId);
+  var run = await readGameToken(key, runToken, 'run', playerHash);
+  if (!run || typeof run.s !== 'number' || now - run.s > GAME_RUN_TTL_MS) {
+    return jsonResponse(request, { error: 'invalid run' }, 400);
+  }
+  var elapsed = now - run.s;
+  if (scoreMs + GAME_MIN_OVERHEAD_MS > elapsed) return jsonResponse(request, { error: 'invalid run' }, 400);
+  if (elapsed > scoreMs * GAME_SLOW_RATIO + GAME_SLOW_SLACK_MS) {
+    return jsonResponse(request, { error: 'run too slow' }, 400);
+  }
+
+  var resultToken = await signGameToken(key, { k: 'result', p: playerHash, n: run.n, s: run.s, e: now, sc: scoreMs });
+  return jsonResponse(request, { resultToken: resultToken });
+}
+
+// 등록: 닉네임 확인 → 판(nonce) 소모 → 전체·주간 최고 기록 갱신. 판 소모는
+// PRIMARY KEY 충돌을 이용한 INSERT 하나라 같은 결과로 동시에 두 번 보내도 한
+// 번만 통과한다. 닉네임 확인을 판 소모보다 먼저 해서, 이미 쓰이는 이름이면
+// 같은 판으로 다른 이름을 다시 시도할 수 있게 한다.
+async function handleGameSubmit(request, env) {
+  if (!(await checkLimit(env.RL_GAME_SUBMIT, clientIp(request)))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+  var body = await readJsonBody(request, 768);
+  if (body.error) return body.error;
+  var raw = body.value || {};
+  var playerId = cleanGamePlayerId(raw.playerId);
+  var resultToken = cleanGameToken(raw.resultToken);
+  if (playerId === null || resultToken === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  var nickname = cleanGameNickname(raw.nickname);
+  if (nickname === null) return jsonResponse(request, { error: 'invalid nickname' }, 400);
+  var key = await gameTokenKey(env);
+  if (!key) return jsonResponse(request, { error: 'ranking unavailable' }, 503);
+
+  var now = Date.now();
+  var playerHash = await gamePlayerHash(playerId);
+  var result = await readGameToken(key, resultToken, 'result', playerHash);
+  if (!result || typeof result.n !== 'string' || typeof result.e !== 'number' || typeof result.sc !== 'number' ||
+      now - result.e > GAME_RUN_TTL_MS) {
+    return jsonResponse(request, { error: 'invalid run' }, 400);
+  }
+  var scoreMs = result.sc;
+
+  try {
+    var taken = await env.TAGS_DB.prepare(
+      "SELECT 1 FROM game_scores WHERE period = 'all' AND nickname = ? COLLATE NOCASE AND player_hash <> ? LIMIT 1"
+    ).bind(nickname, playerHash).first();
+    if (taken) return jsonResponse(request, { error: 'nickname taken' }, 409);
+
+    var consumed = await env.TAGS_DB.prepare(
+      'INSERT OR IGNORE INTO game_runs (run_id, player_hash, started_at, used) VALUES (?, ?, ?, 1)'
+    ).bind(result.n, playerHash, result.s).run();
+    if (!consumed.meta || !consumed.meta.changes) return jsonResponse(request, { error: 'invalid run' }, 400);
+
+    // 주간 기록은 판이 끝난 주에 넣는다. SET 안의 game_scores.* 는 전부 갱신 전
+    // 값이라 순서와 상관없이 비교된다.
+    var upsert =
+      'INSERT INTO game_scores (period, player_hash, nickname, score_ms, achieved_at) VALUES (?, ?, ?, ?, ?) ' +
+      'ON CONFLICT(period, player_hash) DO UPDATE SET nickname = excluded.nickname, ' +
+      'achieved_at = CASE WHEN excluded.score_ms > game_scores.score_ms THEN excluded.achieved_at ELSE game_scores.achieved_at END, ' +
+      'score_ms = MAX(game_scores.score_ms, excluded.score_ms)';
+    await env.TAGS_DB.batch([
+      env.TAGS_DB.prepare(upsert).bind('all', playerHash, nickname, scoreMs, result.e),
+      env.TAGS_DB.prepare(upsert).bind(gameWeekKey(result.e), playerHash, nickname, scoreMs, result.e),
+      // 지난주 기록에도 바뀐 닉네임이 보이게 한다
+      env.TAGS_DB.prepare('UPDATE game_scores SET nickname = ? WHERE player_hash = ?').bind(nickname, playerHash)
+    ]);
+    return jsonResponse(request, Object.assign({ ok: true }, await readGameRanking(env, playerHash, now)));
+  } catch (e) {
+    return jsonResponse(request, { error: 'ranking unavailable' }, 503);
+  }
+}
+
 // ---- 생일 배너 팬케이크 카운터(/pancake) ----
 // 클라이언트(src/js/components/pancakeCounter.js)가 클릭할 때마다 서버로 보내지 않고,
 // 5초간 클릭이 멈추면 그동안 쌓인 개수를 한 번에 더한다 — 연타 한 번에
@@ -1535,6 +1817,18 @@ async function route(request, env) {
   }
   if (url.pathname === '/user/sync' && request.method === 'PUT') {
     return handleUserSync(request, env);
+  }
+  if (url.pathname === '/game/ranking' && request.method === 'POST') {
+    return handleGameRanking(request, env);
+  }
+  if (url.pathname === '/game/start' && request.method === 'POST') {
+    return handleGameStart(request, env);
+  }
+  if (url.pathname === '/game/end' && request.method === 'POST') {
+    return handleGameEnd(request, env);
+  }
+  if (url.pathname === '/game/submit' && request.method === 'POST') {
+    return handleGameSubmit(request, env);
   }
   if (url.pathname === '/pancake' && request.method === 'GET') {
     return handlePancakeGet(request, env);

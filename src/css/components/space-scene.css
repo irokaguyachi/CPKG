@@ -8,6 +8,10 @@
   --space-star: #3f3d37;
   --space-shot: #2f2e2a;
   --space-glow: rgba(255, 255, 255, 0.18);
+  --space-danger: #c2410c;
+  --space-laser: #d6336c;
+  --space-homer: #6d28d9;
+  --space-hole: #0b0b0d;
 
   position: relative;
   height: clamp(480px, 90vh, 940px);
@@ -24,6 +28,10 @@
   --space-star: #ece8dc;
   --space-shot: #d6cfbf;
   --space-glow: rgba(214, 207, 191, 0.07);
+  --space-danger: #ffb48a;
+  --space-laser: #ff6b8b;
+  --space-homer: #b49cff;
+  --space-hole: #050506;
 }
 
 .space-scene-canvas {
@@ -75,6 +83,26 @@
   animation: space-actor-frames 1.8s steps(4) infinite;
 }
 
+/* 미니게임 단서 — 카구야를 8번째부터 누르면 움찔, 14번째엔 크게 흔들린다.
+   프레임 애니메이션을 덮어쓰지 않도록 둘을 함께 건다. */
+.space-scene-actor-sprite.is-nudge {
+  animation: space-actor-frames 1.8s steps(4) infinite, space-actor-nudge 0.3s ease;
+}
+.space-scene-actor-sprite.is-nudge-strong {
+  animation: space-actor-frames 1.8s steps(4) infinite, space-actor-nudge-strong 0.45s ease;
+}
+
+@keyframes space-actor-nudge {
+  30% { transform: translateX(-3px) rotate(-6deg); }
+  70% { transform: translateX(3px) rotate(6deg); }
+}
+
+@keyframes space-actor-nudge-strong {
+  20% { transform: translateX(-6px) rotate(-12deg) scale(1.06); }
+  45% { transform: translateX(6px) rotate(12deg) scale(1.06); }
+  70% { transform: translateX(-4px) rotate(-6deg); }
+}
+
 @keyframes space-actor-frames {
   to { background-position: 133.333% 0; }
 }
@@ -83,4 +111,539 @@
   .space-scene-actor-sprite {
     animation: none;
   }
+}
+
+/* ==========================================================================
+   미니게임 「카구야 유성 피하기」 (src/js/components/spaceGame.js)
+   글씨는 Mona12(Monad ABXY, SIL OFL 1.1 — src/fonts/Mona12/OFL.txt). 파일이
+   1.25MB 라 @font-face 만 선언해 두고, 브라우저는 게임 글씨가 처음 화면에
+   그려질 때만 내려받는다. 예약 글꼴 이름("Mona") 때문에 글자를 잘라 낸
+   파일은 같은 이름으로 쓸 수 없어 원본을 그대로 둔다.
+   ========================================================================== */
+@font-face {
+  font-family: "Mona12";
+  src: url("../../fonts/Mona12/Mona12.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 게임 중에는 조준선 커서로 바꾸고, 손가락으로 끌 때 페이지가 대신
+   스크롤되지 않게 막는다 */
+.space-scene.is-gaming {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* 게임 동안 장면을 화면 전체로 띄운다(spaceScene.js expandStage). 원래 자리는
+   .space-scene-holder 가 같은 높이로 지키고, 페이지 스크롤은 잠근다. 헤더와
+   모바일 하단 바(z-index 470)보다 위, 모달(480 이상)보다는 아래다. */
+.space-scene.is-stage {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 475;
+  transition: clip-path 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+html.is-space-game,
+html.is-space-game body {
+  overflow: hidden;
+}
+
+/* 시작할 때 한 번 번쩍 */
+.space-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--space-star);
+  opacity: 0;
+  pointer-events: none;
+}
+.space-scene.is-flash::after {
+  animation: space-game-flash 0.45s ease-out;
+}
+
+@keyframes space-game-flash {
+  0% { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+
+/* 맞았을 때 장면이 살짝 흔들린다 */
+.space-scene.is-shaking .space-scene-canvas {
+  animation: space-game-shake 0.25s ease-out;
+}
+
+@keyframes space-game-shake {
+  20% { transform: translate(-5px, 2px); }
+  40% { transform: translate(4px, -3px); }
+  60% { transform: translate(-3px, 1px); }
+  80% { transform: translate(2px, 0); }
+}
+
+/* 맞은 뒤 무적 시간 동안 깜빡인다 */
+.space-scene-actor.is-invincible .space-scene-actor-body {
+  animation: space-game-blink 0.16s steps(2) infinite;
+}
+
+@keyframes space-game-blink {
+  50% { opacity: 0.25; }
+}
+
+.space-game-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: clamp(16px, 3vw, 28px);
+  font-family: "Mona12", monospace;
+  color: var(--space-star);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.space-game-hud.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.space-game-hearts {
+  font-size: 28px;
+  letter-spacing: 4px;
+  color: var(--space-danger);
+}
+
+/* 위험도 게이지 — 칸 10개가 버틴 시간만큼 차오르고, 단계마다 색이 짙어진다 */
+.space-game-gauge {
+  --gauge-color: #f5c542;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+}
+.space-game-gauge[data-level="3"] { --gauge-color: #ff9f43; }
+.space-game-gauge[data-level="4"] { --gauge-color: #ff6b4a; }
+.space-game-gauge[data-level="5"] { --gauge-color: #ff3b5c; }
+.space-game-gauge[data-level="5"] .space-game-gauge-bar {
+  animation: space-game-max 0.6s steps(2) infinite;
+}
+.space-game-gauge.is-shaking {
+  animation: space-game-gauge-shake 0.5s ease-out;
+}
+
+.space-game-gauge-bar {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 2px solid var(--gauge-color);
+}
+
+.space-game-gauge-cell {
+  width: 14px;
+  height: 12px;
+  background: currentColor;
+  opacity: 0.12;
+}
+.space-game-gauge-cell.is-on {
+  background: var(--gauge-color);
+  opacity: 1;
+}
+
+.space-game-gauge-level {
+  min-width: 3.2em;
+  color: var(--gauge-color);
+}
+
+@keyframes space-game-max {
+  50% { opacity: 0.55; }
+}
+
+@keyframes space-game-gauge-shake {
+  15% { transform: translateX(-6px) rotate(-2deg); }
+  35% { transform: translateX(6px) rotate(2deg); }
+  55% { transform: translateX(-4px); }
+  75% { transform: translateX(3px); }
+}
+
+.space-game-clock {
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.space-game-time {
+  font-size: 28px;
+}
+
+.space-game-best {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.space-game-banner {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: "Mona12", monospace;
+  color: var(--space-star);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+}
+.space-game-banner.is-visible {
+  opacity: 1;
+}
+.space-game-banner.is-pop {
+  animation: space-game-pop 0.35s ease-out;
+}
+
+@keyframes space-game-pop {
+  0% { transform: translate(-50%, -50%) scale(1.6); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.space-game-banner-main {
+  font-size: clamp(40px, 7vw, 72px);
+  text-shadow: 0 0 24px var(--space-bg);
+}
+
+.space-game-banner-sub {
+  font-size: clamp(16px, 2.2vw, 22px);
+}
+.space-game-banner-sub:last-child {
+  opacity: 0.65;
+}
+
+/* 좁은 화면에서는 게이지를 하트·시간 아래 줄로 내린다 */
+@media (max-width: 640px) {
+  .space-game-hud {
+    grid-template-columns: 1fr 1fr;
+  }
+  .space-game-gauge {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    font-size: 13px;
+  }
+  .space-game-gauge-cell {
+    width: 10px;
+    height: 10px;
+  }
+  .space-game-hearts,
+  .space-game-time {
+    font-size: 22px;
+  }
+}
+
+/* ==========================================================================
+   미니게임 온라인 랭킹 (src/js/components/spaceRanking.js)
+   한 판이라도 해 본 사람에게만(.is-ready) 왼쪽 아래 트로피가 보이고, 누르면
+   그 위로 전체/주간 순위표가 펼쳐진다. 게임 중에는 감춘다.
+   ========================================================================== */
+.space-scene {
+  --space-rank-1: #d23a3a;
+  --space-rank-2: #a87a00;
+  --space-rank-3: #12936a;
+  --space-rank-rest: rgba(63, 61, 55, 0.75);
+}
+
+[data-theme="dark"] .space-scene {
+  --space-rank-1: #ff5a5f;
+  --space-rank-2: #ffd84d;
+  --space-rank-3: #2fd39c;
+  --space-rank-rest: rgba(236, 232, 220, 0.62);
+}
+
+.space-rank {
+  position: absolute;
+  left: clamp(16px, 2.5vw, 28px);
+  bottom: clamp(16px, 3vw, 28px);
+  z-index: 3;
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: calc(100% - 32px);
+  font-family: "Mona12", monospace;
+  color: var(--space-star);
+  text-shadow: 0 0 6px var(--space-bg), 0 0 2px var(--space-bg);
+  cursor: auto;
+  transition: opacity 0.4s ease;
+}
+.space-rank.is-ready {
+  display: flex;
+}
+/* 아래 칸들이 display 를 따로 잡아서 hidden 속성이 덮이지 않게 한다 */
+.space-rank [hidden] {
+  display: none !important;
+}
+.space-scene.is-gaming .space-rank {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.space-rank-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s;
+}
+.space-rank.is-open .space-rank-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.space-rank-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 24px;
+}
+
+.space-rank-tab {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-shadow: inherit;
+  opacity: 0.45;
+  cursor: pointer;
+}
+.space-rank-tab:hover,
+.space-rank-tab.is-active {
+  opacity: 1;
+}
+
+.space-rank-tab-sep {
+  opacity: 0.6;
+}
+
+.space-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.space-rank-row {
+  display: flex;
+  gap: 0.4em;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--space-rank-rest);
+  white-space: nowrap;
+}
+.space-rank-row[data-rank="1"] {
+  font-size: 24px;
+  color: var(--space-rank-1);
+}
+.space-rank-row[data-rank="2"] {
+  font-size: 20px;
+  color: var(--space-rank-2);
+}
+.space-rank-row[data-rank="3"] {
+  margin-bottom: 4px;
+  font-size: 20px;
+  color: var(--space-rank-3);
+}
+.space-rank-row.is-me .space-rank-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.space-rank-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.space-rank-pos,
+.space-rank-sep,
+.space-rank-time {
+  flex-shrink: 0;
+}
+
+.space-rank-me,
+.space-rank-status,
+.space-rank-note {
+  margin: 0;
+  font-size: 12px;
+}
+.space-rank-me {
+  margin-top: 4px;
+}
+.space-rank-status,
+.space-rank-note {
+  color: var(--space-rank-rest);
+}
+
+/* 방금 판 등록 칸 */
+.space-rank-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.space-rank-entry-score {
+  font-size: 12px;
+}
+
+.space-rank-entry-row {
+  display: flex;
+  gap: 6px;
+}
+
+.space-rank-input,
+.space-rank-submit {
+  height: 32px;
+  border: 2px solid var(--space-star);
+  border-radius: 0;
+  background: var(--space-bg);
+  font-family: "Mona12", monospace;
+  font-size: 16px; /* 16px 보다 작으면 iOS 가 입력할 때 화면을 확대한다 */
+  color: var(--space-star);
+}
+
+.space-rank-input {
+  width: 11em;
+  min-width: 0;
+  padding: 0 8px;
+}
+.space-rank-input::placeholder {
+  color: var(--space-rank-rest);
+}
+.space-rank-input:focus {
+  outline: none;
+  border-color: var(--space-rank-2);
+}
+
+.space-rank-submit {
+  flex-shrink: 0;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.space-rank-submit:hover:not(:disabled) {
+  background: var(--space-star);
+  color: var(--space-bg);
+}
+.space-rank-input:disabled,
+.space-rank-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.space-rank-msg {
+  margin: 0;
+  min-height: 1em;
+  font-size: 12px;
+  color: var(--space-rank-2);
+}
+.space-rank-msg:empty {
+  display: none;
+}
+
+/* 트로피 — offlineSrc/universe/ranking(원본 1312px PNG)을 여백을 잘라 내고
+   세로 128px 로 줄인 ranking_trophy.webp 다. */
+.space-rank-trophy {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-left: -6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.space-rank-trophy:hover,
+.space-rank.is-open .space-rank-trophy {
+  opacity: 1;
+}
+.space-rank-trophy:active {
+  transform: scale(0.92);
+}
+.space-rank-trophy:focus-visible,
+.space-rank-tab:focus-visible,
+.space-rank-submit:focus-visible {
+  outline: 2px solid var(--space-star);
+  outline-offset: 2px;
+}
+
+.space-rank-trophy-icon {
+  width: 44px;
+  height: 40px;
+  background: url("../../offlineSrc/universe/ranking_trophy.webp") center / contain no-repeat;
+}
+
+@media (max-width: 640px) {
+  .space-rank-tabs {
+    font-size: 18px;
+  }
+  .space-rank-row[data-rank="1"] {
+    font-size: 18px;
+  }
+  .space-rank-row[data-rank="2"],
+  .space-rank-row[data-rank="3"] {
+    font-size: 16px;
+  }
+}
+
+/* MAX+3 부터 — 칸마다 다른 색(--i, spaceGame.js)으로 무지개를 깔고, 색이 흘러가며
+   빛나게 한다. MAX 의 빨간 깜빡임은 끈다. */
+.space-game-gauge.is-rainbow .space-game-gauge-bar {
+  border-color: transparent;
+  border-image: linear-gradient(90deg, #ff3b5c, #ff9f43, #f5c542, #4ade80, #38bdf8, #818cf8, #e879f9) 1;
+  animation: space-game-rainbow 1.6s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45));
+}
+.space-game-gauge.is-rainbow .space-game-gauge-cell.is-on {
+  background: hsl(calc(var(--i) * 36deg) 92% 62%);
+}
+.space-game-gauge.is-rainbow .space-game-gauge-level {
+  color: transparent;
+  background: linear-gradient(90deg, #ff3b5c, #f5c542, #4ade80, #38bdf8, #e879f9, #ff3b5c);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: space-game-rainbow-text 1.6s linear infinite;
+}
+
+@keyframes space-game-rainbow {
+  from { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45)) hue-rotate(0deg); }
+  to { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45)) hue-rotate(360deg); }
+}
+
+@keyframes space-game-rainbow-text {
+  to { background-position: 200% 0; }
 }

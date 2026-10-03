@@ -126,6 +126,25 @@ namespace_id = "1008"
   limit = 10
   period = 60
 
+# 우주 미니게임 랭킹의 판 시작(/game/start)과 종료(/game/end). 한 판에 두 번씩
+# 부른다 — 카운트다운만 2.8초라 1분에 15판 넘게 하기 어렵다. 둘 다 D1에 쓰지
+# 않는다(서명 토큰만 주고받는다).
+[[ratelimits]]
+name = "RL_GAME"
+namespace_id = "1009"
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+# 랭킹 등록(/game/submit). 닉네임을 넣고 직접 누르는 요청이라 낮게 잡는다 —
+# D1에 쓰는 유일한 랭킹 요청이다.
+[[ratelimits]]
+name = "RL_GAME_SUBMIT"
+namespace_id = "1010"
+  [ratelimits.simple]
+  limit = 5
+  period = 60
+
 # ---- 방문자 통계 ----
 # 목표는 Cloudflare 커스텀 대시보드(Traffic overview)에서 이 수치를 차트로
 # 보는 것이다. 커스텀 대시보드는 GraphQL API 데이터셋만 그리는데, Analytics
@@ -174,6 +193,9 @@ CF_ACCOUNT_ID = "494ceae5bf9fdce6201060393a5a1d30"
 # TURNSTILE_SECRET은 `npx wrangler secret put TURNSTILE_SECRET` 으로 넣는다.
 # 둘 중 하나라도 비어 있으면 사람 확인 없이 비콘만으로 방문을 센다.
 TURNSTILE_SITEKEY = ""
+# 미니게임 랭킹 토큰 서명 키(GAME_TOKEN_SECRET)는 시크릿이라 여기 두지 않는다.
+# `npx wrangler secret put GAME_TOKEN_SECRET` (dev 는 --env dev)로 넣는다.
+# 없으면 랭킹 API(/game/*)만 503 으로 닫히고 게임 자체는 그대로 된다.
 
 # ---- dev 브랜치 전용 배포 환경 ----
 # Cloudflare Workers Builds는 Durable Object(PRESENCE/PresenceDO)가 있는
@@ -280,6 +302,20 @@ name = "RL_BUMP_WRITE"
 namespace_id = "1008"
   [env.dev.ratelimits.simple]
   limit = 10
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_GAME"
+namespace_id = "1009"
+  [env.dev.ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_GAME_SUBMIT"
+namespace_id = "1010"
+  [env.dev.ratelimits.simple]
+  limit = 5
   period = 60
 
 # 프로덕션 방문자 통계를 오염시키지 않도록 dev 전용 데이터셋을 쓴다.

@@ -5,7 +5,8 @@
   // 달·고리 행성·별가루를 점 크기 디더링으로 그린다. 이 정적인 층은 화면 밖
   // 캔버스(staticCanvas)에 한 번 그려 두고, 매 프레임에는 반짝이는 별과 유성만
   // 그 위에 다시 그린다. 가운데에는 우주복 카구야(.space-scene-actor)가 떠
-  // 있다가 마우스가 장면 위에 올라오면 천천히 따라온다.
+  // 있다가 마우스가 장면 위에 올라오면 천천히 따라온다. 카구야를 15번 연달아
+  // 누르면 미니게임(spaceGame.js)이 시작된다.
   var footer = document.querySelector('.site-footer');
   if (!footer) return;
   var canvas = document.createElement('canvas');
@@ -20,6 +21,9 @@
   var ACTOR_MAX_SPEED = 150; // px/s — 천천히 다가오도록 낮게 잡는다
   var ACTOR_KEEP = 70; // 커서와 이만큼 가까워지면 멈춘다 (커서를 가리지 않게)
   var ACTOR_BOB = 7; // 둥실거리는 위아래 진폭(px)
+  var ACTOR_GAME_SPEED = 380; // 미니게임 중에는 커서를 바짝 따라붙는다
+  var GAME_CLICKS = 15; // 카구야를 이만큼 연달아 누르면 미니게임 시작
+  var GAME_CLICK_GAP = 1500; // 클릭 사이가 이보다 벌어지면(ms) 다시 처음부터 센다
   var KIND_DUST = 1;
   var KIND_BODY = 2;
   var TRAIL = 11;
@@ -29,12 +33,14 @@
 
   var scene = document.createElement('div');
   scene.className = 'space-scene';
-  scene.setAttribute('aria-hidden', 'true');
+  // 장면은 꾸밈이라 화면 낭독기에서 감추되, 안에 붙는 랭킹 순위표(spaceRanking.js)는 읽히게 둔다
+  canvas.setAttribute('aria-hidden', 'true');
   canvas.className = 'space-scene-canvas';
   // actor 는 위치(translate), actorBody 는 좌우 반전·기울기, actorSprite 는 4프레임
   // 스프라이트 애니메이션(CSS)을 맡는다 — 변환을 한 요소에 몰면 서로 덮어쓴다.
   var actor = document.createElement('div');
   actor.className = 'space-scene-actor';
+  actor.setAttribute('aria-hidden', 'true');
   var actorBody = document.createElement('div');
   actorBody.className = 'space-scene-actor-body';
   var actorSprite = document.createElement('div');
@@ -66,6 +72,10 @@
   var nextShower = 0;
   var hero = null; // 카구야의 현재 위치·속도 {x, y, vx, vy, facingRight}
   var pointer = null; // 장면 위 마우스 위치, 장면 밖이면 null
+  var heroClicks = 0;
+  var lastHeroClick = 0;
+  var game = null; // SpaceGame 인스턴스 (spaceGame.js 가 없거나 애니메이션 줄이기면 null)
+  var ranking = null; // SpaceRanking 인스턴스 (게임이 있고 spaceRanking.js 가 있을 때만)
 
   // ---- 노이즈 -------------------------------------------------------------
 
@@ -267,6 +277,10 @@
     colors.star = cs.getPropertyValue('--space-star').trim() || '#ece8dc';
     colors.shot = cs.getPropertyValue('--space-shot').trim() || '#d6cfbf';
     colors.glow = cs.getPropertyValue('--space-glow').trim() || 'rgba(214, 207, 191, 0.07)';
+    colors.danger = cs.getPropertyValue('--space-danger').trim() || '#ffb48a';
+    colors.laser = cs.getPropertyValue('--space-laser').trim() || '#ff6b8b';
+    colors.homer = cs.getPropertyValue('--space-homer').trim() || '#b49cff';
+    colors.hole = cs.getPropertyValue('--space-hole').trim() || '#050506';
   }
 
   function drawGlow(x, y, radius) {
@@ -441,9 +455,19 @@
 
   scene.addEventListener('click', function (e) {
     if (reduceMotion || !G) return;
+    if (game && game.isActive()) return;
     var rect = scene.getBoundingClientRect();
     var x = e.clientX - rect.left;
     var y = e.clientY - rect.top;
+    if (hero && game) {
+      var hx = x - hero.x;
+      var hy = y - hero.drawY;
+      var reach = ACTOR_SIZE * 0.42;
+      if (hx * hx + hy * hy < reach * reach) {
+        countHeroClick();
+        return;
+      }
+    }
     var speed = 400 + Math.random() * 220;
     if (Math.random() < 0.75) {
       // 화면 가장자리에서 날아와 클릭한 곳을 지나간다
@@ -463,26 +487,32 @@
   // 줄여 커서 옆에 멈춘다. 커서가 장면을 벗어나면 제자리(G.home)로 돌아간다.
   function updateHero(t, dt) {
     var margin = ACTOR_SIZE / 2;
+    var gaming = game && game.isActive();
     var target = pointer || G.home;
     var dx = target.x - hero.x;
     var dy = target.y - hero.y;
     var dist = Math.sqrt(dx * dx + dy * dy);
-    var keep = pointer ? ACTOR_KEEP : 0;
-    var want = dist > keep ? ACTOR_MAX_SPEED * smooth((dist - keep) / 220) : 0;
+    // 미니게임 중에는 커서 바로 위까지 빠르게 따라붙어야 피할 수 있다
+    var maxSpeed = gaming ? ACTOR_GAME_SPEED : ACTOR_MAX_SPEED;
+    var keep = pointer && !gaming ? ACTOR_KEEP : 0;
+    var want = dist > keep ? maxSpeed * smooth((dist - keep) / (gaming ? 120 : 220)) : 0;
     var tvx = dist > 0 ? (dx / dist) * want : 0;
     var tvy = dist > 0 ? (dy / dist) * want : 0;
     // 목표 속도로 바로 바꾸지 않고 서서히 맞춰서 물에 뜬 것처럼 관성 있게 움직인다
-    var k = Math.min(1, dt * 1.8);
+    var k = Math.min(1, dt * (gaming ? 6 : 1.8));
     hero.vx += (tvx - hero.vx) * k;
     hero.vy += (tvy - hero.vy) * k;
-    hero.x = clamp(hero.x + hero.vx * dt, margin, W - margin);
-    hero.y = clamp(hero.y + hero.vy * dt, margin, H - margin);
+    // 미니게임의 블랙홀이 카구야를 끌어당긴다
+    var pull = gaming ? game.pull({ x: hero.x, y: hero.drawY }) : null;
+    hero.x = clamp(hero.x + (hero.vx + (pull ? pull.x : 0)) * dt, margin, W - margin);
+    hero.y = clamp(hero.y + (hero.vy + (pull ? pull.y : 0)) * dt, margin, H - margin);
     // 원본 그림은 왼쪽을 본다 — 오른쪽으로 갈 때만 뒤집고, 작은 흔들림에는 반응하지 않게 문턱을 둔다
     if (hero.vx > 12) hero.facingRight = true;
     else if (hero.vx < -12) hero.facingRight = false;
     var bob = reduceMotion ? 0 : Math.sin(t * 1.3) * ACTOR_BOB;
-    var tilt = reduceMotion ? 0 : clamp(hero.vy / ACTOR_MAX_SPEED, -1, 1) * 8 + Math.sin(t * 0.8) * 3;
-    actor.style.transform = 'translate(' + hero.x.toFixed(1) + 'px,' + (hero.y + bob).toFixed(1) + 'px)';
+    var tilt = reduceMotion ? 0 : clamp(hero.vy / maxSpeed, -1, 1) * 8 + Math.sin(t * 0.8) * 3;
+    hero.drawY = hero.y + bob; // 클릭 판정과 미니게임 피격 판정은 실제로 그려진 위치를 쓴다
+    actor.style.transform = 'translate(' + hero.x.toFixed(1) + 'px,' + hero.drawY.toFixed(1) + 'px)';
     actorBody.style.transform = 'scaleX(' + (hero.facingRight ? -1 : 1) + ') rotate(' + tilt.toFixed(2) + 'deg)';
   }
 
@@ -498,19 +528,127 @@
     setPointer(e);
   });
 
+  // 미니게임 중에는 커서가 장면 밖으로 나가도 마지막 위치에 머무른다
+  // (가장자리에서 피하다가 제자리로 끌려가면 억울하다)
   scene.addEventListener('pointerleave', function (e) {
-    if (e.pointerType === 'mouse') pointer = null;
+    if (e.pointerType === 'mouse' && !(game && game.isActive())) pointer = null;
   });
 
-  // 터치 화면에는 커서가 없으니 탭한 곳으로 헤엄쳐 갔다가 잠시 뒤 제자리로 돌아간다
+  // 터치 화면에는 커서가 없으니 탭한 곳으로 헤엄쳐 갔다가 잠시 뒤 제자리로 돌아간다.
+  // 미니게임 중에는 손가락을 끄는 대로 따라오고(.is-gaming 이 touch-action 을 막아
+  // 페이지가 대신 스크롤되지 않는다), 손을 떼도 그 자리에 머무른다.
   scene.addEventListener('pointerdown', function (e) {
     if (reduceMotion || e.pointerType === 'mouse') return;
     setPointer(e);
     clearTimeout(touchTimer);
+    if (game && game.isActive()) return;
     touchTimer = setTimeout(function () {
       pointer = null;
     }, 5000);
   });
+
+  scene.addEventListener('pointermove', function (e) {
+    if (e.pointerType === 'mouse' || !(game && game.isActive())) return;
+    setPointer(e);
+  });
+
+  // ---- 미니게임 -----------------------------------------------------------
+
+  // 15번째에 시작한다. 8번째부터 카구야가 움찔거리고 14번째엔 크게 흔들려서
+  // 뭔가 일어날 것 같다는 단서를 준다.
+  function countHeroClick() {
+    var now = Date.now();
+    heroClicks = now - lastHeroClick > GAME_CLICK_GAP ? 1 : heroClicks + 1;
+    lastHeroClick = now;
+    if (heroClicks >= GAME_CLICKS) {
+      heroClicks = 0;
+      meteors = [];
+      pending = [];
+      expandStage();
+      game.begin();
+      start();
+      return;
+    }
+    if (heroClicks >= 8) {
+      var strong = heroClicks >= GAME_CLICKS - 1;
+      actorSprite.classList.remove('is-nudge', 'is-nudge-strong');
+      void actorSprite.offsetWidth;
+      actorSprite.classList.add(strong ? 'is-nudge-strong' : 'is-nudge');
+    }
+  }
+
+  if (!reduceMotion && window.SpaceGame) {
+    if (window.SpaceRanking) ranking = window.SpaceRanking.create({ scene: scene });
+    game = window.SpaceGame.create({
+      scene: scene,
+      actor: actor,
+      grid: GRID,
+      colors: colors,
+      snapX: function (v) {
+        return snap(v, G.ox);
+      },
+      snapY: function (v) {
+        return snap(v, G.oy);
+      },
+      onExit: function () {
+        // 평소 유성이 끝나자마자 우르르 나오지 않게 타이머를 새로 잡는다
+        nextSingle = 0;
+        nextShower = 0;
+        actorSprite.classList.remove('is-nudge', 'is-nudge-strong');
+        collapseStage();
+        if (ranking) ranking.afterGame();
+      },
+      onStart: function () {
+        if (ranking) ranking.startRun();
+      },
+      onGameOver: function (seconds) {
+        if (ranking) ranking.recordRun(seconds);
+      }
+    });
+  }
+
+  // 미니게임 동안 우주 장면을 화면 전체로 넓힌다. 장면을 position:fixed 로
+  // 띄우면 문서 흐름에서 빠져 페이지 높이가 줄고 스크롤이 튀므로, 같은 높이의
+  // 빈 자리(stageHolder)를 대신 끼워 둔다. 넓어지고 줄어드는 모습은 clip-path
+  // 로 원래 자리에서 화면 전체까지 펼쳐 보인다. 캔버스·배치는 크기가 바뀌면
+  // ResizeObserver 가 resize() 로 다시 그린다.
+  var stageHolder = null;
+  var stageTimer = 0;
+
+  function insetOf(rect) {
+    return 'inset(' + Math.max(0, rect.top) + 'px ' + Math.max(0, window.innerWidth - rect.right) + 'px ' +
+      Math.max(0, window.innerHeight - rect.bottom) + 'px ' + Math.max(0, rect.left) + 'px)';
+  }
+
+  function expandStage() {
+    clearTimeout(stageTimer);
+    var rect = scene.getBoundingClientRect();
+    if (!stageHolder) {
+      stageHolder = document.createElement('div');
+      stageHolder.className = 'space-scene-holder';
+    }
+    stageHolder.style.height = rect.height + 'px';
+    scene.parentNode.insertBefore(stageHolder, scene);
+    scene.style.transition = 'none';
+    scene.style.clipPath = insetOf(rect);
+    scene.classList.add('is-stage');
+    document.documentElement.classList.add('is-space-game');
+    void scene.offsetWidth;
+    scene.style.transition = '';
+    scene.style.clipPath = 'inset(0px)';
+  }
+
+  function collapseStage() {
+    if (!stageHolder || !stageHolder.parentNode) return;
+    scene.style.clipPath = insetOf(stageHolder.getBoundingClientRect());
+    stageTimer = setTimeout(function () {
+      scene.classList.remove('is-stage');
+      scene.style.clipPath = '';
+      document.documentElement.classList.remove('is-space-game');
+      if (stageHolder.parentNode) stageHolder.parentNode.removeChild(stageHolder);
+      // 카구야는 줄어든 장면 안으로 밀려 들어온 뒤(updateHero 의 clamp) 제자리로 헤엄쳐 간다
+    }, 600);
+  }
 
   // ---- 루프 ---------------------------------------------------------------
 
@@ -532,9 +670,14 @@
     if (revealed <= 0) return;
     ctx.drawImage(staticCanvas, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (!reduceMotion) updateMeteors(t, dt);
+    var gaming = game && game.isActive();
+    if (!reduceMotion && !gaming) updateMeteors(t, dt);
     drawStars(t);
     drawMeteors();
+    if (gaming) {
+      game.update(dt, { x: hero.x, y: hero.drawY }, W, H);
+      game.draw(ctx, W, H, t);
+    }
   }
 
   function frame(now) {
@@ -564,7 +707,7 @@
     canvas.width = staticCanvas.width = Math.round(W * dpr);
     canvas.height = staticCanvas.height = Math.round(H * dpr);
     G = layout();
-    if (!hero) hero = { x: G.home.x, y: G.home.y, vx: 0, vy: 0, facingRight: false };
+    if (!hero) hero = { x: G.home.x, y: G.home.y, drawY: G.home.y, vx: 0, vy: 0, facingRight: false };
     buildDots();
     buildStars();
     meteors = [];

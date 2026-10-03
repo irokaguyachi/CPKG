@@ -43,7 +43,7 @@ export { PresenceDO };
 var OLD_DOMAIN = 'ckpg.cloud';
 var NEW_DOMAIN = 'cpkg.cloud';
 
-var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/snapshot', '/bump/get', '/bump/request'];
+var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/snapshot', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit'];
 
 function isApiPath(pathname) {
   if (API_EXACT_PATHS.indexOf(pathname) !== -1) return true;
@@ -224,6 +224,24 @@ async function cleanupBumps(env) {
   }
 }
 
+// 5분마다 우주 미니게임 랭킹(worker/game_schema.sql)의 오래된 행을 걷어낸다.
+// 등록된 판의 nonce(game_runs)는 시작한 지 4시간이 지나면 그 판의 토큰이
+// 전부 만료되므로 하루 지난 것을, 주간 기록은 8주 지난 것을 지운다. 기간 키가 'wYYYY-MM-DD' 라 문자열 비교가
+// 곧 날짜 비교다.
+async function cleanupGameRanking(env) {
+  try {
+    if (!env.TAGS_DB) return;
+    var now = Date.now();
+    var oldWeek = 'w' + new Date(now - 8 * 7 * 86400000).toISOString().slice(0, 10);
+    await env.TAGS_DB.batch([
+      env.TAGS_DB.prepare('DELETE FROM game_runs WHERE started_at < ?').bind(now - 86400000),
+      env.TAGS_DB.prepare("DELETE FROM game_scores WHERE period <> 'all' AND period < ?").bind(oldWeek)
+    ]);
+  } catch (e) {
+    // 스키마 미적용 등 — 다음 5분 뒤에 다시 시도된다.
+  }
+}
+
 // 짧은 주소 <-> 실제 파일(src/page/ 아래) 매핑. 사이드바 등 사이트 내부
 // 링크는 전부 이 짧은 주소를 쓰도록 이미 바꿔뒀다(src/page/*.html,
 // src/js/pages/bookmarksPage.js, changelogPage.js, mainPage.js, loading.js 참고) —
@@ -268,6 +286,7 @@ export default {
     if (new Date(event.scheduledTime).getUTCMinutes() % 5 === 0) {
       ctx.waitUntil(recordTagSnapshot(env));
       ctx.waitUntil(cleanupBumps(env));
+      ctx.waitUntil(cleanupGameRanking(env));
     }
   },
 
