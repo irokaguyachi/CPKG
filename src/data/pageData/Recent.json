@@ -1,9 +1,248 @@
 {
   "totals": {
-    "novel": 1394,
+    "novel": 1409,
     "series": 107
   },
   "novels": [
+    {
+      "name": "[ 달아, 달아, 밝은 달아. ]",
+      "image": null,
+      "tags": [
+        "슬픔",
+        "로맨스"
+      ],
+      "charCount": "1,000자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 327776,
+          "title": "[ 달아, 달아, 밝은 달아. ]",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327776"
+        }
+      ]
+    },
+    {
+      "name": "짧짧문학) 🎶 달 달 무슨달",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/327478_1.jpg",
+      "tags": [
+        "짧문",
+        "일상"
+      ],
+      "charCount": "255자",
+      "author": "카붕카퐁이(mortal6622)",
+      "posts": [
+        {
+          "id": 327478,
+          "title": "짧짧문학) 🎶 달 달 무슨달",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327478"
+        }
+      ]
+    },
+    {
+      "name": "낙원 — 樂園 —",
+      "image": null,
+      "tags": [
+        "소설",
+        "감동",
+        "로맨스"
+      ],
+      "charCount": "13,486자",
+      "author": "솜방망이(jungle3531)",
+      "posts": [
+        {
+          "id": 327445,
+          "title": "낙원 — 樂園 —",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327445"
+        }
+      ]
+    },
+    {
+      "name": "이쯤에서 네가",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/327403_1.jpg",
+      "tags": [
+        "짧문",
+        "슬픔"
+      ],
+      "charCount": "220자",
+      "author": "로카로카(valuable9711)",
+      "posts": [
+        {
+          "id": 327403,
+          "title": "이쯤에서 네가",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327403"
+        }
+      ]
+    },
+    {
+      "name": "[초음문대]친구라고 생각했는데…",
+      "image": null,
+      "tags": [
+        "짧문",
+        "대회",
+        "코미디"
+      ],
+      "charCount": "653자",
+      "author": "로카로카",
+      "posts": [
+        {
+          "id": 327365,
+          "title": "[초음문대]친구라고 생각했는데…",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327365"
+        }
+      ]
+    },
+    {
+      "name": "[초음문대] 이로하한테 고백할 거야",
+      "image": null,
+      "tags": [
+        "짧문",
+        "대회",
+        "코미디"
+      ],
+      "charCount": "957자",
+      "author": "첼구야",
+      "posts": [
+        {
+          "id": 327338,
+          "title": "[초음문대] 이로하한테 고백할 거야",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327338"
+        }
+      ]
+    },
+    {
+      "name": "[ 나무 아래, 너 ]",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/327201_1.jpg",
+      "tags": [
+        "감동",
+        "로맨스"
+      ],
+      "charCount": "1,300자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 327201,
+          "title": "[ 나무 아래, 너 ]",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327201"
+        }
+      ]
+    },
+    {
+      "name": "[ 참을 수 있는 것 ]",
+      "image": null,
+      "tags": [
+        "슬픔",
+        "로맨스"
+      ],
+      "charCount": "2,456자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 327112,
+          "title": "[ 참을 수 있는 것 ]",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327112"
+        }
+      ]
+    },
+    {
+      "name": "나들이",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/327088_1.jpg",
+      "tags": [
+        "짧문",
+        "슬픔",
+        "로맨스"
+      ],
+      "charCount": "905자",
+      "author": "ㅇㅇ(rokimi)",
+      "posts": [
+        {
+          "id": 327088,
+          "title": "나들이",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327088"
+        }
+      ]
+    },
+    {
+      "name": "오늘 밤 보름달 특보! 🌕",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/326994_1.jpg",
+      "tags": [
+        "짧문",
+        "피폐"
+      ],
+      "charCount": "324자",
+      "author": "유동닉(eoeoe2)",
+      "posts": [
+        {
+          "id": 326994,
+          "title": "오늘 밤 보름달 특보! 🌕",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326994"
+        }
+      ]
+    },
+    {
+      "name": "\"가끔 생각하곤해\"",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/326989_1.jpg",
+      "tags": [
+        "짧문",
+        "슬픔"
+      ],
+      "charCount": "146자",
+      "author": "로카로카(valuable9711)",
+      "posts": [
+        {
+          "id": 326989,
+          "title": "\"가끔 생각하곤해\"",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326989"
+        }
+      ]
+    },
+    {
+      "name": "[ 내일 ]",
+      "image": null,
+      "tags": [
+        "피폐",
+        "슬픔",
+        "로맨스"
+      ],
+      "charCount": "1,956자",
+      "author": "별바다를불태우리(flock4442)",
+      "posts": [
+        {
+          "id": 326925,
+          "title": "[ 내일 ]",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326925"
+        }
+      ]
+    },
+    {
+      "name": "짧짧문학) 🎶 사과같은 내얼굴",
+      "image": "../assets/image/크롤링사진/문학/2026-10-03/326908_1.jpg",
+      "tags": [
+        "짧문",
+        "일상"
+      ],
+      "charCount": "200자",
+      "author": "카붕카퐁이(mortal6622)",
+      "posts": [
+        {
+          "id": 326908,
+          "title": "짧짧문학) 🎶 사과같은 내얼굴",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326908"
+        }
+      ]
+    },
     {
       "name": "[ Reply ]",
       "image": null,
@@ -39,246 +278,6 @@
           "title": "내글구려로 폐기",
           "episode": 1,
           "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326837"
-        }
-      ]
-    },
-    {
-      "name": "짧문학) 🎶 산토끼 토끼야...",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/326836_1.jpg",
-      "tags": [
-        "짧문",
-        "일상"
-      ],
-      "charCount": "261자",
-      "author": "카붕카퐁이(mortal6622)",
-      "posts": [
-        {
-          "id": 326836,
-          "title": "짧문학) 🎶 산토끼 토끼야...",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326836"
-        }
-      ]
-    },
-    {
-      "name": "부케",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/326822_1.jpg",
-      "tags": [
-        "감동",
-        "일상"
-      ],
-      "charCount": "1,077자",
-      "author": "ㅇㅇ(rokimi)",
-      "posts": [
-        {
-          "id": 326822,
-          "title": "부케",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326822"
-        }
-      ]
-    },
-    {
-      "name": "[ 따듯한 너 ]",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/326812_1.jpg",
-      "tags": [
-        "로맨스",
-        "일상"
-      ],
-      "charCount": "1,011자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 326812,
-          "title": "[ 따듯한 너 ]",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326812"
-        }
-      ]
-    },
-    {
-      "name": "야치요의 주례",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/326439_1.jpg",
-      "tags": [
-        "짧문",
-        "감동",
-        "일상"
-      ],
-      "charCount": "971자",
-      "author": "ㅇㅇ(rokimi)",
-      "posts": [
-        {
-          "id": 326439,
-          "title": "야치요의 주례",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326439"
-        }
-      ]
-    },
-    {
-      "name": "[ 나쁜 아이에게는 벌을 ]",
-      "image": null,
-      "tags": [
-        "코미디",
-        "일상"
-      ],
-      "charCount": "3,757자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 326176,
-          "title": "[ 나쁜 아이에게는 벌을 ]",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326176"
-        }
-      ]
-    },
-    {
-      "name": "[ 잊지 않은 약속 ]",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/326121_1.jpg",
-      "tags": [
-        "감동",
-        "로맨스"
-      ],
-      "charCount": "2,637자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 326121,
-          "title": "[ 잊지 않은 약속 ]",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326121"
-        }
-      ]
-    },
-    {
-      "name": "짧문학) 🎶여우야 여우야",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/325955_1.jpg",
-      "tags": [
-        "짧문",
-        "일상"
-      ],
-      "charCount": "147자",
-      "author": "카붕카퐁이(mortal6622)",
-      "posts": [
-        {
-          "id": 325955,
-          "title": "짧문학) 🎶여우야 여우야",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=325955"
-        }
-      ]
-    },
-    {
-      "name": "[ 발장난 ]",
-      "image": null,
-      "tags": [
-        "로맨스",
-        "일상"
-      ],
-      "charCount": "4,316자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 325942,
-          "title": "[ 발장난 ]",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=325942"
-        }
-      ]
-    },
-    {
-      "name": "너무나 달콤했기에 씁슬했던 마지막",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/325938_1.jpg",
-      "tags": [
-        "짧문",
-        "슬픔",
-        "피폐"
-      ],
-      "charCount": "253자",
-      "author": "로카로카(valuable9711)",
-      "posts": [
-        {
-          "id": 325938,
-          "title": "너무나 달콤했기에 씁슬했던 마지막",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=325938"
-        }
-      ]
-    },
-    {
-      "name": "\"너도 알고 있잖아?\"",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/325107_1.jpg",
-      "tags": [
-        "짧문",
-        "피폐",
-        "슬픔"
-      ],
-      "charCount": "206자",
-      "author": "ㅇㅇ(script1840)",
-      "posts": [
-        {
-          "id": 325107,
-          "title": "\"너도 알고 있잖아?\"",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=325107"
-        }
-      ]
-    },
-    {
-      "name": "야치요 비하인드 스토리",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/324857_1.jpg",
-      "tags": [
-        "소설",
-        "피폐",
-        "슬픔"
-      ],
-      "charCount": "9,222자",
-      "author": "Emir(stain4172)",
-      "posts": [
-        {
-          "id": 324857,
-          "title": "야치요 비하인드 스토리",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=324857"
-        }
-      ]
-    },
-    {
-      "name": "짦짦짦 무낙 ( 과자 )",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/323907_1.png",
-      "tags": [
-        "짧문",
-        "일상",
-        "로맨스"
-      ],
-      "charCount": "546자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 323907,
-          "title": "짦짦짦 무낙 ( 과자 )",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=323907"
-        }
-      ]
-    },
-    {
-      "name": "짦짦짦 무낙 ( 담요 )",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/323877_1.png",
-      "tags": [
-        "짧문",
-        "일상",
-        "로맨스"
-      ],
-      "charCount": "542자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 323877,
-          "title": "짦짦짦 무낙 ( 담요 )",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=323877"
         }
       ]
     }
