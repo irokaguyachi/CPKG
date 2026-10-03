@@ -5,7 +5,7 @@
   // 달·고리 행성·별가루를 점 크기 디더링으로 그린다. 이 정적인 층은 화면 밖
   // 캔버스(staticCanvas)에 한 번 그려 두고, 매 프레임에는 반짝이는 별과 유성만
   // 그 위에 다시 그린다. 가운데에는 우주복 카구야(.space-scene-actor)가 떠
-  // 있다가 마우스가 장면 위에 올라오면 천천히 따라온다. 카구야를 15번 연달아
+  // 있다가 마우스가 장면 위에 올라오면 천천히 따라온다. 카구야를 5번 연달아
   // 누르면 미니게임(spaceGame.js)이 시작된다.
   var footer = document.querySelector('.site-footer');
   if (!footer) return;
@@ -22,7 +22,7 @@
   var ACTOR_KEEP = 70; // 커서와 이만큼 가까워지면 멈춘다 (커서를 가리지 않게)
   var ACTOR_BOB = 7; // 둥실거리는 위아래 진폭(px)
   var ACTOR_GAME_SPEED = 380; // 미니게임 중에는 커서를 바짝 따라붙는다
-  var GAME_CLICKS = 15; // 카구야를 이만큼 연달아 누르면 미니게임 시작
+  var GAME_CLICKS = 5; // 카구야를 이만큼 연달아 누르면 미니게임 시작
   var GAME_CLICK_GAP = 1500; // 클릭 사이가 이보다 벌어지면(ms) 다시 처음부터 센다
   var KIND_DUST = 1;
   var KIND_BODY = 2;
@@ -554,7 +554,7 @@
 
   // ---- 미니게임 -----------------------------------------------------------
 
-  // 15번째에 시작한다. 8번째부터 카구야가 움찔거리고 14번째엔 크게 흔들려서
+  // 5번째에 시작한다. 2번째부터 카구야가 움찔거리고 4번째엔 크게 흔들려서
   // 뭔가 일어날 것 같다는 단서를 준다.
   function countHeroClick() {
     var now = Date.now();
@@ -569,7 +569,7 @@
       start();
       return;
     }
-    if (heroClicks >= 8) {
+    if (heroClicks >= 2) {
       var strong = heroClicks >= GAME_CLICKS - 1;
       actorSprite.classList.remove('is-nudge', 'is-nudge-strong');
       void actorSprite.offsetWidth;

@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
   // 푸터 우주 장면(spaceScene.js) 안의 미니게임 「카구야 유성 피하기」.
-  // 카구야를 15번 연달아 누르면 spaceScene.js 가 create() 로 만든 게임을
+  // 카구야를 5번 연달아 누르면 spaceScene.js 가 create() 로 만든 게임을
   // begin() 한다. 이 파일은 게임 상태(HP, 위협들, 피격 판정, HUD, 최고 기록)만
   // 맡고, 카구야 이동과 그리기 루프는 spaceScene.js 가 그대로 돈다 — 매
   // 프레임 update() / draw() 를 불러 주고, 블랙홀이 카구야를 끄는 힘은
