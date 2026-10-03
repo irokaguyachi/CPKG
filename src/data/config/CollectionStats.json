@@ -1,25 +1,25 @@
 {
-  "updatedAt": "2026-10-01",
+  "updatedAt": "2026-10-03",
   "literature": {
-    "posts": 2276,
+    "posts": 2293,
     "authors": 236,
-    "chars": 6984996,
+    "chars": 7013790,
     "series": 107,
-    "seriesEpisodes": 834,
-    "contest": 79,
+    "seriesEpisodes": 836,
+    "contest": 83,
     "hof": 29,
     "lastPost": {
-      "id": 326847,
-      "title": "[ Reply ]"
+      "id": 327776,
+      "title": "[ 달아, 달아, 밝은 달아. ]"
     }
   },
   "translation": {
-    "posts": 1252,
-    "translators": 104,
-    "chars": 922567,
+    "posts": 1256,
+    "translators": 105,
+    "chars": 923033,
     "lastPost": {
-      "id": 326800,
-      "title": "Viora) 「어떻하면 좋지〜...😑」"
+      "id": 327915,
+      "title": "Viora) 시계가 되고 싶다"
     }
   }
 }
