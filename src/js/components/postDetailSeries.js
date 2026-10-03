@@ -548,10 +548,17 @@
     var rightPanel = document.createElement('div');
     rightPanel.className = 'pds-right-panel';
 
-    var episodes = (data.episodes || []).map(function (ep, idx) {
+    var textEpisodes = (data.episodes || []).map(function (ep, idx) {
       ep._idx = idx;
       return ep;
     });
+    // 오디오 노벨 목록(data.audio — Official.json 소설판처럼 원문 회차와 따로 붙은
+    // 장 목록). 있으면 목록 머리에 일반 문학 / 오디오 문학 토글을 띄운다.
+    var audioEpisodes = (data.audio || []).map(function (a, idx) {
+      return { title: a.title, reader: a.reader, episodeLabel: t('{n} 화', { n: idx + 1 }), _idx: idx };
+    });
+    var hasAudioMode = audioEpisodes.length > 0;
+    var episodes = textEpisodes; // 지금 목록에 그리는 쪽
 
     var currentSortOrder = 'asc'; // 'asc' = 1화부터, 'desc' = 최신화부터
 
@@ -611,14 +618,13 @@
       applyTitleMarquee(card, list);
     }
 
-    var isSorting = false;
-    sortBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      if (isSorting) return;
-      isSorting = true;
-
-      currentSortOrder = (currentSortOrder === 'asc' ? 'desc' : 'asc');
-      updateSortButtonUI();
+    // 목록을 밀어내고 change() 로 상태를 바꾼 뒤 새 목록을 밀어 넣는다 — 정렬과
+    // 일반/오디오 모드 전환이 같은 움직임을 쓴다.
+    var isSwapping = false;
+    function swapList(change) {
+      if (isSwapping) return;
+      isSwapping = true;
+      change();
 
       // Slide out effect
       list.classList.remove('pds-list-anim-in', 'pds-list-anim-prep');
@@ -634,9 +640,17 @@
 
         setTimeout(function () {
           list.classList.remove('pds-list-anim-in');
-          isSorting = false;
+          isSwapping = false;
         }, 240);
       }, 140);
+    }
+
+    sortBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      swapList(function () {
+        currentSortOrder = (currentSortOrder === 'asc' ? 'desc' : 'asc');
+        updateSortButtonUI();
+      });
     });
 
     updateSortButtonUI();
@@ -649,10 +663,44 @@
     toolbarCount.textContent = String(episodes.length);
     toolbarTitle.appendChild(toolbarCount);
     toolbar.appendChild(toolbarTitle);
+
+    if (hasAudioMode) {
+      var modeToggle = document.createElement('div');
+      modeToggle.className = 'pds-mode-toggle';
+      modeToggle.setAttribute('role', 'group');
+      modeToggle.setAttribute('aria-label', t('읽기 방식'));
+      var modeButtons = [
+        { mode: 'text', label: '📖 ' + t('일반 문학'), list: textEpisodes },
+        { mode: 'audio', label: '🎧 ' + t('오디오 문학'), list: audioEpisodes }
+      ].map(function (m) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pds-mode-btn';
+        btn.textContent = m.label;
+        btn.setAttribute('aria-pressed', String(m.list === episodes));
+        btn.addEventListener('click', function () {
+          if (m.list === episodes) return;
+          swapList(function () {
+            episodes = m.list;
+            toolbarCount.textContent = String(episodes.length);
+            modeButtons.forEach(function (b) {
+              b.setAttribute('aria-pressed', String(b === btn));
+            });
+            modeToggle.setAttribute('data-mode', m.mode);
+          });
+        });
+        modeToggle.appendChild(btn);
+        return btn;
+      });
+      modeToggle.setAttribute('data-mode', 'text');
+      toolbar.appendChild(modeToggle);
+      toolbar.classList.add('has-mode-toggle');
+    }
+
     // 한 편짜리 글은 순서를 바꿀 게 없다 — 모바일에선 "회차" 머리도 숨기므로
-    // 툴바 줄 자체를 접는다(modal-series.css 의 .pds-toolbar.is-single).
-    if (episodes.length > 1) toolbar.appendChild(sortBtn);
-    else toolbar.classList.add('is-single');
+    // 토글도 없으면 툴바 줄 자체를 접는다(modal-series.css 의 .pds-toolbar.is-single).
+    if (Math.max(textEpisodes.length, audioEpisodes.length) > 1) toolbar.appendChild(sortBtn);
+    else if (!hasAudioMode) toolbar.classList.add('is-single');
     rightPanel.appendChild(toolbar);
     rightPanel.appendChild(list);
     card.appendChild(rightPanel);
@@ -760,10 +808,13 @@
       titleInner.appendChild(titleIcon);
     }
     titleInner.appendChild(document.createTextNode((ep.title || t('게시물 이름')) + ' '));
-    var idSpan = document.createElement('span');
-    idSpan.className = 'pds-episode-id';
-    idSpan.textContent = '| ' + (ep.dcId != null ? ep.dcId : t('게시물 ID'));
-    titleInner.appendChild(idSpan);
+    // 오디오 문학 목록의 장(data.audio)은 원문 글 번호가 따로 없다
+    if (ep.dcId != null || !ep.reader) {
+      var idSpan = document.createElement('span');
+      idSpan.className = 'pds-episode-id';
+      idSpan.textContent = '| ' + (ep.dcId != null ? ep.dcId : t('게시물 ID'));
+      titleInner.appendChild(idSpan);
+    }
     title.appendChild(titleInner);
     item.appendChild(title);
 

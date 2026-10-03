@@ -149,6 +149,7 @@
         favType: type,
         postId: favId,
         tags: s.tags,
+        audio: s.audio,
         episodes: (s.posts || []).map(function (post) {
           return {
             title: post.title,

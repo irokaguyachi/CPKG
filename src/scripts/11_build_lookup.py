@@ -82,6 +82,10 @@ def slim_entry(item, item_type):
         entry["tags"] = item["tags"]
     if len(posts) <= 1 and item.get("charCount"):
         entry["charCount"] = item["charCount"]
+    # 오디오 노벨 목록(Official.json 소설판의 audio) — 북마크에서 열어도 상세
+    # 모달의 일반/오디오 토글이 그대로 나오게 남긴다.
+    if item.get("audio"):
+        entry["audio"] = item["audio"]
     return entry
 
 

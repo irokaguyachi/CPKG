@@ -1274,3 +1274,58 @@
     color: var(--pds-faint);
   }
 }
+
+/* 일반 문학 / 오디오 문학 토글 — 오디오 노벨 목록(data.audio)이 있는 작품에만
+   생긴다(postDetailSeries.js). PC 는 "회차 N" 바로 옆, 모바일 시트는 툴바
+   왼쪽에 놓이고 정렬 버튼이 오른쪽으로 간다. 색은 위의 --pds-* 변수를 쓴다. */
+.pds-mode-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--pds-line);
+  border-radius: var(--radius-pill);
+  background: var(--pds-hover);
+}
+
+.pds-mode-btn {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--pds-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+.pds-mode-btn:hover {
+  opacity: 0.85;
+}
+.pds-mode-btn[aria-pressed="true"] {
+  opacity: 1;
+  background: rgba(var(--pds-tint-1), 0.22);
+}
+.pds-mode-toggle[data-mode="audio"] .pds-mode-btn[aria-pressed="true"] {
+  background: rgba(0, 200, 160, 0.22);
+}
+
+.pds-toolbar.has-mode-toggle {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+@media (min-width: 1081px) {
+  .pds-toolbar.has-mode-toggle .pds-mode-toggle {
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 1080px) {
+  .pds-mode-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}

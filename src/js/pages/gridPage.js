@@ -45,6 +45,8 @@
   // 시리즈는 목록 단계에서부터 코너 리본으로 표시한다 (postDetailSeries.js가
   // 상세 모달 안에서 화 단위로 하는 표시와는 별개 — 여긴 작품 단위).
   function hasAudioNovel(s) {
+    // 화와 따로 붙은 오디오 목록(Official.json 소설판의 audio)도 오디오 작품이다
+    if (s && s.audio && s.audio.length) return true;
     var posts = s && s.posts;
     if (!posts || !posts.length) return false;
     for (var i = 0; i < posts.length; i++) {
@@ -794,6 +796,7 @@
           favType: config.favType,
           postId: favIdOf(s),
           tags: s.tags,
+          audio: s.audio,
           episodes: (s.posts || []).map(function (post) {
             return {
               title: post.title,

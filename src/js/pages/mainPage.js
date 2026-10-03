@@ -43,6 +43,7 @@
   // 노벨 리본 표시) — 카드 마크업이 이 파일 소유라 gridPage.js의 함수를
   // 그대로 재사용할 수 없어 같은 로직을 복사해 둔다.
   function hasAudioNovel(item) {
+    if (item && item.audio && item.audio.length) return true;
     var posts = item && item.posts;
     if (!posts || !posts.length) return false;
     for (var i = 0; i < posts.length; i++) {
@@ -81,6 +82,7 @@
       favType: favType,
       postId: item.posts && item.posts[0] && item.posts[0].id,
       tags: item.tags,
+      audio: item.audio,
       episodes: buildEpisodes(item)
     });
   }
@@ -176,6 +178,7 @@
       PostDetailSeries.open({
         seriesName: item.name,
         imageUrl: item.image,
+        audio: item.audio,
         episodes: buildEpisodes(item)
       });
     });

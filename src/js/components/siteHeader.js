@@ -472,6 +472,7 @@
       favType: entry.type,
       postId: favId,
       tags: item.tags,
+      audio: item.audio,
       episodes: (item.posts || []).map(function (post) {
         var charLabel = global.SeriesUtil ? global.SeriesUtil.charLabel(item.charCount) : item.charCount;
         return {

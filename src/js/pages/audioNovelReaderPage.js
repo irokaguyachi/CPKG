@@ -4,14 +4,14 @@ var AN_CHAPTERS = {
   '1': {
     file: '1장.md',
     title: '초! 카구야 공주 공식 소설 1장',
-    dcId: 749,
-    dcLabel: '초 카구야 공주! 서장~1장'
+    dcId: 267711,
+    dcLabel: '초 카구야 공주! 서장 + 1장'
   },
   '2': {
     file: '2장.md',
     title: '초! 카구야 공주 공식 소설 2장',
-    dcId: 750,
-    dcLabel: '초 카구야 공주! 2장'
+    dcId: 267712, // 2장은 원문이 두 편으로 나뉘어 있어 앞 편(1/2)으로 잇는다
+    dcLabel: '초 카구야 공주! 제2장 (1/2)'
   }
 };
 
@@ -24,7 +24,7 @@ window.addEventListener('DOMContentLoaded', function () {
   document.getElementById('an-header-title').textContent = chapter.title;
 
   var link = document.getElementById('an-source-link-a');
-  link.href = 'https://gall.dcinside.com/mgallery/board/view/?id=singles&no=' + chapter.dcId;
+  link.href = 'https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=' + chapter.dcId;
   document.getElementById('an-source-link-chapter').textContent = chapter.dcLabel;
 
   // src/audioNovel 전체가 이제 R2 CDN(sync_to_r2.py)에 올라가 있으므로,
