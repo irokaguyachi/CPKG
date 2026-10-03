@@ -146,25 +146,6 @@ html.theme-transitioning *:after {
    여기 따로 정의할 게 없다. */
 
 /* Post Cards & Series Cards & HOF Cards */
-[data-theme="dark"] .report-heading {
-  color: var(--dark-emphasis);
-}
-[data-theme="dark"] .report-button {
-  background: var(--dark-surface);
-  border: 0.5px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.4);
-}
-[data-theme="dark"] .report-button:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-[data-theme="dark"] .report-button-label {
-  color: var(--dark-emphasis);
-}
-[data-theme="dark"] .report-button-link {
-  color: rgba(255, 255, 255, 0.5);
-}
-
 [data-theme="dark"] .series-card {
   background: var(--dark-surface);
   border: 0.5px solid rgba(255, 255, 255, 0.06);
@@ -484,20 +465,11 @@ html.theme-transitioning *:after {
 
 /* Site Footer */
 [data-theme="dark"] .site-footer {
-  background: var(--dark-input-bg);
+  --footer-bg: var(--dark-input-bg);
+  --footer-text: rgba(255, 255, 255, 0.88);
+  --footer-muted: rgba(255, 255, 255, 0.45);
+  --footer-line: rgba(255, 255, 255, 0.12);
   border-top: 0.5px solid rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="dark"] .site-footer-line {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-[data-theme="dark"] .site-footer-line strong {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-[data-theme="dark"] .site-footer-contact {
-  color: rgba(255, 255, 255, 0.4);
 }
 
 /* Full-page Loader & MiniLoading in dark mode */

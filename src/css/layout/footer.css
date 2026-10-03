@@ -1,19 +1,154 @@
+/* 사이트 푸터. 왼쪽 위 워드마크, 가운데 링크 두 묶음, 오른쪽 문의 칸,
+   왼쪽 아래 고지·저작권 순서로 배치한다. 좁은 화면에서는 위에서 아래로
+   워드마크 → 링크 → 문의 → 고지 순서로 쌓인다.
+   색은 변수로 두고 다크 모드 값은 theme.css 에서 바꾼다. */
 .site-footer {
+  --footer-bg: #d2d2d2;
+  --footer-text: #141413;
+  --footer-muted: rgba(20, 20, 19, 0.55);
+  --footer-line: rgba(20, 20, 19, 0.18);
+  --footer-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "mark browse shortcut contact"
+    "legal browse shortcut contact";
+  column-gap: 32px;
+  row-gap: 40px;
+  padding: 56px clamp(20px, 2.4vw, 32px) 44px;
+  background: var(--footer-bg);
+  color: var(--footer-text);
+}
+
+/* 헤더와 같은 메인 로고. 테마에 맞는 이미지는 theme.js 가 data-light-src /
+   data-dark-src 로 바꿔 끼운다. */
+.site-footer-wordmark {
+  grid-area: mark;
+  align-self: start;
+  justify-self: start;
+  display: block;
+  line-height: 0;
+}
+
+.site-footer-wordmark img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.site-footer-col--browse { grid-area: browse; }
+.site-footer-col--shortcut { grid-area: shortcut; }
+.site-footer-col--contact { grid-area: contact; }
+
+.site-footer-heading {
+  margin: 0 0 20px;
+  font-family: var(--footer-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: var(--footer-muted);
+}
+
+.site-footer-links {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-links a {
+  font-size: 17px;
+  color: var(--footer-text);
+  text-decoration: none;
+}
+
+.site-footer-links a:hover,
+.site-footer-links a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.site-footer-lead {
+  margin: 0 0 14px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--footer-text);
+}
+
+.site-footer-forms {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-forms a {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 30px 10px;
-  background: #d2d2d2;
-  text-align: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--footer-line);
+  font-size: 16px;
+  color: var(--footer-text);
+  text-decoration: none;
+}
+
+.site-footer-arrow {
+  color: var(--footer-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.site-footer-forms a:hover .site-footer-arrow,
+.site-footer-forms a:focus-visible .site-footer-arrow {
+  color: var(--footer-text);
+  transform: translateX(3px);
+}
+
+.site-footer-contact {
+  margin: 0;
+  font-size: 13px;
+  color: var(--footer-muted);
+}
+
+.site-footer-legal {
+  grid-area: legal;
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .site-footer-line {
   margin: 0;
-  font-size: 15px;
-  color: #000000;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--footer-muted);
 }
 
-.site-footer-contact {
-  margin-top: 10px;
+.site-footer-line strong {
+  color: var(--footer-text);
+}
+
+@media (max-width: 1024px) {
+  .site-footer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "mark mark"
+      "browse shortcut"
+      "contact contact"
+      "legal legal";
+    padding-top: 44px;
+    row-gap: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-footer-arrow {
+    transition: none;
+  }
 }

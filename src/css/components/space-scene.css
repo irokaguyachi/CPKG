@@ -1,0 +1,86 @@
+/* 푸터 아래 우주 배경 이스터에그 (src/js/components/spaceScene.js 가 .site-footer 뒤에 붙인다).
+   배경색은 바로 위 푸터와 같게 해서 푸터가 그대로 우주로 이어지는 것처럼 보이게 한다.
+   점 색은 캔버스가 이 변수들을 읽어서 쓰고, 테마가 바뀌면 다시 읽는다. */
+.space-scene {
+  --space-bg: #d2d2d2;
+  --space-dot: rgba(70, 68, 62, 0.55);
+  --space-body: #5c5a53;
+  --space-star: #3f3d37;
+  --space-shot: #2f2e2a;
+  --space-glow: rgba(255, 255, 255, 0.18);
+
+  position: relative;
+  height: clamp(480px, 90vh, 940px);
+  overflow: hidden;
+  background: var(--space-bg);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-theme="dark"] .space-scene {
+  --space-bg: var(--dark-input-bg);
+  --space-dot: rgba(135, 134, 127, 0.75);
+  --space-body: #b8b5aa;
+  --space-star: #ece8dc;
+  --space-shot: #d6cfbf;
+  --space-glow: rgba(214, 207, 191, 0.07);
+}
+
+.space-scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 우주복 카구야. 위치는 spaceScene.js 가 transform 으로 매 프레임 옮기고,
+   크기를 바꾸면 spaceScene.js 의 ACTOR_SIZE 도 같이 바꾼다.
+   스프라이트는 offlineSrc/universe/kaguya/kaguya_universe_1~4.png 를 줄여서
+   가로로 이어 붙인 4프레임 시트(kaguya_sprite.webp, 프레임당 256px)다. */
+.space-scene-actor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+  will-change: transform;
+}
+
+.space-scene-actor.is-visible {
+  opacity: 1;
+}
+
+/* 뒤쪽 별가루를 살짝 지워서 헬멧 유리 너머로 점이 겹쳐 보이지 않게 한다 */
+.space-scene-actor::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--space-bg) 45%, transparent 70%);
+}
+
+.space-scene-actor-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.space-scene-actor-sprite {
+  width: 100%;
+  height: 100%;
+  background: url("../../offlineSrc/universe/kaguya/kaguya_sprite.webp") 0 0 / 400% 100% no-repeat;
+  animation: space-actor-frames 1.8s steps(4) infinite;
+}
+
+@keyframes space-actor-frames {
+  to { background-position: 133.333% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .space-scene-actor-sprite {
+    animation: none;
+  }
+}
