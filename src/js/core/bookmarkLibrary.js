@@ -192,6 +192,8 @@
       if (res.status === 429) throw httpError(t('요청이 너무 잦아요. 잠시 후 다시 시도해주세요.'), 429);
       if (res.status === 403) throw httpError(t('이 북마크를 수정할 권한이 없어요 (이 브라우저와 연결되어 있지 않아요).'), 403);
       if (res.status === 404) throw httpError(t('존재하지 않거나 이미 삭제된 북마크예요.'), 404);
+      // 관리 페이지에서 숨긴 공개 서재(worker/adminLibrary.js) — 주인 데이터는 그대로다.
+      if (res.status === 410) throw httpError(t('관리자에 의해 숨겨진 서재예요.'), 410);
       throw httpError((data && data.error && t(data.error)) || t('요청에 실패했어요 ({code})', { code: res.status }), res.status);
     });
   }

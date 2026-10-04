@@ -1,0 +1,349 @@
+/* 관리 페이지(/admin, src/js/pages/adminPage.js).
+   탭은 bookmarks.css 의 .bkm-tabs(tabsKit.js), 확인 창은 auth.css 의
+   .auth-overlay/.auth-card, 버튼은 settings-modal.css 의 .settings-btn,
+   입력창은 .bkm-inline-create-input 을 그대로 쓴다. 이 파일은 그 밖에 없는
+   부품(경고 배너·표·배지·칩·토스트)만 두고, 색은 series-card.css/theme.css 가
+   라이트·다크로 바꿔 주는 --card-* 변수만 쓴다 — 다크 모드 규칙이 따로 필요 없다. */
+
+.admin-page {
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px var(--content-padding) 80px;
+  color: var(--card-ink);
+}
+
+.admin-warning {
+  margin: 0 0 24px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #b4231f;
+  background: rgba(224, 49, 49, 0.08);
+  border: 1px solid rgba(224, 49, 49, 0.3);
+  border-radius: 14px;
+}
+[data-theme="dark"] .admin-warning {
+  color: #ff8787;
+}
+
+/* ---- 게이트(비밀번호) ---- */
+.admin-gate {
+  max-width: 460px;
+  margin: 40px auto;
+  padding: 36px 32px;
+  text-align: center;
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+}
+.admin-gate-title {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 800;
+}
+.admin-gate-desc {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--card-muted);
+}
+.admin-gate-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.admin-gate-form .auth-input {
+  padding-right: 20px;
+}
+.admin-gate-form .settings-btn {
+  flex-shrink: 0;
+  height: 50px;
+  padding: 0 22px;
+}
+.admin-gate-error {
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e03131;
+}
+
+/* ---- 탭·섹션 ---- */
+.admin-app .bkm-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.admin-panel[aria-busy="true"] {
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+.admin-section {
+  margin: 0 0 36px;
+}
+.admin-section-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+}
+.admin-section-desc {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--card-muted);
+}
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.admin-input {
+  width: 260px;
+  max-width: 100%;
+}
+.admin-btn {
+  white-space: nowrap;
+}
+.admin-btn:disabled,
+.admin-dialog .settings-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- 표 ---- */
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: 16px;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th,
+.admin-table td {
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--card-line);
+}
+.admin-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--card-muted);
+  white-space: nowrap;
+}
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.admin-table tbody tr:hover {
+  background: var(--card-hover);
+}
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.admin-row-actions .settings-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.admin-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--card-muted);
+}
+.admin-muted {
+  font-size: 13px;
+  color: var(--card-muted);
+}
+.admin-empty {
+  margin: 0;
+  padding: 18px;
+  font-size: 14px;
+  color: var(--card-muted);
+  text-align: center;
+  background: var(--card-surface);
+  border: 1px dashed var(--card-line);
+  border-radius: 16px;
+}
+
+.admin-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--card-muted);
+  background: var(--card-hover);
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-pill);
+}
+.admin-badge.is-primary {
+  color: #00745f;
+  background: rgba(0, 255, 204, 0.16);
+  border-color: transparent;
+}
+.admin-badge.is-danger {
+  color: #e03131;
+  background: rgba(224, 49, 49, 0.1);
+  border-color: transparent;
+}
+[data-theme="dark"] .admin-badge.is-primary {
+  color: var(--mint);
+}
+
+/* ---- 금지 닉네임 칩 ---- */
+.admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 6px 6px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-pill);
+}
+.admin-chip-remove {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--card-muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.admin-chip-remove:hover {
+  color: #e03131;
+  background: rgba(224, 49, 49, 0.1);
+}
+
+/* ---- 태그 탭: 작품 검색 ---- */
+.admin-search {
+  width: 360px;
+}
+.admin-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 560px;
+  margin: 8px 0 16px;
+}
+.admin-search-item {
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--card-ink);
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.admin-search-item:hover {
+  background: var(--card-hover);
+}
+.admin-post-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 10px;
+  font-size: 16px;
+}
+.admin-post-head + .admin-row-actions {
+  justify-content: flex-start;
+  margin: 0 0 12px;
+}
+
+/* ---- 작업 기록 세부 ---- */
+.admin-detail summary {
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.admin-detail pre {
+  max-width: 520px;
+  max-height: 260px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--card-hover);
+  border-radius: 10px;
+}
+
+/* ---- 확인 창(auth-card 위에 얹는 부분만) ---- */
+.admin-dialog {
+  max-width: 440px;
+  align-items: stretch;
+  text-align: left;
+}
+.admin-dialog .auth-title {
+  margin-right: 24px;
+}
+.admin-dialog-hint {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #e03131;
+}
+.admin-dialog-input {
+  margin: 0 0 18px;
+  padding-right: 20px;
+}
+.admin-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- 토스트 ---- */
+.admin-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 600;
+  max-width: calc(100% - 32px);
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(20, 21, 25, 0.92);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transform: translateX(-50%);
+}
+.admin-toast.is-error {
+  background: #c92a2a;
+}
+
+@media (max-width: 640px) {
+  .admin-gate-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-input,
+  .admin-search {
+    width: 100%;
+  }
+  .admin-row-actions {
+    justify-content: flex-start;
+  }
+}

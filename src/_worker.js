@@ -31,9 +31,11 @@
  */
 import backend from '../worker/favoritesShareWorker.js';
 import statsApi from '../worker/statsApi.js';
+import adminApi from '../worker/adminApi.js';
 import { refreshLibraryIndex } from '../worker/libraryIndex.js';
 import { PresenceDO } from '../worker/presenceDO.js';
 import { readJsonLimited } from '../worker/requestBody.js';
+import { recordTagSnapshot } from '../worker/tagSnapshot.js';
 import * as humanCheck from '../worker/humanCheck.js';
 
 // 방문자 통계용 Durable Object 클래스. wrangler가 배포 시 이 export를 보고
@@ -175,36 +177,6 @@ async function recordPresenceSample(env) {
   }
 }
 
-// 5분마다(1분 Cron 중 분이 5의 배수일 때만) D1(TAGS_DB)의 유저 태그 투표를
-// 게시글별로 집계해 R2에 정적 스냅샷으로 구워 둔다. 목록/필터 화면은 D1을
-// 직접 조회하지 않고 이 스냅샷만 읽는다(gridPage.js) — 카드 하나 그릴 때마다
-// D1 쿼리를 날리는 대신, 무거운 집계를 여기 한 번으로 몰아준다.
-async function recordTagSnapshot(env) {
-  try {
-    if (!env.TAGS_DB || !env.FAVORITES_BUCKET) return;
-    var rows = await env.TAGS_DB.prepare(
-      'SELECT post_id, tag_name, COUNT(*) AS votes FROM tag_votes GROUP BY post_id, tag_name'
-    ).all();
-
-    var posts = {};
-    (rows.results || []).forEach(function (r) {
-      var key = String(r.post_id);
-      if (!posts[key]) posts[key] = [];
-      posts[key].push({ tag: r.tag_name, votes: r.votes });
-    });
-    Object.keys(posts).forEach(function (key) {
-      posts[key].sort(function (a, b) { return b.votes - a.votes; });
-    });
-
-    var snapshot = { generatedAt: Date.now(), posts: posts };
-    await env.FAVORITES_BUCKET.put('tags/snapshot.json', JSON.stringify(snapshot), {
-      httpMetadata: { contentType: 'application/json' }
-    });
-  } catch (e) {
-    // 이번 집계를 걸러도 5분 뒤 다시 시도된다 — 조용히 넘어간다.
-  }
-}
-
 // 5분마다 끌올(bump) 큐의 오래된 행을 걷어낸다. D1 용량이 무한정 쌓이지
 // 않도록 하는 하우스키핑일 뿐이다. 다만 v0.5부터 끌올은 다음 신청이 올
 // 때까지 끝나지 않으므로, end_at(교체 시각이 없으면 시작 + 1시간인 임시
@@ -221,6 +193,12 @@ async function cleanupBumps(env) {
     ).bind(cutoff, now).run();
   } catch (e) {
     // 스키마 미적용 등 — 다음 5분 뒤에 다시 시도된다.
+  }
+  try {
+    // 관리 페이지가 취소 표시한 행(worker/admin_schema.sql)도 원본 행이 정리되면 같이 지운다.
+    await env.TAGS_DB.prepare('DELETE FROM bump_cancels WHERE bump_id NOT IN (SELECT id FROM bumps)').run();
+  } catch (e) {
+    // 관리 스키마 미적용 — 무시한다.
   }
 }
 
@@ -257,7 +235,10 @@ var PAGE_SLUGS = {
   notice: 'changelogPage.html',
   // 관리자용 방문자 통계 페이지. 화면 자체는 데이터가 없으면 아무것도 안
   // 보여주고, 실제 수치는 /api/stats/* 가 STATS_ADMIN_TOKEN 으로 막는다.
-  stats: 'statsPage.html'
+  stats: 'statsPage.html',
+  // 관리 페이지. 화면은 껍데기뿐이고, 데이터는 /api/admin/* 가 관리자 계정 +
+  // 비밀번호로 받은 세션으로만 내려준다(worker/adminApi.js).
+  admin: 'adminPage.html'
 };
 
 var LEGACY_HTML_TO_SLUG = {};
@@ -305,6 +286,11 @@ export default {
     // 완전히 분리된 모듈로 넘긴다.
     if (isStatsPath(url.pathname)) {
       return statsApi.fetch(request, env, ctx);
+    }
+
+    // 관리 페이지(/admin) API — 관리자 계정 + 비밀번호로 받은 세션으로만 연다.
+    if (url.pathname.indexOf('/api/admin/') === 0) {
+      return adminApi.fetch(request, env, ctx);
     }
 
     // 방문 기록 비콘. 사람 판정(Turnstile)을 거친 방문만 통계에 남긴다.

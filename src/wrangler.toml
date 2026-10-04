@@ -145,6 +145,17 @@ namespace_id = "1010"
   limit = 5
   period = 60
 
+# 관리 페이지 로그인(/api/admin/login). 비밀번호 대입을 막는 용도라 낮게 잡고,
+# worker/adminApi.js 는 이 바인딩이 없거나 장애면 로그인을 막는다(fail-closed).
+# 관리자 시크릿 ADMIN_USER_HASHES / ADMIN_PASSWORD / ADMIN_SESSION_SECRET 은
+# `npx wrangler secret put <이름>` (dev 는 --env dev)으로 넣는다.
+[[ratelimits]]
+name = "RL_ADMIN_LOGIN"
+namespace_id = "1011"
+  [ratelimits.simple]
+  limit = 5
+  period = 60
+
 # ---- 방문자 통계 ----
 # 목표는 Cloudflare 커스텀 대시보드(Traffic overview)에서 이 수치를 차트로
 # 보는 것이다. 커스텀 대시보드는 GraphQL API 데이터셋만 그리는데, Analytics
@@ -314,6 +325,13 @@ namespace_id = "1009"
 [[env.dev.ratelimits]]
 name = "RL_GAME_SUBMIT"
 namespace_id = "1010"
+  [env.dev.ratelimits.simple]
+  limit = 5
+  period = 60
+
+[[env.dev.ratelimits]]
+name = "RL_ADMIN_LOGIN"
+namespace_id = "1011"
   [env.dev.ratelimits.simple]
   limit = 5
   period = 60

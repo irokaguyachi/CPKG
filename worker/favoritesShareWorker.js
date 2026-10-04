@@ -184,6 +184,17 @@ async function loadTagCatalog(request, env) {
   }
 }
 
+// 관리 페이지(worker/adminTags.js)가 잠근 작품인지. 잠긴 작품은 기존 표를 그대로
+// 두고 새 투표(추가·취소 모두)만 막는다. 관리 테이블이 아직 없거나 조회가
+// 실패하면 잠기지 않은 것으로 본다 — 부가 제약이 투표 자체를 막지 않도록.
+async function tagVoteLocked(env, postId) {
+  try {
+    return !!(await env.TAGS_DB.prepare('SELECT 1 FROM tag_vote_locks WHERE post_id = ?').bind(postId).first());
+  } catch (e) {
+    return false;
+  }
+}
+
 // 비로그인 방문자도 득표수는 볼 수 있어야 하므로 personalCode는 선택이다
 // (readUserBody는 필수라 여기서는 못 쓴다). 그래서 레이트리밋도 걸지 않는다 —
 // GET /library/<code>처럼 읽기 전용 조회는 이 프로젝트에서 원래 열려 있다.
@@ -216,11 +227,11 @@ async function handleTagsGet(request, env) {
       myTags = (mine.results || []).map(function (r) { return r.tag_name; });
     }
 
-    return jsonResponse(request, { votes: votes, myTags: myTags });
+    return jsonResponse(request, { votes: votes, myTags: myTags, locked: await tagVoteLocked(env, postId) });
   } catch (e) {
     // 스키마 미적용 등 DB 장애 — 태그는 부가 정보라 페이지를 막지 않도록
     // 빈 결과로 조용히 넘어간다(gridPage.js의 스냅샷 병합과 같은 기조).
-    return jsonResponse(request, { votes: {}, myTags: [] });
+    return jsonResponse(request, { votes: {}, myTags: [], locked: false });
   }
 }
 
@@ -238,6 +249,8 @@ async function handleTagsVote(request, env) {
   var postId = cleanTagPostId(raw && raw.postId);
   var tagName = raw && typeof raw.tagName === 'string' ? raw.tagName : null;
   if (postId === null || !tagName) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+
+  if (await tagVoteLocked(env, postId)) return jsonResponse(request, { error: 'voting locked' }, 403);
 
   var catalog = await loadTagCatalog(request, env);
   if (catalog.indexOf(tagName) === -1) {
@@ -387,6 +400,20 @@ function bumpSwitchAt(startAt, queuedAt) {
 // 나중에 들어온 행(id)이 이긴다. 두 쿼리가 같은 판정을 쓰도록 SQL 조각으로 둔다.
 const BUMP_ACTIVE_ID_SQL = '(SELECT id FROM bumps WHERE start_at <= ? ORDER BY start_at DESC, id DESC LIMIT 1)';
 
+// 관리 페이지(worker/adminBumps.js)가 취소한 활성 끌올의 id. 활성 행을 지우면
+// 이미 교체된 이전 끌올이 다시 활성으로 잡히므로, 취소는 bump_cancels 에 표시만
+// 하고 여기서 걸러낸다. 관리 테이블이 없거나 조회가 실패하면 null(취소 없음).
+async function cancelledActiveBumpId(env, now) {
+  try {
+    var row = await env.TAGS_DB.prepare(
+      'SELECT bump_id FROM bump_cancels WHERE bump_id = ' + BUMP_ACTIVE_ID_SQL
+    ).bind(now).first();
+    return row ? row.bump_id : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // endAt은 교체 시각(다음 대기 항목의 시작 시각)이고, 대기자가 없으면 null이다.
 function bumpPublicRow(row, nextStartAt) {
   return row ? { type: row.item_type, id: row.item_id, startAt: row.start_at, endAt: nextStartAt || null } : null;
@@ -409,8 +436,9 @@ async function handleBumpGet(request, env) {
   var now = Date.now();
   try {
     var active = await env.TAGS_DB.prepare(
-      'SELECT item_type, item_id, start_at FROM bumps WHERE id = ' + BUMP_ACTIVE_ID_SQL
+      'SELECT id, item_type, item_id, start_at FROM bumps WHERE id = ' + BUMP_ACTIVE_ID_SQL
     ).bind(now).first();
+    if (active && active.id === await cancelledActiveBumpId(env, now)) active = null;
 
     // 대기 중인 행은 전부 지금 이후에 시작하므로, 가장 먼저 시작하는 행의
     // 시작 시각이 곧 현재 끌올의 교체 시각이다.
@@ -469,6 +497,9 @@ async function handleBumpRequest(request, env) {
   var now = Date.now();
   var hash = await bumpRequesterHash(parsed.personalCode);
   var cooldownFloor = now - BUMP_COOLDOWN_MS;
+  // 취소된 활성 행은 중복 검사에서 빼고(같은 작품을 다시 끌올할 수 있게), 큐의
+  // 맨 끝이면 기다릴 이유가 없으니 새 신청을 바로 시작한다. -1 은 "없음".
+  var cancelledId = (await cancelledActiveBumpId(env, now)) || -1;
 
   try {
     for (var attempt = 0; attempt < 3; attempt++) {
@@ -478,7 +509,7 @@ async function handleBumpRequest(request, env) {
         'SELECT id, start_at, (SELECT MAX(id) FROM bumps) AS max_id FROM bumps ORDER BY start_at DESC, id DESC LIMIT 1'
       ).first();
       var maxId = tail ? tail.max_id : 0;
-      var startAt = tail ? Math.max(now, bumpSwitchAt(tail.start_at, now)) : now;
+      var startAt = tail && tail.id !== cancelledId ? Math.max(now, bumpSwitchAt(tail.start_at, now)) : now;
 
       var statements = [
         env.TAGS_DB.prepare(
@@ -486,13 +517,13 @@ async function handleBumpRequest(request, env) {
           'SELECT ?, ?, ?, ?, ?, ? ' +
           'WHERE NOT EXISTS (SELECT 1 FROM bumps WHERE id > ?) ' +
           '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE requester_hash = ? AND requested_at > ?) ' +
-          '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND (start_at > ? OR id = ' + BUMP_ACTIVE_ID_SQL + ')) ' +
+          '  AND NOT EXISTS (SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND id <> ? AND (start_at > ? OR id = ' + BUMP_ACTIVE_ID_SQL + ')) ' +
           '  AND (SELECT COUNT(*) FROM bumps WHERE start_at > ?) + 1 < ?'
         ).bind(
           type, id, hash, now, startAt, startAt + BUMP_OPEN_END_MS,
           maxId,
           hash, cooldownFloor,
-          type, id, now, now,
+          type, id, cancelledId, now, now,
           now, BUMP_MAX_QUEUE_DEPTH
         )
       ];
@@ -524,8 +555,8 @@ async function handleBumpRequest(request, env) {
         }, 429);
       }
       var dup = await env.TAGS_DB.prepare(
-        'SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND (start_at > ? OR id = ' + BUMP_ACTIVE_ID_SQL + ') LIMIT 1'
-      ).bind(type, id, now, now).first();
+        'SELECT 1 FROM bumps WHERE item_type = ? AND item_id = ? AND id <> ? AND (start_at > ? OR id = ' + BUMP_ACTIVE_ID_SQL + ') LIMIT 1'
+      ).bind(type, id, cancelledId, now, now).first();
       if (dup) return jsonResponse(request, { error: '이미 끌올되어 있어요.' }, 409);
       var waiting = await env.TAGS_DB.prepare(
         'SELECT COUNT(*) AS n FROM bumps WHERE start_at > ?'
@@ -602,7 +633,7 @@ function cleanGameToken(raw) {
 
 // 제어 문자·폭 없는 문자·방향 바꾸는 문자를 지우고 공백을 하나로 줄인다.
 // 남은 글자가 1~10자여야 한다.
-function cleanGameNickname(raw) {
+export function cleanGameNickname(raw) {
   if (typeof raw !== 'string' || raw.length > 64) return null;
   var name = raw.normalize('NFC')
     .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/g, '')
@@ -618,7 +649,7 @@ async function gamePlayerHash(playerId) {
 
 // 주간 순위의 기간 키 — 그 주 월요일(한국 시간) 날짜. 1970-01-01 은 목요일이라
 // (날짜 번호 + 3) % 7 이 월요일부터 지난 날 수다.
-function gameWeekKey(now) {
+export function gameWeekKey(now) {
   var day = Math.floor((now + GAME_KST_OFFSET_MS) / DAY_MS);
   var monday = day - ((day + 3) % 7);
   return 'w' + new Date(monday * DAY_MS).toISOString().slice(0, 10);
@@ -778,6 +809,24 @@ async function handleGameEnd(request, env) {
   return jsonResponse(request, { resultToken: resultToken });
 }
 
+// 관리 페이지(worker/adminGame.js)가 차단한 플레이어이거나, 금지어가 들어간
+// 닉네임이면 막는다. 차단 사실은 따로 알리지 않고 일반 닉네임 거부와 같은
+// 응답을 쓴다. 관리 테이블(worker/admin_schema.sql)이 아직 없거나 조회가
+// 실패하면 막지 않는다 — 부가 제약이 랭킹 등록 자체를 막지 않도록.
+async function gameSubmitBlocked(env, playerHash, nickname) {
+  try {
+    var results = await env.TAGS_DB.batch([
+      env.TAGS_DB.prepare('SELECT 1 AS hit FROM game_bans WHERE player_hash = ?').bind(playerHash),
+      env.TAGS_DB.prepare('SELECT word FROM banned_nicknames')
+    ]);
+    if ((results[0].results || []).length) return true;
+    var lower = nickname.toLowerCase();
+    return (results[1].results || []).some(function (r) { return lower.indexOf(r.word) !== -1; });
+  } catch (e) {
+    return false;
+  }
+}
+
 // 등록: 닉네임 확인 → 판(nonce) 소모 → 전체·주간 최고 기록 갱신. 판 소모는
 // PRIMARY KEY 충돌을 이용한 INSERT 하나라 같은 결과로 동시에 두 번 보내도 한
 // 번만 통과한다. 닉네임 확인을 판 소모보다 먼저 해서, 이미 쓰이는 이름이면
@@ -805,6 +854,10 @@ async function handleGameSubmit(request, env) {
     return jsonResponse(request, { error: 'invalid run' }, 400);
   }
   var scoreMs = result.sc;
+
+  if (await gameSubmitBlocked(env, playerHash, nickname)) {
+    return jsonResponse(request, { error: 'invalid nickname' }, 400);
+  }
 
   try {
     var taken = await env.TAGS_DB.prepare(
@@ -1225,6 +1278,26 @@ async function handleLibraryCreate(request, env) {
   return jsonResponse(request, { code: code, editToken: editToken }, 201);
 }
 
+// 관리 페이지(worker/adminLibrary.js)가 숨긴 서재 코드. 숨김 상태는 R2 레코드가
+// 아니라 D1 library_hidden 에 두므로 주인이 서재를 고쳐도 그대로 유지된다. 관리
+// 테이블이 없거나 조회가 실패하면 숨긴 서재가 없는 것으로 본다(목록·조회를 막지 않도록).
+async function hiddenLibraryCodes(env) {
+  try {
+    var rows = await env.TAGS_DB.prepare('SELECT code FROM library_hidden').all();
+    return new Set((rows.results || []).map(function (r) { return r.code; }));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+async function isLibraryHidden(env, code) {
+  try {
+    return !!(await env.TAGS_DB.prepare('SELECT 1 FROM library_hidden WHERE code = ?').bind(code).first());
+  } catch (e) {
+    return false;
+  }
+}
+
 async function handleLibraryList(url, request, env) {
   var ip = clientIp(request);
   if (!(await checkLimit(env.RL_LIB_LIST, ip))) {
@@ -1244,6 +1317,11 @@ async function handleLibraryList(url, request, env) {
   var rows = await readLibraryIndex(env);
   if (!Array.isArray(rows)) {
     return jsonResponse(request, { error: 'library index is preparing, try again shortly' }, 503);
+  }
+
+  var hidden = await hiddenLibraryCodes(env);
+  if (hidden.size) {
+    rows = rows.filter(function (r) { return !hidden.has(r.code); });
   }
 
   if (q) {
@@ -1279,6 +1357,7 @@ async function handleLibraryGet(code, request, env) {
 
   var object = await env.FAVORITES_BUCKET.get('library/' + code + '.json');
   if (!object) return jsonResponse(request, { error: 'not found' }, 404);
+  if (await isLibraryHidden(env, code)) return jsonResponse(request, { error: 'hidden' }, 410);
 
   var record = await object.json();
   return jsonResponse(request, libraryPublicView(code, record));

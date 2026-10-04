@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>초카공 문학&amp;번역 • 관리</title>
+<link rel="icon" type="image/png" href="../offlineSrc/favicon.png" />
+<meta name="theme-color" content="#ffffff" />
+<link rel="stylesheet" href="../fonts/Pretendard-dynamic/pretendardvariable-dynamic-subset.css" />
+<link rel="stylesheet" href="../css/base/fonts.css" />
+<link rel="stylesheet" href="../css/base/reset.css" />
+<link rel="stylesheet" href="../css/components/modal-base.css" />
+<link rel="stylesheet" href="../css/base/colorTheme.css" />
+<link rel="stylesheet" href="../css/layout/header.css" />
+<link rel="stylesheet" href="../css/layout/site-header.css" />
+<link rel="stylesheet" href="../css/layout/site-info.css" />
+<link rel="stylesheet" href="../css/layout/footer.css" />
+<link rel="stylesheet" href="../css/components/series-card.css" />
+<link rel="stylesheet" href="../css/components/auth.css" />
+<link rel="stylesheet" href="../css/components/modal-series.css" />
+<link rel="stylesheet" href="../css/components/bookmarks.css" />
+<link rel="stylesheet" href="../css/components/settings-modal.css" />
+<link rel="stylesheet" href="../css/components/tags.css" />
+<link rel="stylesheet" href="../css/pages/admin-page.css" />
+<link rel="stylesheet" href="../css/theme.css" />
+<script src="../js/core/themeInit.js"></script>
+</head>
+<body>
+<header class="header site-header">
+  <div class="site-header-top">
+    <a class="header-logo-link" href="/" aria-label="메인 페이지로 이동" data-i18n-attr="aria-label">
+      <img class="header-logo" src="../offlineSrc/logo/MainLogo_Dark.png" data-light-src="../offlineSrc/logo/MainLogo_Dark.png" data-dark-src="../offlineSrc/logo/MainLogo_Light.png" alt="관리" />
+    </a>
+
+    <div class="site-search" role="search">
+      <div class="site-search-box">
+        <svg class="site-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" class="site-search-input" id="site-search-input" placeholder="작품 제목으로 검색" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="site-search-results" aria-label="통합 검색" data-i18n-attr="placeholder,aria-label" />
+        <span class="site-search-scope" data-i18n>통합 검색</span>
+        <kbd class="site-search-kbd" aria-hidden="true">/</kbd>
+      </div>
+      <button type="button" class="site-icon-btn site-search-close-btn" aria-label="검색 닫기" data-i18n-attr="aria-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="site-search-results" id="site-search-results" role="listbox" aria-label="검색 결과" data-i18n-attr="aria-label" hidden></div>
+    </div>
+
+    <div class="site-header-actions">
+      <button type="button" class="site-icon-btn site-search-open-btn" aria-label="검색 열기" data-i18n-attr="aria-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+      <div class="theme-switch" role="group" aria-label="화면 테마" data-i18n-attr="aria-label">
+        <button type="button" class="site-icon-btn theme-switch-btn" data-theme-set="light" aria-pressed="false" aria-label="라이트 모드" title="라이트 모드" data-i18n-attr="aria-label,title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </button>
+        <span class="theme-switch-divider" aria-hidden="true"></span>
+        <button type="button" class="site-icon-btn theme-switch-btn" data-theme-set="dark" aria-pressed="false" aria-label="다크 모드" title="다크 모드" data-i18n-attr="aria-label,title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+      <div class="site-profile">
+        <button type="button" class="site-profile-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="site-profile-menu" aria-label="계정 메뉴" data-i18n-attr="aria-label">
+          <span class="site-avatar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4.2"/><path d="M3.5 21.5c0-4.7 3.8-8 8.5-8s8.5 3.3 8.5 8z"/></svg></span>
+          <span class="site-sync-dot" hidden></span>
+        </button>
+        <div class="site-profile-menu" id="site-profile-menu" role="menu" aria-label="계정 메뉴" data-i18n-attr="aria-label" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="site-nav" aria-label="주요 메뉴" data-i18n-attr="aria-label">
+    <div class="site-nav-links">
+      <a href="/" class="site-nav-link" data-i18n>메인</a>
+      <a href="/novel" class="site-nav-link" data-i18n>문학·번역</a>
+      <a href="/official" class="site-nav-link" data-i18n>공식</a>
+      <a href="/series" class="site-nav-link" data-i18n>시리즈</a>
+      <a href="/hof" class="site-nav-link" data-i18n>명예관</a>
+      <a href="/contest" class="site-nav-link" data-i18n>대회</a>
+      <a href="/notice" class="site-nav-link" data-i18n>공지사항</a>
+    </div>
+    <button type="button" class="site-nav-settings" data-settings-trigger>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="site-nav-settings-label" data-i18n>설정</span>
+    </button>
+  </nav>
+</header>
+
+<!-- 관리 페이지(/admin). 데이터는 전부 /api/admin/* (worker/adminApi.js)가
+     관리자 세션으로만 내려준다 — 이 HTML 에는 껍데기만 있다. -->
+<main class="admin-page" id="admin-root">
+  <p class="admin-warning" role="note">⚠️ 이 화면의 작업은 실서버 데이터에 반영됩니다.</p>
+  <section class="admin-gate" id="admin-gate" hidden>
+    <h1 class="admin-gate-title">관리 페이지</h1>
+    <p class="admin-gate-desc" id="admin-gate-desc"></p>
+    <form class="admin-gate-form" id="admin-gate-form" hidden>
+      <input class="auth-input" id="admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" required />
+      <button class="settings-btn is-primary" type="submit">들어가기</button>
+    </form>
+    <p class="admin-gate-error" id="admin-gate-error" hidden></p>
+  </section>
+  <section class="admin-app" id="admin-app" hidden>
+    <div id="admin-tabs"></div>
+    <div class="admin-panel" id="admin-panel"></div>
+  </section>
+</main>
+<div class="admin-toast" id="admin-toast" role="status" aria-live="polite" hidden></div>
+
+<footer class="site-footer">
+  <a class="site-footer-wordmark" href="/" aria-label="메인 페이지로 이동" data-i18n-attr="aria-label"><img src="../offlineSrc/logo/MainLogo_Dark.png" data-light-src="../offlineSrc/logo/MainLogo_Dark.png" data-dark-src="../offlineSrc/logo/MainLogo_Light.png" alt="초카구야히메! 번역 및 문학 페이지!" data-i18n-attr="alt" /></a>
+  <nav class="site-footer-col site-footer-col--browse" aria-label="둘러보기" data-i18n-attr="aria-label">
+    <h2 class="site-footer-heading" data-i18n>둘러보기</h2>
+    <ul class="site-footer-links">
+      <li><a href="/novel" data-i18n>문학·번역</a></li>
+      <li><a href="/official" data-i18n>공식</a></li>
+      <li><a href="/series" data-i18n>시리즈</a></li>
+      <li><a href="/hof" data-i18n>명예관</a></li>
+      <li><a href="/contest" data-i18n>대회</a></li>
+    </ul>
+  </nav>
+  <nav class="site-footer-col site-footer-col--shortcut" aria-label="바로가기" data-i18n-attr="aria-label">
+    <h2 class="site-footer-heading" data-i18n>바로가기</h2>
+    <ul class="site-footer-links">
+      <li><a href="/" data-i18n>메인</a></li>
+      <li><a href="/notice" data-i18n>공지사항</a></li>
+      <li><a href="/bookmarks" data-i18n>북마크</a></li>
+    </ul>
+  </nav>
+  <div class="site-footer-col site-footer-col--contact">
+    <h2 class="site-footer-heading" data-i18n>문의</h2>
+    <p class="site-footer-lead" data-i18n>원하는 문학이 없거나 태그가 이상하다면 알려 주세요.</p>
+    <ul class="site-footer-forms">
+      <li><a href="https://forms.gle/VgGyidYbiTFfr2hK7" target="_blank" rel="noopener noreferrer"><span data-i18n>건의 · 버그 제보</span><span class="site-footer-arrow" aria-hidden="true">&rarr;</span></a></li>
+      <li><a href="https://forms.gle/31Q9MPKTKdD1pVTs5" target="_blank" rel="noopener noreferrer"><span data-i18n>태그 오탈자 문의</span><span class="site-footer-arrow" aria-hidden="true">&rarr;</span></a></li>
+    </ul>
+    <p class="site-footer-contact"><span data-i18n>문의</span> : cpkg@cpkg.cloud</p>
+  </div>
+  <div class="site-footer-legal">
+    <p class="site-footer-line" data-i18n-html>해당 페이지는 <strong>절대로</strong> 초! 카구야 공주의 공식이 아니며, 팬메이드 페이지임을 알립니다.</p>
+    <p class="site-footer-line">Copyright ⓒ 2026 - 2026 Cho Kaguya hime. All rights reserved.</p>
+  </div>
+</footer>
+
+<script defer src="../js/config/cdnConfig.js"></script>
+<script defer src="../js/core/i18n.js"></script>
+<script defer src="../js/config/siteConfig.js"></script>
+<script defer src="../js/config/libraryConfig.js"></script>
+<script defer src="../js/components/popoverKit.js"></script>
+<script defer src="../js/components/tabsKit.js"></script>
+<script defer src="../js/core/bookmarks.js"></script>
+<script defer src="../js/core/bookmarkLibrary.js"></script>
+<script defer src="../js/core/userData.js"></script>
+<script defer src="../js/components/bookmarkPicker.js"></script>
+<script defer src="../js/components/bumpButton.js"></script>
+<script defer src="../js/core/theme.js"></script>
+<script defer src="../js/components/authModal.js"></script>
+<script defer src="../js/components/auth.js"></script>
+<script defer src="../js/core/audioSettings.js"></script>
+<script defer src="../js/core/contentSettings.js"></script>
+<script defer src="../js/core/viewSettings.js"></script>
+<script defer src="../js/components/settingsModal.js"></script>
+<script defer src="../js/components/siteHeader.js"></script>
+<script defer src="../js/config/tagConfig.js"></script>
+<script defer src="../js/core/seriesUtil.js"></script>
+<script defer src="../js/components/postDetailSeries.js"></script>
+<script defer src="../js/pages/adminPage.js"></script>
+</body>
+</html>

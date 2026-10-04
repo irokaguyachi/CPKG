@@ -206,6 +206,8 @@
   "요청에 실패했어요 ({code})": "Request failed ({code})",
   "이 북마크를 수정할 권한이 없어요 (이 브라우저와 연결되어 있지 않아요).": "You don't have permission to edit this bookmark (it isn't linked to this browser).",
   "존재하지 않거나 이미 삭제된 북마크예요.": "This bookmark doesn't exist or has already been deleted.",
+  "관리자에 의해 숨겨진 서재예요.": "This library has been hidden by an administrator.",
+  "이 작품은 투표가 잠겨 있어요": "Voting is locked for this work",
   "로그인이 필요해요.": "You need to log in.",
   "공유 코드와 관리 코드를 모두 입력해주세요.": "Please enter both the share code and the management code.",
   "관리 코드가 이 공유 코드와 맞지 않아요.": "The management code doesn't match this share code.",

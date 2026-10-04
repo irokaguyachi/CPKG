@@ -417,6 +417,12 @@
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
 }
+
+.pds-tagpicker-row-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .pds-tagpicker-row.is-added .pds-tagpicker-row-btn {
   background: var(--mint);
   color: #ffffff;

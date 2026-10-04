@@ -100,7 +100,9 @@
     }).then(function (res) {
       if (res.ok) return res.json();
       return res.json().catch(function () { return {}; }).then(function (data) {
-        throw new Error((data && data.error && t(data.error)) || t('요청에 실패했어요 ({code})', { code: res.status }));
+        var err = new Error((data && data.error && t(data.error)) || t('요청에 실패했어요 ({code})', { code: res.status }));
+        err.status = res.status;
+        throw err;
       });
     });
   }
@@ -164,6 +166,9 @@
     var catalog = [];
     var votes = {};
     var myTags = [];
+    // 관리 페이지에서 투표를 잠근 작품(worker/adminTags.js). 기존 표는 보이고 새 투표만 막힌다.
+    var locked = false;
+    var LOCKED_MESSAGE = t('이 작품은 투표가 잠겨 있어요');
     var pending = {};
     var pickerListEl = null; // 모달이 열려 있을 때만 채워짐
 
@@ -265,7 +270,7 @@
     function renderPicker(subEl) {
       if (subEl) {
         var popularCount = catalog.filter(function (t) { return (votes[t] || 0) > 0; }).length;
-        subEl.textContent = t('이 문학의 인기 태그: {n}개', { n: popularCount });
+        subEl.textContent = t('이 문학의 인기 태그: {n}개', { n: popularCount }) + (locked ? ' · ' + LOCKED_MESSAGE : '');
       }
       if (!pickerListEl) return;
       pickerListEl.innerHTML = '';
@@ -296,6 +301,7 @@
       btn.type = 'button';
       btn.className = 'pds-tagpicker-row-btn';
       btn.textContent = voted ? '✓' : '+';
+      btn.disabled = locked;
       btn.setAttribute('aria-label', (voted ? t('태그 투표 취소') : t('태그 투표')) + ': ' + tag);
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -308,6 +314,10 @@
 
     function vote(tag) {
       if (pending[tag]) return;
+      if (locked) {
+        showTagError(LOCKED_MESSAGE);
+        return;
+      }
       var personalCode = currentPersonalCode();
       if (!personalCode) {
         if (!global.AuthModal) return;
@@ -328,9 +338,11 @@
         .catch(function (err) {
           // 실패 — 낙관적으로 반영했던 변경을 되돌리고 이유를 알려준다
           applyVoteDelta(tag, hadVote ? 1 : -1, hadVote);
+          // 보고 있는 사이에 잠긴 경우 — 이후 투표 버튼도 잠근다
+          if (err && err.status === 403) locked = true;
           renderMainRow();
           if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
-          showTagError((err && err.message) || t('투표에 실패했어요. 잠시 후 다시 시도해주세요.'));
+          showTagError(locked ? LOCKED_MESSAGE : ((err && err.message) || t('투표에 실패했어요. 잠시 후 다시 시도해주세요.')));
         })
         .then(function () { delete pending[tag]; });
     }
@@ -348,6 +360,7 @@
       .then(function (res) {
         votes = (res && res.votes) || {};
         myTags = (res && res.myTags) || [];
+        locked = !!(res && res.locked);
         renderMainRow();
         // 태그 선택 모달을 열자마자 이 응답이 늦게 도착하면, 이미 그려진
         // 모달이 빈 목록인 채로 남는다 — 열려 있으면 같이 다시 그린다.
