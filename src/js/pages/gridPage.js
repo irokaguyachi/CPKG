@@ -130,6 +130,8 @@
 
     // versioned URL so the browser may cache these normally (see cdnConfig.js)
     var DATA = global.dataUrl || function (p) { return p; };
+    // 공식 태그 덮어쓰기(cdnConfig.js)를 적용해 pageData JSON 을 새로 받는다.
+    var fetchPageData = global.fetchPageData || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
     var fetchJson = global.fetchJsonCached || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
     // MiniLoading (Figma #2183:2) reuses the same mascot gifs as the full-page
@@ -225,7 +227,7 @@
       // 목록 본문과 태그 스냅샷은 서로 의존하지 않으니 동시에 요청하고 둘 다
       // 도착했을 때 합친다 — 태그 스냅샷이 끝나야 목록 요청을 시작하던 예전
       // 방식은 왕복 하나만큼 첫 렌더를 늦추고 있었다.
-      var itemsPromise = fetch(DATA(config.dataUrl)).then(function (r) { return r.json(); });
+      var itemsPromise = fetchPageData(config.dataUrl);
       var tagAssetsPromise = wantUserTags() ? loadUserTagAssets() : Promise.resolve([null, []]);
 
       Promise.all([itemsPromise, tagAssetsPromise])

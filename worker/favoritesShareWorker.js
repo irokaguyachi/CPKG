@@ -585,6 +585,21 @@ async function handleTagsSnapshot(request, env) {
   return new Response(object.body, { headers: headers });
 }
 
+// 공식 태그 덮어쓰기 — 관리 페이지(worker/adminOfficialTags.js)가 고친 작품별 공식
+// 태그 목록을 R2(tags/official-overrides.json)에 구워 두면, 이 라우트가 그대로
+// 내려주고 브라우저(src/js/config/cdnConfig.js)가 pageData JSON 을 읽을 때 tags 를
+// 교체한다. 공개 데이터라 개인 코드도 레이트리밋도 필요 없다(/tags/snapshot 과 같다).
+async function handleOfficialTags(request, env) {
+  var object = null;
+  try { object = await env.FAVORITES_BUCKET.get('tags/official-overrides.json'); } catch (e) {}
+  var headers = Object.assign(
+    { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
+    corsHeaders(request)
+  );
+  if (!object) return new Response(JSON.stringify({ v: 1, items: {} }), { headers: headers });
+  return new Response(object.body, { headers: headers });
+}
+
 // ---- 우주 미니게임 랭킹(/game/*) ----
 // 푸터 우주 장면의 「카구야 유성 피하기」(src/js/components/spaceGame.js)
 // 기록을 전체/주간 순위로 모은다. 로그인 없이 닉네임만으로 참여하므로,
@@ -1887,6 +1902,9 @@ async function route(request, env) {
   }
   if (url.pathname === '/tags/snapshot' && request.method === 'GET') {
     return handleTagsSnapshot(request, env);
+  }
+  if (url.pathname === '/tags/official' && request.method === 'GET') {
+    return handleOfficialTags(request, env);
   }
   if (url.pathname === '/bump/get' && request.method === 'POST') {
     return handleBumpGet(request, env);

@@ -271,6 +271,21 @@
   margin: 0 0 12px;
 }
 
+/* ---- 공식 태그 탭 ---- */
+.admin-field-label {
+  margin: 14px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--card-muted);
+}
+.admin-tag-add {
+  margin-top: 12px;
+}
+.admin-tag-add + .admin-row-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+
 /* ---- 작업 기록 세부 ---- */
 .admin-detail summary {
   font-size: 13px;

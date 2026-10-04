@@ -45,7 +45,7 @@ export { PresenceDO };
 var OLD_DOMAIN = 'ckpg.cloud';
 var NEW_DOMAIN = 'cpkg.cloud';
 
-var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/snapshot', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit'];
+var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/snapshot', '/tags/official', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit'];
 
 function isApiPath(pathname) {
   if (API_EXACT_PATHS.indexOf(pathname) !== -1) return true;

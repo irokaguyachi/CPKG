@@ -26,6 +26,8 @@
   var PLACEHOLDER_EMOJI = '🌐';
 
   var DATA = global.dataUrl || function (p) { return p; };
+  // 공식 태그 덮어쓰기(cdnConfig.js)를 적용해 pageData JSON 을 새로 받는다.
+  var fetchPageData = global.fetchPageData || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
   var reduceMotion = PK.reduceMotion;
 
   // 플로팅 버튼 아이콘: 작은 슬롯 창 안에서 글자 릴이 한 칸씩 끊어 돌아간다.
@@ -286,8 +288,7 @@
   var loadPromise = null;
   function loadData() {
     if (loadPromise) return loadPromise;
-    loadPromise = fetch(DATA(DATA_PATH))
-      .then(function (r) { return r.json(); })
+    loadPromise = fetchPageData(DATA_PATH)
       .then(function (list) {
         items = Array.isArray(list) ? list : [];
         resetMachine();

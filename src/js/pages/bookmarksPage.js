@@ -45,6 +45,8 @@
   var titleEl = document.getElementById('bkm-title');
   var subEl = document.getElementById('bkm-sub');
   var DATA = global.dataUrl || function (p) { return p; };
+  // 공식 태그 덮어쓰기(cdnConfig.js)를 적용해 pageData JSON 을 새로 받는다.
+  var fetchPageData = global.fetchPageData || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
   // #bkm-title(h1)은 헤더 로고 개편 때 다른 페이지들과 함께 주석 처리됐다 —
   // 거긴 정적 텍스트라 안전했지만 여기는 JS가 매 화면마다 갱신하므로,
@@ -72,8 +74,7 @@
     // 사실상 항상 resolve된다.
     if (itemLookupPromise) return itemLookupPromise;
 
-    itemLookupPromise = fetch(DATA('../data/pageData/Lookup.json'))
-      .then(function (r) { return r.json(); })
+    itemLookupPromise = fetchPageData('../data/pageData/Lookup.json')
       .catch(function () { return { novel: {}, series: {}, hof: {}, official: {} }; });
     return itemLookupPromise;
   }

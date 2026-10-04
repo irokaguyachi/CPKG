@@ -3,6 +3,7 @@ import { gameRoutes } from './adminGame.js';
 import { tagRoutes } from './adminTags.js';
 import { bumpRoutes } from './adminBumps.js';
 import { libraryRoutes } from './adminLibrary.js';
+import { officialTagRoutes } from './adminOfficialTags.js';
 
 /**
  * adminApi — 관리 페이지(/admin, src/js/pages/adminPage.js)용 API.
@@ -162,11 +163,13 @@ var GATE_PAGE = [
   '<meta name="robots" content="noindex, nofollow"><title>초카공 문학&amp;번역</title>',
   '<style>html,body{margin:0;min-height:100vh;background:#121316}',
   '@media (prefers-color-scheme: light){html,body{background:#ffffff}}</style></head><body><script>',
+  // 쿠키를 받고 다시 열 때 ?gate=1 을 단다. 그런데도 이 페이지가 또 나오면(쿠키가
+  // 저장되지 않는 브라우저) 무한 새로고침 대신 메인으로 보낸다.
   '(function(){var code=null;try{code=localStorage.getItem("chokaguya_personal_code")}catch(e){}',
-  'if(!code){location.replace(\'/\');return}',
+  'if(!code||/[?&]gate=1/.test(location.search)){location.replace(\'/\');return}',
   'fetch("/api/admin/gate",{method:"POST",headers:{"Content-Type":"application/json"},',
   'body:JSON.stringify({personalCode:code}),credentials:"same-origin"})',
-  '.then(function(r){if(r.ok)location.reload();else location.replace(\'/\')})',
+  '.then(function(r){if(r.ok)location.replace(location.pathname+"?gate=1"+location.hash);else location.replace(\'/\')})',
   '.catch(function(){location.replace(\'/\')})})();',
   '</script></body></html>'
 ].join('');
@@ -254,7 +257,7 @@ async function handleActions(request, env, ctx, session, url) {
 
 var ROUTES = Object.assign({
   'GET /actions': handleActions
-}, gameRoutes, tagRoutes, bumpRoutes, libraryRoutes);
+}, gameRoutes, tagRoutes, bumpRoutes, libraryRoutes, officialTagRoutes);
 
 export default {
   async fetch(request, env, ctx) {

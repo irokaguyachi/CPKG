@@ -29,9 +29,84 @@
   function fetchJsonCached(path) {
     var url = dataUrl(path);
     if (!jsonCache[url]) {
-      jsonCache[url] = fetch(url).then(function (r) { return r.json(); });
+      jsonCache[url] = withOfficialTags(path, fetch(url).then(function (r) { return r.json(); }));
     }
     return jsonCache[url];
+  }
+
+  // 캐시 없이 새로 받되 공식 태그 덮어쓰기는 똑같이 적용한다 — 받은 배열을
+  // 각자 고쳐 쓰는 화면(gridPage.js, 룰렛·슬롯 모달 등)이 서로의 변경을 공유하지
+  // 않도록 fetchJsonCached 와 나눠 둔다.
+  function fetchPageData(path) {
+    return withOfficialTags(path, fetch(dataUrl(path)).then(function (r) { return r.json(); }));
+  }
+
+  // ---- 공식 태그 덮어쓰기 ----
+  // 관리 페이지(공식 태그 탭, worker/adminOfficialTags.js)에서 고친 작품별 공식
+  // 태그를 GET /tags/official 로 페이지당 한 번만 받아, pageData JSON 을 읽을 때
+  // 그 작품의 tags 를 통째로 교체한다(태그보정.md 와 같은 "교체" 의미, 빈 배열은
+  // 태그 전부 제거). 작품 = 종류 + 첫 게시물 ID. 정적 데이터를 다시 빌드해도 이
+  // 덮어쓰기가 그 위에 적용되므로 수정이 사라지지 않는다. 받기에 실패하면 원래
+  // 데이터를 그대로 쓴다 — 태그 때문에 페이지가 막히면 안 된다.
+  var OFFICIAL_TAGS_URL = '/tags/official';
+  var PAGE_DATA_TYPES = {
+    'Novel.json': 'novel',
+    'Translation.json': 'translation',
+    'Series.json': 'series',
+    'HOF.json': 'hof',
+    'Official.json': 'official'
+  };
+  var officialTagsPromise = null;
+
+  function officialTagOverrides() {
+    if (!officialTagsPromise) {
+      officialTagsPromise = fetch(OFFICIAL_TAGS_URL)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          return (data && data.items && typeof data.items === 'object') ? data.items : {};
+        })
+        .catch(function () { return {}; });
+    }
+    return officialTagsPromise;
+  }
+
+  function pageDataName(path) {
+    var m = /pageData\/([A-Za-z]+\.json)/.exec(path || '');
+    if (!m) return null;
+    var name = m[1];
+    return (PAGE_DATA_TYPES[name] || name === 'Lookup.json' || name === 'Recent.json') ? name : null;
+  }
+
+  function overrideEntry(entry, type, items, fallbackId) {
+    if (!entry) return;
+    var id = entry.posts && entry.posts[0] && entry.posts[0].id;
+    var tags = items[type + ':' + (id != null ? id : fallbackId)];
+    if (Array.isArray(tags)) entry.tags = tags.slice();
+  }
+
+  // data 를 제자리에서 고쳐 돌려준다. 파일 형식은 세 가지다 — 작품 배열(Novel 등),
+  // { 종류: { id: 작품 } }(Lookup), { novels: [...] }(Recent).
+  function applyOfficialTagOverrides(path, data, items) {
+    var name = pageDataName(path);
+    if (!name || !data || !items) return data;
+    if (name === 'Lookup.json') {
+      Object.keys(data).forEach(function (type) {
+        var group = data[type] || {};
+        Object.keys(group).forEach(function (key) { overrideEntry(group[key], type, items, key); });
+      });
+    } else if (name === 'Recent.json') {
+      (Array.isArray(data.novels) ? data.novels : []).forEach(function (e) { overrideEntry(e, 'novel', items); });
+    } else if (Array.isArray(data)) {
+      data.forEach(function (e) { overrideEntry(e, PAGE_DATA_TYPES[name], items); });
+    }
+    return data;
+  }
+
+  function withOfficialTags(path, dataPromise) {
+    if (!pageDataName(path)) return dataPromise;
+    return Promise.all([dataPromise, officialTagOverrides()]).then(function (r) {
+      return applyOfficialTagOverrides(path, r[0], r[1]);
+    });
   }
 
   function resolveAssetUrl(path) {
@@ -266,6 +341,8 @@
   global.resolveMidUrl = resolveMidUrl;
   global.dataUrl = dataUrl;
   global.fetchJsonCached = fetchJsonCached;
+  global.fetchPageData = fetchPageData;
+  global.applyOfficialTagOverrides = applyOfficialTagOverrides;
   global.DATA_VERSION = DATA_VERSION;
   global.R2_CDN_BASE = R2_CDN_BASE;
   global.lazyLoadBackground = lazyLoadBackground;

@@ -31,6 +31,7 @@
   var TABS = [
     { key: 'game', label: '랭킹', href: '#game' },
     { key: 'tags', label: '태그 투표', href: '#tags' },
+    { key: 'official', label: '공식 태그', href: '#official' },
     { key: 'bumps', label: '끌올', href: '#bumps' },
     { key: 'library', label: '공개 서재', href: '#library' },
     { key: 'actions', label: '작업 기록', href: '#actions' }
@@ -46,6 +47,8 @@
     'tags.purge-voter': '투표자 투표 삭제',
     'tags.lock': '태그 투표 잠금',
     'tags.unlock': '태그 투표 잠금 해제',
+    'official-tags.set': '공식 태그 변경',
+    'official-tags.reset': '공식 태그 원래대로',
     'bump.cancel': '끌올 취소',
     'library.hide': '서재 숨기기',
     'library.unhide': '서재 숨김 해제',
@@ -480,6 +483,191 @@
     });
   }
 
+  // ---- 탭: 공식 태그 ----
+  // 작품의 공식 태그를 통째로 교체하는 덮어쓰기(worker/adminOfficialTags.js). 사이트는
+  // cdnConfig.js 가 pageData 를 읽을 때 이 덮어쓰기를 적용한다. 여기서 보여주는
+  // "원래 태그"는 덮어쓰기 없이 받은 원본 데이터 파일 값이다.
+  var OFFICIAL_FILES = { novel: 'Novel.json', translation: 'Translation.json', series: 'Series.json', hof: 'HOF.json', official: 'Official.json' };
+  var rawFileCache = {};
+  function rawPageData(type) {
+    if (!rawFileCache[type]) {
+      var url = (global.dataUrl || function (p) { return p; })('../data/pageData/' + OFFICIAL_FILES[type]);
+      rawFileCache[type] = fetch(url).then(function (r) { return r.json(); }).catch(function () { return []; });
+    }
+    return rawFileCache[type];
+  }
+  function originalTags(type, id) {
+    return rawPageData(type).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        var post = list[i].posts && list[i].posts[0];
+        if (post && post.id === id) return list[i].tags || [];
+      }
+      return [];
+    });
+  }
+
+  function tagChip(tag, onRemove) {
+    var emoji = (global.TagConfig && global.TagConfig.TAG_EMOJI) || {};
+    var chip = el('span', 'admin-chip');
+    chip.appendChild(el('span', null, (emoji[tag] || (global.TagConfig && global.TagConfig.DEFAULT_EMOJI) || '') + ' ' + tag));
+    if (onRemove) {
+      var x = el('button', 'admin-chip-remove', '×');
+      x.type = 'button';
+      x.setAttribute('aria-label', tag + ' 빼기');
+      x.addEventListener('click', onRemove);
+      chip.appendChild(x);
+    }
+    return chip;
+  }
+  function tagChips(tags, emptyText) {
+    var wrap = el('div', 'admin-chips');
+    tags.forEach(function (tag) { wrap.appendChild(tagChip(tag)); });
+    if (!tags.length) wrap.appendChild(el('span', 'admin-muted', emptyText || '태그 없음'));
+    return wrap;
+  }
+
+  var officialSelected = null; // { type, id }
+  var officialDraft = null;    // 편집 중인 태그 배열(선택한 작품 기준)
+  function renderOfficial() {
+    var sel = officialSelected;
+    return Promise.all([lookup(), api('GET', 'official-tags'), sel ? originalTags(sel.type, sel.id) : Promise.resolve(null)]).then(function (res) {
+      var data = res[0];
+      var overrides = res[1].items;
+      var original = res[2];
+      var frag = document.createDocumentFragment();
+
+      var known = [];
+      function addKnown(tag) { if (known.indexOf(tag) === -1) known.push(tag); }
+      ((global.TagConfig && global.TagConfig.TAG_ORDER) || []).forEach(addKnown);
+      Object.keys((global.TagConfig && global.TagConfig.TAG_EMOJI) || {}).forEach(addKnown);
+      overrides.forEach(function (o) { o.tags.forEach(addKnown); });
+
+      var find = section('공식 태그 편집', '작품의 공식 태그를 통째로 바꿔요. 저장하면 1분 안에 사이트 목록·필터·상세·검색에 반영되고, 데이터를 다시 빌드해도 유지돼요. 목록에 없는 새 태그도 쓸 수 있어요(🏷️ 기본 모양).');
+      var search = el('input', 'bkm-inline-create-input admin-input admin-search');
+      search.type = 'search';
+      search.placeholder = '작품 제목 검색 (문학·번역·시리즈·명예관·공식)';
+      var results = el('div', 'admin-search-results');
+      search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        results.innerHTML = '';
+        if (!q) return;
+        var found = [];
+        Object.keys(OFFICIAL_FILES).forEach(function (type) {
+          var group = (data && data[type]) || {};
+          Object.keys(group).forEach(function (key) {
+            var name = group[key].name || '';
+            if (found.length < 12 && name.toLowerCase().indexOf(q) !== -1) found.push({ type: type, id: Number(key), name: name });
+          });
+        });
+        found.forEach(function (f) {
+          var item = el('button', 'admin-search-item', f.name);
+          item.type = 'button';
+          item.appendChild(el('span', 'admin-muted', ' · ' + TYPE_LABELS[f.type] + ' #' + f.id));
+          item.addEventListener('click', function () {
+            officialSelected = { type: f.type, id: f.id };
+            officialDraft = null;
+            renderTab('official');
+          });
+          results.appendChild(item);
+        });
+      });
+      find.appendChild(search);
+      find.appendChild(results);
+
+      if (sel) {
+        var override = null;
+        overrides.forEach(function (o) { if (o.itemType === sel.type && o.itemId === sel.id) override = o; });
+        if (!officialDraft) officialDraft = (override ? override.tags : original).slice();
+
+        var head = el('div', 'admin-post-head');
+        head.appendChild(el('strong', null, titleOf(data, sel.type, sel.id)));
+        head.appendChild(el('span', 'admin-muted', ' ' + TYPE_LABELS[sel.type] + ' #' + sel.id));
+        head.appendChild(override ? badge('덮어쓰기 적용 중', 'primary') : badge('원래 태그'));
+        find.appendChild(head);
+
+        find.appendChild(el('p', 'admin-field-label', '원래 태그'));
+        find.appendChild(tagChips(original));
+
+        find.appendChild(el('p', 'admin-field-label', '바꿀 태그'));
+        var draftWrap = el('div', 'admin-chips');
+        function paintDraft() {
+          draftWrap.innerHTML = '';
+          officialDraft.forEach(function (tag, i) {
+            draftWrap.appendChild(tagChip(tag, function () { officialDraft.splice(i, 1); paintDraft(); }));
+          });
+          if (!officialDraft.length) draftWrap.appendChild(el('span', 'admin-muted', '태그 없음 — 저장하면 이 작품의 태그를 모두 지워요'));
+        }
+        paintDraft();
+        find.appendChild(draftWrap);
+
+        var addForm = el('form', 'admin-toolbar admin-tag-add');
+        var listId = 'admin-known-tags';
+        var datalist = el('datalist');
+        datalist.id = listId;
+        known.forEach(function (tag) { var o = el('option'); o.value = tag; datalist.appendChild(o); });
+        var tagInput = el('input', 'bkm-inline-create-input admin-input');
+        tagInput.placeholder = '태그 추가';
+        tagInput.maxLength = 20;
+        tagInput.setAttribute('list', listId);
+        var addBtn = el('button', 'settings-btn', '추가');
+        addBtn.type = 'submit';
+        addForm.appendChild(datalist);
+        addForm.appendChild(tagInput);
+        addForm.appendChild(addBtn);
+        addForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var tag = tagInput.value.trim();
+          if (!tag) return;
+          if (/,/.test(tag)) { toast('태그에는 쉼표를 쓸 수 없어요.', true); return; }
+          if (officialDraft.length >= 10) { toast('태그는 10개까지예요.', true); return; }
+          if (officialDraft.indexOf(tag) === -1) officialDraft.push(tag);
+          tagInput.value = '';
+          paintDraft();
+          tagInput.focus();
+        });
+        find.appendChild(addForm);
+
+        find.appendChild(actionsCell([
+          button('저장', 'primary', function (btn) {
+            run(btn, function () {
+              return api('POST', 'official-tags/set', { itemType: sel.type, itemId: sel.id, tags: officialDraft, before: original })
+                .then(function (r) { officialDraft = null; return r; });
+            }, '공식 태그를 저장했어요. 사이트에는 1분 안에 반영돼요.');
+          }),
+          override ? button('원래대로', 'danger', function (btn) {
+            dialog({ title: '원래 태그로 되돌리기', desc: '이 작품의 덮어쓰기를 지우고 원래 태그로 돌려요.', confirmLabel: '되돌리기', danger: true })
+              .then(function (ok) {
+                if (ok) run(btn, function () {
+                  return api('POST', 'official-tags/reset', { itemType: sel.type, itemId: sel.id })
+                    .then(function (r) { officialDraft = null; return r; });
+                }, '원래 태그로 되돌렸어요.');
+              });
+          }) : null,
+          button('편집 취소', null, function () { officialDraft = null; renderTab('official'); })
+        ]));
+      }
+      frag.appendChild(find);
+
+      var listSec = section('덮어쓰기가 걸린 작품', '지금 원래 태그 대신 고친 태그가 보이는 작품이에요.');
+      listSec.appendChild(table(['작품', '종류', '태그', '수정 시각', ''], overrides.map(function (o) {
+        return [titleOf(data, o.itemType, o.itemId), TYPE_LABELS[o.itemType], tagChips(o.tags), fmtTime(o.updatedAt), actionsCell([
+          button('편집', null, function () {
+            officialSelected = { type: o.itemType, id: o.itemId };
+            officialDraft = null;
+            renderTab('official');
+            global.scrollTo(0, 0);
+          }),
+          button('원래대로', 'danger', function (btn) {
+            dialog({ title: '원래 태그로 되돌리기', desc: '"' + titleOf(data, o.itemType, o.itemId) + '"의 덮어쓰기를 지워요.', confirmLabel: '되돌리기', danger: true })
+              .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'official-tags/reset', { itemType: o.itemType, itemId: o.itemId }); }, '원래 태그로 되돌렸어요.'); });
+          })
+        ])];
+      }), '덮어쓰기가 걸린 작품이 없어요.'));
+      frag.appendChild(listSec);
+      return frag;
+    });
+  }
+
   // ---- 탭: 끌올 ----
   function renderBumps() {
     return Promise.all([lookup(), api('GET', 'bumps')]).then(function (res) {
@@ -559,7 +747,7 @@
   function renderActions() {
     var sec = section('작업 기록', '데이터를 바꾼 관리 작업이 모두 남아요. 삭제한 항목은 세부 내용에 원본이 들어 있어요.');
     var bar = el('div', 'admin-toolbar');
-    [['', '전체'], ['game', '랭킹'], ['tags', '태그 투표'], ['bump', '끌올'], ['library', '공개 서재']].forEach(function (f) {
+    [['', '전체'], ['game', '랭킹'], ['tags', '태그 투표'], ['official-tags', '공식 태그'], ['bump', '끌올'], ['library', '공개 서재']].forEach(function (f) {
       bar.appendChild(button(f[1], actionFilter === f[0] ? 'primary' : null, function () {
         actionFilter = f[0];
         renderTab('actions');
@@ -598,7 +786,7 @@
     return load(null).then(function () { return sec; });
   }
 
-  var RENDERERS = { game: renderGame, tags: renderTags, bumps: renderBumps, library: renderLibrary, actions: renderActions };
+  var RENDERERS = { game: renderGame, tags: renderTags, official: renderOfficial, bumps: renderBumps, library: renderLibrary, actions: renderActions };
 
   function renderTab(key) {
     currentTab = key;
@@ -694,6 +882,10 @@
   }
 
   function start() {
+    // 확인 페이지가 쿠키를 받은 뒤 붙여 보낸 ?gate=1 은 주소창에서 지운다.
+    if (/[?&]gate=1/.test(global.location.search) && global.history && global.history.replaceState) {
+      global.history.replaceState(null, '', global.location.pathname + global.location.hash);
+    }
     if (!personalCode()) return leave();
     if (getSession()) showApp();
     else showGate();

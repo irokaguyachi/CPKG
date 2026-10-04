@@ -34,6 +34,8 @@
   var sortTags = global.TagConfig.sortTags;
 
   var DATA = global.dataUrl || function (p) { return p; };
+  // 공식 태그 덮어쓰기(cdnConfig.js)를 적용해 pageData JSON 을 새로 받는다.
+  var fetchPageData = global.fetchPageData || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
   var randInt = PK.randInt;
   var reduceMotion = PK.reduceMotion;
 
@@ -439,8 +441,7 @@
   var loadPromise = null;
   function loadData() {
     if (loadPromise) return loadPromise;
-    loadPromise = fetch(DATA(DATA_PATH))
-      .then(function (r) { return r.json(); })
+    loadPromise = fetchPageData(DATA_PATH)
       .then(function (list) {
         rawItems = Array.isArray(list) ? list : [];
         recomputeItems();

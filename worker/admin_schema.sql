@@ -43,6 +43,17 @@ CREATE TABLE IF NOT EXISTS bump_cancels (
   cancelled_at INTEGER NOT NULL
 );
 
+-- 공식 태그 덮어쓰기(관리 페이지의 공식 태그 탭). 작품 = 종류 + 첫 게시물 ID.
+-- tags 는 JSON 배열 문자열이고, 빈 배열은 "태그 전부 제거"다(태그보정.md 와 같은
+-- 교체 의미). 바뀔 때마다 R2 tags/official-overrides.json 으로 다시 굽는다.
+CREATE TABLE IF NOT EXISTS official_tag_overrides (
+  item_type  TEXT    NOT NULL,   -- novel / translation / series / hof / official
+  item_id    INTEGER NOT NULL,
+  tags       TEXT    NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (item_type, item_id)
+);
+
 -- 관리자가 숨긴 공개 서재. R2 레코드는 주인이 계속 수정하므로 숨김 상태는 여기 둔다.
 CREATE TABLE IF NOT EXISTS library_hidden (
   code      TEXT    PRIMARY KEY,

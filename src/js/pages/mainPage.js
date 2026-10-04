@@ -7,6 +7,8 @@
   if (!contentEl) return;
 
   var DATA = global.dataUrl || function (p) { return p; };
+  // 공식 태그 덮어쓰기(cdnConfig.js)를 적용해 pageData JSON 을 새로 받는다.
+  var fetchPageData = global.fetchPageData || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
   var fetchJson = global.fetchJsonCached || function (url) {
     return fetch(DATA(url)).then(function (response) {
       if (!response.ok) throw new Error('Data request failed: ' + response.status);
@@ -1158,8 +1160,7 @@
   try { audioPromoDismissed = !!localStorage.getItem(AUDIO_PROMO_DISMISS_KEY); } catch (e) {}
 
   if (!audioPromoDismissed) {
-    fetch(DATA('../data/pageData/Official.json'))
-      .then(function (r) { return r.json(); })
+    fetchPageData('../data/pageData/Official.json')
       .then(function (items) {
         items = filterMature(Array.isArray(items) ? items : []);
         var promoItem = null;
@@ -1180,8 +1181,7 @@
   // 가 빌드 시점에 만들어 두는 파일로, 두 배열의 앞 10건을 필드 손실 없이
   // 그대로 담고 있어서 카드와 상세 모달이 예전과 똑같이 동작한다.
   // (데이터를 다시 빌드했으면 cdnConfig.js 의 DATA_VERSION 을 올릴 것)
-  fetch(DATA('../data/pageData/Recent.json'))
-    .then(function (r) { return r.json(); })
+  fetchPageData('../data/pageData/Recent.json')
     .then(function (data) {
       var novels = filterMature((data && Array.isArray(data.novels)) ? data.novels : []);
       var totals = (data && data.totals) || {};

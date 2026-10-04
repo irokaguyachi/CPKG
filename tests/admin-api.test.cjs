@@ -7,7 +7,7 @@ const ALL_SCHEMAS = ['game_schema.sql', 'tags_schema.sql', 'bump_schema.sql', 'a
 test('schema applies cleanly', () => {
   const db = new D1(ALL_SCHEMAS);
   const names = db.rows("SELECT name FROM sqlite_master WHERE type = 'table'").map(r => r.name);
-  for (const table of ['admin_actions', 'game_bans', 'banned_nicknames', 'tag_vote_locks', 'bump_cancels', 'library_hidden']) {
+  for (const table of ['admin_actions', 'game_bans', 'banned_nicknames', 'tag_vote_locks', 'bump_cancels', 'library_hidden', 'official_tag_overrides']) {
     assert.ok(names.includes(table), table);
   }
   // 두 번 적용해도 깨지지 않는다(원격에 다시 실행해도 안전)
@@ -411,6 +411,8 @@ test('without the gate cookie /admin is a tiny redirect page and admin assets ar
   assert.equal(page.status, 200);
   assert.match(page.text, /\/api\/admin\/gate/);
   assert.match(page.text, /location\.replace\('\/'\)/);
+  // 쿠키가 저장되지 않는 브라우저에서 무한 새로고침하지 않도록, 한 번 확인한 뒤엔 ?gate=1 로 표시한다
+  assert.match(page.text, /gate=1/);
   assert.doesNotMatch(page.text, /ASSET/);
   assert.equal(page.headers.get('Cache-Control'), 'no-store');
   assert.equal((await t.serve('/js/pages/adminPage.js')).status, 404);
@@ -458,4 +460,63 @@ test('gate clear expires the cookie and gate requests are rate limited', async (
   assert.match(res.headers.get('Set-Cookie'), /^cpkg_admin_gate=; Path=\/; Max-Age=0; HttpOnly; Secure; SameSite=Strict$/);
   t.env.RL_ADMIN_LOGIN = { limit: async () => ({ success: false }) };
   assert.equal((await t.gate(ADMIN_CODE)).status, 429);
+});
+
+// ---- 공식 태그 덮어쓰기 ----
+test('public official tag overrides default to empty', async () => {
+  const t = await setupAdmin([]);
+  let res = await t.pub('GET', '/tags/official');
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body, { v: 1, items: {} });
+  assert.equal(res.headers.get('Cache-Control'), 'public, max-age=60');
+  await t.env.FAVORITES_BUCKET.put('tags/official-overrides.json', JSON.stringify({ v: 1, items: { 'novel:123': ['슬픔'] } }));
+  res = await t.pub('GET', '/tags/official');
+  assert.deepEqual(res.body.items, { 'novel:123': ['슬픔'] });
+});
+
+const officialItems = async t => (await t.pub('GET', '/tags/official')).body.items;
+
+test('admin sets and resets official tags and republishes the overrides', async () => {
+  const t = await setupAdmin();
+  let res = await t.api('POST', 'official-tags/set', { itemType: 'novel', itemId: 123, tags: [' 슬픔 ', '피폐', '슬픔'], before: ['일상'] });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.deepEqual(res.body.tags, ['슬픔', '피폐']);
+  assert.deepEqual(await officialItems(t), { 'novel:123': ['슬픔', '피폐'] });
+
+  res = await t.api('POST', 'official-tags/set', { itemType: 'novel', itemId: 123, tags: ['새태그'] });
+  assert.equal(res.status, 200);
+  assert.equal((await t.api('POST', 'official-tags/set', { itemType: 'novel', itemId: 456, tags: [] })).status, 200);
+  assert.deepEqual(await officialItems(t), { 'novel:123': ['새태그'], 'novel:456': [] });
+  const list = (await t.api('GET', 'official-tags')).body.items;
+  assert.deepEqual(list.map(r => [r.itemType, r.itemId, r.tags]).sort(), [['novel', 123, ['새태그']], ['novel', 456, []]]);
+
+  assert.equal((await t.api('POST', 'official-tags/reset', { itemType: 'novel', itemId: 123 })).status, 200);
+  assert.deepEqual(await officialItems(t), { 'novel:456': [] });
+  assert.equal((await t.api('POST', 'official-tags/reset', { itemType: 'novel', itemId: 123 })).status, 404);
+
+  const log = (await t.api('GET', 'actions?action=official-tags')).body.items;
+  assert.deepEqual(log.map(r => r.action), ['official-tags.reset', 'official-tags.set', 'official-tags.set', 'official-tags.set']);
+  assert.deepEqual(log[3].detail, { before: ['일상'], after: ['슬픔', '피폐'] });
+  assert.deepEqual(log[2].detail.before, ['슬픔', '피폐'], 'an existing override is the before value');
+  assert.deepEqual(log[0].detail, { before: ['새태그'], after: null });
+});
+
+test('official tag edits are validated', async () => {
+  const t = await setupAdmin();
+  const bad = [
+    { itemType: 'book', itemId: 123, tags: ['a'] },
+    { itemType: 'novel', itemId: -1, tags: ['a'] },
+    { itemType: 'novel', itemId: 123, tags: ['a,b'] },
+    { itemType: 'novel', itemId: 123, tags: ['가'.repeat(21)] },
+    { itemType: 'novel', itemId: 123, tags: Array.from({ length: 11 }, (_, i) => 't' + i) },
+    { itemType: 'novel', itemId: 123, tags: ['a\u0007'] },
+    { itemType: 'novel', itemId: 123, tags: [''] },
+    { itemType: 'novel', itemId: 123, tags: 'a' }
+  ];
+  for (const body of bad) assert.equal((await t.api('POST', 'official-tags/set', body)).status, 400, JSON.stringify(body));
+  const unknown = await t.api('POST', 'official-tags/set', { itemType: 'series', itemId: 123, tags: ['a'] });
+  assert.equal(unknown.status, 400);
+  assert.equal(unknown.body.error, 'unknown item');
+  assert.deepEqual(await officialItems(t), {});
+  assert.equal(t.env.TAGS_DB.rows('SELECT COUNT(*) AS n FROM official_tag_overrides')[0].n, 0);
 });
