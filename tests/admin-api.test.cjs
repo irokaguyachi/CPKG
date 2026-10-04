@@ -387,3 +387,75 @@ test('library endpoints still work without admin tables', async () => {
   assert.deepEqual(await publicNames(t), ['서재']);
   assert.equal((await t.pub('GET', '/library/' + lib.code)).status, 200);
 });
+
+// ---- /admin 진입 차단(확인 쿠키) ----
+async function setupGate() {
+  const t = await setupAdmin();
+  const mod = await load('worker/adminApi.js');
+  t.env.ASSETS = { fetch: async req => new Response('ASSET ' + new URL(req.url).pathname, { headers: { 'Content-Type': 'text/plain' } }) };
+  t.serve = async (path, cookie) => {
+    const res = await mod.serveAdminGate(request('GET', path, undefined, cookie ? { Cookie: cookie } : {}), t.env);
+    return res && { status: res.status, headers: res.headers, text: await res.text() };
+  };
+  t.gate = async personalCode => {
+    const res = await t.admin.fetch(request('POST', '/api/admin/gate', { personalCode }), t.env, {});
+    return { status: res.status, cookie: res.headers.get('Set-Cookie') };
+  };
+  return t;
+}
+const cookiePair = setCookie => setCookie.split(';')[0];
+
+test('without the gate cookie /admin is a tiny redirect page and admin assets are hidden', async () => {
+  const t = await setupGate();
+  const page = await t.serve('/admin');
+  assert.equal(page.status, 200);
+  assert.match(page.text, /\/api\/admin\/gate/);
+  assert.match(page.text, /location\.replace\('\/'\)/);
+  assert.doesNotMatch(page.text, /ASSET/);
+  assert.equal(page.headers.get('Cache-Control'), 'no-store');
+  assert.equal((await t.serve('/js/pages/adminPage.js')).status, 404);
+  assert.equal((await t.serve('/css/pages/admin-page.css')).status, 404);
+  assert.equal(await t.serve('/novel'), null, 'other paths are not handled');
+});
+
+test('only the admin account receives the gate cookie and it opens the page', async () => {
+  const t = await setupGate();
+  const denied = await t.gate(OTHER_CODE);
+  assert.equal(denied.status, 403);
+  assert.equal(denied.cookie, null);
+  const ok = await t.gate(ADMIN_CODE);
+  assert.equal(ok.status, 200);
+  assert.match(ok.cookie, /^cpkg_admin_gate=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}; Path=\/; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict$/);
+  const cookie = cookiePair(ok.cookie);
+  assert.equal((await t.serve('/admin', cookie)).text, 'ASSET /page/adminPage.html');
+  assert.equal((await t.serve('/admin/', cookie)).text, 'ASSET /page/adminPage.html');
+  assert.equal((await t.serve('/js/pages/adminPage.js', cookie)).text, 'ASSET /js/pages/adminPage.js');
+  assert.equal((await t.serve('/css/pages/admin-page.css', 'other=1; ' + cookie)).text, 'ASSET /css/pages/admin-page.css');
+});
+
+test('gate cookies expire, cannot be forged, and die when the admin is removed', async () => {
+  const t = await setupGate();
+  const cookie = cookiePair((await t.gate(ADMIN_CODE)).cookie);
+  const [name, value] = cookie.split('=');
+  const [body, sig] = value.split('.');
+  const forged = name + '=' + Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, 'base64url')), e: clock.now + 9e10 })).toString('base64url') + '.' + sig;
+  assert.match((await t.serve('/admin', forged)).text, /api\/admin\/gate/);
+  // 비밀번호 세션 토큰은 확인 쿠키로 쓸 수 없다
+  const session = (await t.login()).body.token;
+  assert.match((await t.serve('/admin', 'cpkg_admin_gate=' + session)).text, /api\/admin\/gate/);
+  const saved = clock.now;
+  clock.now += 30 * 86400000 + 1;
+  assert.match((await t.serve('/admin', cookie)).text, /api\/admin\/gate/);
+  clock.now = saved;
+  t.env.ADMIN_USER_HASHES = 'ffff';
+  assert.match((await t.serve('/admin', cookie)).text, /api\/admin\/gate/);
+});
+
+test('gate clear expires the cookie and gate requests are rate limited', async () => {
+  const t = await setupGate();
+  const res = await t.admin.fetch(request('POST', '/api/admin/gate/clear', {}), t.env, {});
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('Set-Cookie'), /^cpkg_admin_gate=; Path=\/; Max-Age=0; HttpOnly; Secure; SameSite=Strict$/);
+  t.env.RL_ADMIN_LOGIN = { limit: async () => ({ success: false }) };
+  assert.equal((await t.gate(ADMIN_CODE)).status, 429);
+});

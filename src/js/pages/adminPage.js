@@ -683,17 +683,23 @@
     }).then(function () { submit.disabled = false; });
   });
 
+  // 관리자 계정이 아니면 서버가 이 페이지 대신 확인 페이지를 내려준다
+  // (worker/adminApi.js serveAdminGate). 여기 왔는데 로그아웃 상태라면 확인
+  // 쿠키와 관리 세션을 지우고 메인으로 보낸다 — 다음에 열면 다시 확인을 거친다.
+  function leave() {
+    clearSession();
+    fetch(API + 'gate/clear', { method: 'POST' })
+      .catch(function () {})
+      .then(function () { global.location.replace('/'); });
+  }
+
   function start() {
+    if (!personalCode()) return leave();
     if (getSession()) showApp();
     else showGate();
   }
 
-  // 헤더 프로필 메뉴에서 로그인·로그아웃하면 게이트를 다시 판단한다. 로그아웃하면
-  // 관리 세션도 같이 버린다(다른 계정으로 바뀐 브라우저에 관리 화면이 남지 않게).
-  global.addEventListener('chokaguya:auth-change', function () {
-    if (!personalCode()) clearSession();
-    start();
-  });
+  global.addEventListener('chokaguya:auth-change', start);
 
   start();
 })(window);

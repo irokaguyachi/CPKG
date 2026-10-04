@@ -31,7 +31,7 @@
  */
 import backend from '../worker/favoritesShareWorker.js';
 import statsApi from '../worker/statsApi.js';
-import adminApi from '../worker/adminApi.js';
+import adminApi, { serveAdminGate } from '../worker/adminApi.js';
 import { refreshLibraryIndex } from '../worker/libraryIndex.js';
 import { PresenceDO } from '../worker/presenceDO.js';
 import { readJsonLimited } from '../worker/requestBody.js';
@@ -325,6 +325,11 @@ export default {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
       });
     }
+
+    // 관리 페이지(/admin)와 그 JS·CSS 는 관리자 계정 확인 쿠키가 있을 때만 내려준다.
+    // 정적 자산이라도 wrangler.toml 의 run_worker_first 로 여기를 먼저 거친다.
+    var adminGate = await serveAdminGate(request, env);
+    if (adminGate) return adminGate;
 
     var mergedTarget = MERGED_PAGE_REDIRECTS[url.pathname];
     if (mergedTarget) {

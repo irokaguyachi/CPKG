@@ -103,35 +103,132 @@ async function handleLogin(request, env) {
   if (!accountOk || !passwordOk) return json({ error: 'unauthorized' }, 401);
 
   var expiresAt = Date.now() + SESSION_TTL_MS;
-  var payload = base64UrlEncode(new TextEncoder().encode(JSON.stringify({
-    k: 'admin', a: accountHash.slice(0, ACTOR_LENGTH), e: expiresAt
-  })));
-  var sig = await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payload));
-  return json({ token: payload + '.' + base64UrlEncode(new Uint8Array(sig)), expiresAt: expiresAt });
+  var token = await signToken(env, { k: 'admin', a: accountHash.slice(0, ACTOR_LENGTH), e: expiresAt });
+  return json({ token: token, expiresAt: expiresAt });
+}
+
+// 세션 토큰과 /admin 확인 쿠키가 같은 서명 형식을 쓴다:
+// base64url(JSON{ k, a, e }) + '.' + base64url(HMAC-SHA256). k(종류)가 달라서
+// 한쪽을 다른 쪽 자리에 쓸 수 없다.
+async function signToken(env, payload) {
+  var body = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  var sig = await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(body));
+  return body + '.' + base64UrlEncode(new Uint8Array(sig));
+}
+
+// 서명·종류·만료가 맞고, 그 관리자가 아직 ADMIN_USER_HASHES 에 있으면 actor 를, 아니면 null.
+async function readToken(env, token, kind) {
+  if (!configured(env) || typeof token !== 'string' || !TOKEN_RE.test(token)) return null;
+  var dot = token.indexOf('.');
+  var body = token.slice(0, dot);
+  try {
+    var ok = await crypto.subtle.verify(
+      'HMAC', await sessionKey(env), base64UrlDecode(token.slice(dot + 1)), new TextEncoder().encode(body)
+    );
+    if (!ok) return null;
+    var payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(body)));
+    if (!payload || payload.k !== kind || typeof payload.e !== 'number' || payload.e <= Date.now()) return null;
+    var stillAdmin = adminHashes(env).some(function (h) { return h.slice(0, ACTOR_LENGTH) === payload.a; });
+    return stillAdmin ? payload.a : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // 유효한 세션이면 { actor } 를, 아니면 401 응답을 돌려준다.
 export async function requireSession(request, env) {
   var header = request.headers.get('Authorization') || '';
-  var token = header.indexOf('Bearer ') === 0 ? header.slice(7).trim() : '';
-  if (!TOKEN_RE.test(token)) return json({ error: 'unauthorized' }, 401);
-  var dot = token.indexOf('.');
-  var payloadText = token.slice(0, dot);
-  try {
-    var ok = await crypto.subtle.verify(
-      'HMAC', await sessionKey(env), base64UrlDecode(token.slice(dot + 1)), new TextEncoder().encode(payloadText)
-    );
-    if (!ok) return json({ error: 'unauthorized' }, 401);
-    var payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadText)));
-    if (!payload || payload.k !== 'admin' || typeof payload.e !== 'number' || payload.e <= Date.now()) {
-      return json({ error: 'unauthorized' }, 401);
-    }
-    var stillAdmin = adminHashes(env).some(function (h) { return h.slice(0, ACTOR_LENGTH) === payload.a; });
-    if (!stillAdmin) return json({ error: 'unauthorized' }, 401);
-    return { actor: payload.a };
-  } catch (e) {
-    return json({ error: 'unauthorized' }, 401);
+  var actor = await readToken(env, header.indexOf('Bearer ') === 0 ? header.slice(7).trim() : '', 'admin');
+  return actor ? { actor: actor } : json({ error: 'unauthorized' }, 401);
+}
+
+// ---- /admin 진입 차단(확인 쿠키) ----
+// 개인 코드는 브라우저 localStorage 에만 있어서 주소창으로 /admin 을 열 때 서버는
+// 누가 왔는지 모른다. 그래서 관리자 계정임을 확인받은 브라우저에만 HttpOnly 확인
+// 쿠키를 주고, 쿠키가 없으면 관리 페이지 대신 작은 확인 페이지를 내려준다. 그
+// 페이지가 개인 코드를 POST /api/admin/gate 로 보내 관리자면 쿠키를 받고 새로고침,
+// 아니면 메인으로 보낸다 — 일반 유저는 관리 페이지의 HTML·JS·CSS 를 받지 않는다.
+// 쿠키는 페이지를 여는 데까지만 쓰이고, 데이터는 여전히 비밀번호 세션이 필요하다.
+var GATE_COOKIE = 'cpkg_admin_gate';
+var GATE_TTL_S = 30 * 86400;
+var GATE_FLAGS = '; HttpOnly; Secure; SameSite=Strict';
+var ADMIN_PAGE = '/page/adminPage.html';
+// 쿠키가 있어야만 내려주는 관리 페이지 자산(src/wrangler.toml 의 run_worker_first 와 짝).
+var GATED_ASSETS = ['/js/pages/adminPage.js', '/css/pages/admin-page.css'];
+
+var GATE_PAGE = [
+  '<!doctype html><html lang="ko"><head><meta charset="utf-8">',
+  '<meta name="viewport" content="width=device-width, initial-scale=1">',
+  '<meta name="robots" content="noindex, nofollow"><title>초카공 문학&amp;번역</title>',
+  '<style>html,body{margin:0;min-height:100vh;background:#121316}',
+  '@media (prefers-color-scheme: light){html,body{background:#ffffff}}</style></head><body><script>',
+  '(function(){var code=null;try{code=localStorage.getItem("chokaguya_personal_code")}catch(e){}',
+  'if(!code){location.replace(\'/\');return}',
+  'fetch("/api/admin/gate",{method:"POST",headers:{"Content-Type":"application/json"},',
+  'body:JSON.stringify({personalCode:code}),credentials:"same-origin"})',
+  '.then(function(r){if(r.ok)location.reload();else location.replace(\'/\')})',
+  '.catch(function(){location.replace(\'/\')})})();',
+  '</script></body></html>'
+].join('');
+
+function readCookie(request, name) {
+  var parts = (request.headers.get('Cookie') || '').split(';');
+  for (var i = 0; i < parts.length; i++) {
+    var kv = parts[i].trim();
+    if (kv.indexOf(name + '=') === 0) return kv.slice(name.length + 1);
   }
+  return '';
+}
+
+function gateCookie(value, maxAge) {
+  return GATE_COOKIE + '=' + value + '; Path=/; Max-Age=' + maxAge + GATE_FLAGS;
+}
+
+function noStore(response) {
+  var res = new Response(response.body, response);
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
+// src/_worker.js 가 모든 요청마다 부른다. 관리 페이지 경로면 응답을, 아니면 null.
+export async function serveAdminGate(request, env) {
+  var url = new URL(request.url);
+  var isPage = url.pathname === '/admin' || url.pathname === '/admin/';
+  if (!isPage && GATED_ASSETS.indexOf(url.pathname) === -1) return null;
+  var allowed = !!(await readToken(env, readCookie(request, GATE_COOKIE), 'gate'));
+  if (isPage) {
+    if (!allowed) {
+      return new Response(GATE_PAGE, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+    }
+    var pageUrl = new URL(url);
+    pageUrl.pathname = ADMIN_PAGE;
+    return noStore(await env.ASSETS.fetch(new Request(pageUrl, request)));
+  }
+  if (!allowed) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  return noStore(await env.ASSETS.fetch(request));
+}
+
+// POST /api/admin/gate { personalCode } — 관리자 계정이면 확인 쿠키를 준다.
+async function handleGate(request, env) {
+  if (!(await loginAllowed(env, request))) return json({ error: 'too many requests, try again later' }, 429);
+  var body = await readBody(request);
+  if (body instanceof Response) return body;
+  var code = typeof body.personalCode === 'string' ? body.personalCode.trim() : '';
+  var accountHash = PERSONAL_CODE_RE.test(code) ? await sha256Hex('user-v2:' + code) : '';
+  if (!adminHashes(env).some(function (h) { return safeEqual(h, accountHash); })) {
+    return json({ error: 'forbidden' }, 403);
+  }
+  var token = await signToken(env, { k: 'gate', a: accountHash.slice(0, ACTOR_LENGTH), e: Date.now() + GATE_TTL_S * 1000 });
+  var res = json({ ok: true });
+  res.headers.set('Set-Cookie', gateCookie(token, GATE_TTL_S));
+  return res;
+}
+
+// POST /api/admin/gate/clear — 관리 페이지에서 로그아웃할 때 확인 쿠키를 지운다.
+function handleGateClear() {
+  var res = json({ ok: true });
+  res.headers.set('Set-Cookie', gateCookie('', 0));
+  return res;
 }
 
 // GET /api/admin/actions?action=&before= — 최근 작업 기록 50건. action 은 접두사
@@ -166,6 +263,8 @@ export default {
     var path = url.pathname.slice('/api/admin'.length);
     try {
       if (path === '/login' && request.method === 'POST') return await handleLogin(request, env);
+      if (path === '/gate' && request.method === 'POST') return await handleGate(request, env);
+      if (path === '/gate/clear' && request.method === 'POST') return handleGateClear();
       var handler = ROUTES[request.method + ' ' + path];
       if (!handler) return json({ error: 'not found' }, 404);
       var session = await requireSession(request, env);

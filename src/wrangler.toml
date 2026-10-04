@@ -19,6 +19,9 @@ custom_domain = true
 directory = "."
 binding = "ASSETS"
 html_handling = "none"
+# 관리 페이지(/admin)의 HTML·JS·CSS 는 정적 파일이지만, 관리자 계정 확인 쿠키가
+# 있을 때만 내려주도록 Worker 를 먼저 거치게 한다(worker/adminApi.js serveAdminGate).
+run_worker_first = ["/page/adminPage.html", "/js/pages/adminPage.js", "/css/pages/admin-page.css"]
 
 # 사이드바의 버전 표시(auth.js .auth-version-tag)를 누르면 실제 배포 시각을
 # 보여준다 — 커밋을 손으로 추적하는 대신, Cloudflare가 지금 실행 중인 Worker
@@ -247,6 +250,9 @@ TURNSTILE_SITEKEY = ""
 directory = "."
 binding = "ASSETS"
 html_handling = "none"
+# 관리 페이지(/admin)의 HTML·JS·CSS 는 정적 파일이지만, 관리자 계정 확인 쿠키가
+# 있을 때만 내려주도록 Worker 를 먼저 거치게 한다(worker/adminApi.js serveAdminGate).
+run_worker_first = ["/page/adminPage.html", "/js/pages/adminPage.js", "/css/pages/admin-page.css"]
 
 [env.dev.version_metadata]
 binding = "CF_VERSION_METADATA"
