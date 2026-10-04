@@ -4,7 +4,7 @@ R2 옛 대문자 키 정리 스크립트 (cleanup_r2_legacy_keys.py)
 2026-09-27 에 폴더 이름을 camelCase 로 바꾸면서(assets/Image -> assets/image,
 AudioNovel -> audioNovel 등) R2 에는 새 키를 올렸지만, 이미 배포된 사이트가
 계속 옛 키를 읽고 있어서 옛 키도 임시로 남겨 두었다. 새 경로를 쓰는 코드가
-release(cpkg.cloud)와 dev(cpkg-dev)에 모두 배포된 **뒤에** 이 스크립트로 옛 키를
+release(cpkg.cloud)와 dev(cpkgdev)에 모두 배포된 **뒤에** 이 스크립트로 옛 키를
 지운다. 배포 전에 지우면 실서버 이미지와 오디오 노벨이 전부 404 가 된다.
 
 - 대상은 assets/Image/ 와 AudioNovel/ 접두사뿐이다. 같은 버킷에 있는 북마크

@@ -71,7 +71,7 @@ export async function passCookie(env) {
 // siteverify는 네트워크 오류·비정상 응답이면 무조건 실패로 본다(fail closed).
 // hostname은 이 비콘을 받은 Worker 자신의 호스트와 같아야 한다 — 비콘이
 // 같은 오리진에서만 오므로, 배포마다 허용 목록을 따로 관리하지 않아도
-// cpkg.cloud / cpkg-dev / localhost가 각자 자기 호스트만 인정하게 된다.
+// cpkg.cloud / cpkgdev / localhost가 각자 자기 호스트만 인정하게 된다.
 export async function verifyToken(token, request, env) {
   if (typeof token !== 'string' || token.length === 0 || token.length > 2048) return false;
   var result;

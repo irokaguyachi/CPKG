@@ -212,14 +212,19 @@ TURNSTILE_SITEKEY = ""
 # Cloudflare Workers Builds는 Durable Object(PRESENCE/PresenceDO)가 있는
 # Worker에는 브랜치별 프리뷰 URL을 아예 만들어주지 않는다(공식 문서에 명시된
 # 제약). dev 브랜치가 실제로 열어볼 수 있는 고정 링크를 가지려면 별도 이름의
-# Worker(cpkg-dev)로 따로 배포하는 수밖에 없다.
+# Worker(cpkgdev)로 따로 배포하는 수밖에 없다.
+# 이름은 대시보드에서 Workers Builds 를 연결한 워커 이름(cpkgdev)과 같아야
+# 한다. Workers Builds 는 이 값을 무시하고 연결된 워커로 배포하지만, 로컬의
+# `wrangler secret put --env dev`·`npm run deploy:dev` 는 이 이름을 그대로
+# 쓴다 — 예전엔 cpkg-dev 로 적혀 있어서 시크릿이 사이트와 무관한 빈
+# 워커(cpkg-dev)에 들어가는 사고가 있었다(2026-10-05).
 #
 # 바인딩(vars/durable_objects/kv_namespaces/r2_buckets/d1_databases/
 # ratelimits/assets 등)은 환경 간에 상속되지 않아 전부 다시 선언해야 한다 —
 # 지금은 D1(TAGS_DB)/R2(FAVORITES_BUCKET)/KV(RATE_LIMIT_KV)를 프로덕션과
 # 동일한 리소스로 그대로 재사용한다(별도 D1/R2를 새로 파지 않았다). 즉
-# cpkg-dev에서 투표·북마크·회원가입을 테스트하면 실제 프로덕션 데이터에
-# 그대로 반영된다 — Durable Object 상태만 스크립트 단위라 cpkg-dev의
+# cpkgdev에서 투표·북마크·회원가입을 테스트하면 실제 프로덕션 데이터에
+# 그대로 반영된다 — Durable Object 상태만 스크립트 단위라 cpkgdev의
 # PresenceDO는 프로덕션과 자동으로 분리된다. 방문자 통계(Analytics Engine)만
 # 별도 데이터셋(*_dev)으로 나눠서 dev 접속이 프로덕션 통계를 오염시키지
 # 않게 했다(단, 관리자 통계 페이지의 조회 쿼리는 statsApi.js에 데이터셋
@@ -227,7 +232,7 @@ TURNSTILE_SITEKEY = ""
 # 자체는 문제 없음, dev 전용 조회 화면이 필요해지면 그때 statsApi.js도
 # 환경별로 나누면 된다).
 [env.dev]
-name = "cpkg-dev"
+name = "cpkgdev"
 workers_dev = true
 # routes는 상속된다 — 안 비우면 cpkg.cloud 커스텀 도메인을 프로덕션에서
 # 뺏어와 버린다(wrangler deploy --dry-run이 이 경고를 직접 알려준다).

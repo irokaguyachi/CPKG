@@ -45,7 +45,7 @@
 | `dev` | 만든 기능을 서버에서 직접 확인하는 테스트 빌드입니다. |
 | `release` | 유저들이 실제로 보는 프로덕션 빌드입니다. |
 
-테스트 빌드는 `cpkg-dev` 워커(`*.workers.dev`), 프로덕션 빌드는 `cpkg` 워커(`cpkg.cloud`)로 나갑니다. 브랜치와 Workers Build 트리거의 연결은 Cloudflare 대시보드의 각 워커 `Settings → Build` 에서 관리합니다.
+테스트 빌드는 `cpkgdev` 워커(`*.workers.dev`), 프로덕션 빌드는 `cpkg` 워커(`cpkg.cloud`)로 나갑니다. 브랜치와 Workers Build 트리거의 연결은 Cloudflare 대시보드의 각 워커 `Settings → Build` 에서 관리합니다.
 
 ### 2. 커밋·푸시 가드레일 (절대 준수)
 
@@ -70,7 +70,7 @@
 ```bash
 npm run build        # dist/ 생성 + 난독화. 원본 JS 가 남으면 exit 1
 npm run deploy       # build 후 npx wrangler deploy --config dist/wrangler.toml  (cpkg)
-npm run deploy:dev   # 위와 동일하되 --env dev  (cpkg-dev)
+npm run deploy:dev   # 위와 동일하되 --env dev  (cpkgdev)
 ```
 
 Workers Builds 를 사용할 때 각 워커의 Build 명령은 `npm run build`, Deploy 명령은 `npx wrangler deploy --config dist/wrangler.toml`(dev 워커는 `--env dev` 추가), Root directory 는 저장소 루트로 맞춥니다.
@@ -82,7 +82,7 @@ Workers Builds 를 사용할 때 각 워커의 Build 명령은 `npm run build`, 
 이 변경이 포함된 다음 업데이트를 배포할 때는 아래 순서를 지킵니다. 각 단계는 위 가드레일대로 사용자가 요청하거나 허락했을 때만 진행합니다.
 
 1. **배포 전 R2 동기화**: `python src/scripts/sync_to_r2.py` 를 실행해 그 사이 추가된 이미지까지 새 키로 올립니다.
-2. **배포**: 새 경로를 쓰는 코드를 `dev`(cpkg-dev)와 `release`(cpkg.cloud)에 모두 반영하고, 두 사이트에서 이미지와 오디오 노벨이 새 경로로 뜨는지 확인합니다.
+2. **배포**: 새 경로를 쓰는 코드를 `dev`(cpkgdev)와 `release`(cpkg.cloud)에 모두 반영하고, 두 사이트에서 이미지와 오디오 노벨이 새 경로로 뜨는지 확인합니다.
 3. **옛 키 정리 (반드시 배포 뒤에)**: `python src/scripts/cleanup_r2_legacy_keys.py` 로 dry-run 결과를 확인한 뒤 `--apply` 로 삭제합니다. 배포 전에 지우면 실서버 이미지가 전부 404 가 됩니다(2026-09-27 에 실제로 발생해 옛 키를 복원한 이력이 있습니다).
 4. **보류된 R2 전용 파일**: 새 키가 없는 옛 키(로컬 원본이 없는 로고·명예관 이미지 등 약 31개)는 스크립트가 지우지 않고 목록만 출력합니다. 백업할지 지울지는 사용자에게 물어봅니다.
 5. 모두 끝나면 이 5번 절을 문서에서 삭제합니다.
