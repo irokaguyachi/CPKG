@@ -636,7 +636,7 @@ test('renaming a tag moves votes, overrides and definitions', async () => {
   putOverride(t, 123, ['A', 'B']); putOverride(t, 456, ['A', 'C']);
   const res = await t.api('POST', 'tag-defs/rename', { from: 'A', to: 'B', version: 1 });
   assert.equal(res.status, 200, JSON.stringify(res.body));
-  assert.deepEqual(res.body, { ok: true, merged: false, movedVotes: 2, changedOverrides: 2, version: 2 });
+  assert.deepEqual(res.body, { ok: true, to: 'B', merged: false, movedVotes: 2, changedOverrides: 2, version: 2 });
   assert.equal(t.env.TAGS_DB.rows("SELECT COUNT(*) AS n FROM tag_votes WHERE tag_name = 'A'")[0].n, 0);
   assert.equal(t.env.TAGS_DB.rows("SELECT COUNT(*) AS n FROM tag_votes WHERE post_id = 10 AND tag_name = 'B'")[0].n, 2);
   const overrides = t.env.TAGS_DB.rows('SELECT item_id, tags FROM official_tag_overrides ORDER BY item_id').map(r => JSON.parse(r.tags));
@@ -690,4 +690,50 @@ test('rename and unrename are validated', async () => {
   const log = (await t.api('GET', 'actions?action=tag-defs')).body.items;
   assert.equal(log[0].action, 'tag-defs.unrename');
   assert.equal(storedDefs(t).version, 2);
+});
+
+// 리뷰 #2: 읽은 뒤 batch 전에 다른 창이 저장하면 이름 바꾸기 전체가 빠져야 한다.
+test('a rename that loses the version race moves nothing', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [def('A', '🅰️', true)], renames: {} });
+  putVote(t, 10, 'A', 'v1');
+  putOverride(t, 123, ['A']);
+  const batch = t.env.TAGS_DB.batch.bind(t.env.TAGS_DB);
+  t.env.TAGS_DB.batch = async statements => {
+    t.env.TAGS_DB.db.prepare("UPDATE site_documents SET version = version + 1 WHERE key = 'tag-definitions'").run();
+    t.env.TAGS_DB.batch = batch;
+    return batch(statements);
+  };
+  const res = await t.api('POST', 'tag-defs/rename', { from: 'A', to: 'B', version: 1 });
+  assert.equal(res.status, 409);
+  assert.equal(t.env.TAGS_DB.rows("SELECT COUNT(*) AS n FROM tag_votes WHERE tag_name = 'A'")[0].n, 1);
+  assert.deepEqual(JSON.parse(t.env.TAGS_DB.rows('SELECT tags FROM official_tag_overrides')[0].tags), ['A']);
+  assert.deepEqual(storedDefs(t).doc.renames, {});
+  assert.equal((await t.api('GET', 'actions?action=tag-defs')).body.items.length, 0);
+});
+
+test('an override edited after the rename read is not overwritten', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [], renames: {} });
+  putOverride(t, 123, ['A']);
+  const batch = t.env.TAGS_DB.batch.bind(t.env.TAGS_DB);
+  t.env.TAGS_DB.batch = async statements => {
+    t.env.TAGS_DB.db.prepare("UPDATE official_tag_overrides SET tags = '[\"A\",\"새로\"]' WHERE item_id = 123").run();
+    t.env.TAGS_DB.batch = batch;
+    return batch(statements);
+  };
+  assert.equal((await t.api('POST', 'tag-defs/rename', { from: 'A', to: 'B', version: 1 })).status, 200);
+  assert.deepEqual(JSON.parse(t.env.TAGS_DB.rows('SELECT tags FROM official_tag_overrides')[0].tags), ['A', '새로']);
+});
+
+// 리뷰 #5: 이미 다른 이름으로 바뀐 이름(renames 의 키)으로 바꾸면 그 끝 이름으로 간다.
+test('renaming onto a renamed name follows it to the final name', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [], renames: { A: 'C', B: 'C' } });
+  putOverride(t, 123, ['D']);
+  const res = await t.api('POST', 'tag-defs/rename', { from: 'D', to: 'B', version: 1 });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.to, 'C');
+  assert.deepEqual(storedDefs(t).doc.renames, { A: 'C', B: 'C', D: 'C' });
+  assert.deepEqual(JSON.parse(t.env.TAGS_DB.rows('SELECT tags FROM official_tag_overrides')[0].tags), ['C']);
 });

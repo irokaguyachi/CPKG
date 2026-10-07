@@ -51,12 +51,26 @@ function cleanVersion(raw) {
 // 경우에만" 들어가게 조건을 걸어, 저장이 version 충돌로 빠지면 기록도 남지 않는다.
 // 결과 배열의 마지막 문장이 문서 쓰기다(changes 0 = 충돌). prevVersion 0 은 새 행
 // INSERT 라 이미 행이 있으면 PK 충돌로 batch 전체가 실패한다.
+// 문서가 아직 prevVersion 인지 보는 SQL 조건과 그 인자. 문서 쓰기와 같은 batch 에
+// 넣는 다른 문장(작업 기록, 이름 바꾸기의 투표·덮어쓰기 이동)에도 걸어서, 충돌하면
+// 아무것도 바뀌지 않게 한다.
+function versionGuard(prevVersion) {
+  return prevVersion === 0
+    ? { sql: 'NOT EXISTS (SELECT 1 FROM site_documents WHERE key = ?)', args: [TAG_DEFS_KEY] }
+    : { sql: 'EXISTS (SELECT 1 FROM site_documents WHERE key = ? AND version = ?)', args: [TAG_DEFS_KEY, prevVersion] };
+}
+
+function guarded(env, sql, args, prevVersion) {
+  var g = versionGuard(prevVersion);
+  var stmt = env.TAGS_DB.prepare(sql + ' AND ' + g.sql);
+  return stmt.bind.apply(stmt, args.concat(g.args));
+}
+
 function docWriteStatements(env, session, action, detail, doc, prevVersion, extra) {
   var now = Date.now();
-  var guard = prevVersion === 0
-    ? 'NOT EXISTS (SELECT 1 FROM site_documents WHERE key = ?)'
-    : 'EXISTS (SELECT 1 FROM site_documents WHERE key = ? AND version = ?)';
-  var guardArgs = prevVersion === 0 ? [TAG_DEFS_KEY] : [TAG_DEFS_KEY, prevVersion];
+  var g = versionGuard(prevVersion);
+  var guard = g.sql;
+  var guardArgs = g.args;
   var log = env.TAGS_DB.prepare(
     'INSERT INTO admin_actions (at, actor, action, target, detail) SELECT ?, ?, ?, ?, ? WHERE ' + guard
   );
@@ -155,23 +169,34 @@ async function handleRename(request, env, ctx, session) {
   var current = await readTagDefinitions(env);
   if ((current ? current.version : 0) !== version) return conflict();
   var before = current ? current.doc : { v: 1, tags: [], renames: {} };
+  // to 가 이미 다른 이름으로 바뀐 이름(renames 의 키)이면 그 끝 이름까지 따라간다 —
+  // 아니면 브라우저가 덮어쓰기 값을 한 번 더 바꿔서 같은 태그가 두 이름으로 보인다.
+  // 끝 이름이 from 이면(되돌리기) 따라가지 않는다. renameDoc 이 그 항목을 지운다.
+  var seen = {};
+  while (Object.prototype.hasOwnProperty.call(before.renames || {}, to) && before.renames[to] !== from && !seen[to]) {
+    seen[to] = true;
+    to = before.renames[to];
+  }
+  if (to === from) return json({ error: 'invalid payload shape' }, 400);
   var result = renameDoc(before, from, to);
 
   var movedVotes = (await env.TAGS_DB.prepare('SELECT COUNT(*) AS n FROM tag_votes WHERE tag_name = ?').bind(from).first()).n;
   var overrideRows = (await env.TAGS_DB.prepare('SELECT item_type, item_id, tags FROM official_tag_overrides').all()).results || [];
   var now = Date.now();
   var extra = [
-    env.TAGS_DB.prepare('UPDATE OR IGNORE tag_votes SET tag_name = ? WHERE tag_name = ?').bind(to, from),
-    env.TAGS_DB.prepare('DELETE FROM tag_votes WHERE tag_name = ?').bind(from)
+    guarded(env, 'UPDATE OR IGNORE tag_votes SET tag_name = ? WHERE tag_name = ?', [to, from], version),
+    guarded(env, 'DELETE FROM tag_votes WHERE tag_name = ?', [from], version)
   ];
   var changedOverrides = 0;
   overrideRows.forEach(function (r) {
     var tags = JSON.parse(r.tags);
     if (tags.indexOf(from) === -1) return;
     changedOverrides++;
-    extra.push(env.TAGS_DB.prepare(
-      'UPDATE official_tag_overrides SET tags = ?, updated_at = ? WHERE item_type = ? AND item_id = ?'
-    ).bind(JSON.stringify(replaceTag(tags, from, to)), now, r.item_type, r.item_id));
+    // 읽은 뒤에 누가 이 행을 고쳤으면(tags 가 달라졌으면) 덮어쓰지 않고 건너뛴다.
+    // 그 행의 옛 이름은 브라우저의 renames 가 계속 새 이름으로 보여 준다.
+    extra.push(guarded(env,
+      'UPDATE official_tag_overrides SET tags = ?, updated_at = ? WHERE item_type = ? AND item_id = ? AND tags = ?',
+      [JSON.stringify(replaceTag(tags, from, to)), now, r.item_type, r.item_id, r.tags], version));
   });
 
   var detail = { from: from, to: to, merged: result.merged, movedVotes: movedVotes, changedOverrides: changedOverrides, before: current ? current.doc : null };
@@ -179,7 +204,7 @@ async function handleRename(request, env, ctx, session) {
   if (!(await runDocBatch(env, statements))) return conflict();
   await recordTagSnapshot(env);
   return published(await publishTagFile(env), {
-    ok: true, merged: result.merged, movedVotes: movedVotes, changedOverrides: changedOverrides, version: version + 1
+    ok: true, to: to, merged: result.merged, movedVotes: movedVotes, changedOverrides: changedOverrides, version: version + 1
   });
 }
 

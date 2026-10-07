@@ -918,7 +918,9 @@
             run(renameBtn, function () {
               return api('POST', 'tag-defs/rename', { from: from, to: to, version: tagDefsSaved.version }).then(function (r) {
                 tagDefsDraft = null;
-                toast('옮긴 투표 ' + r.movedVotes + '개, 바꾼 덮어쓰기 ' + r.changedOverrides + '개. 사이트에는 1분 안에 반영돼요.');
+                // "B" 가 이미 다른 이름으로 바뀐 이름이면 서버가 그 끝 이름으로 옮긴다.
+                var chained = r.to && r.to !== to ? '"' + to + '" 은(는) 이미 "' + r.to + '" 로 바뀐 이름이라 "' + r.to + '" 로 옮겼어요. ' : '';
+                toast(chained + '옮긴 투표 ' + r.movedVotes + '개, 바꾼 덮어쓰기 ' + r.changedOverrides + '개. 사이트에는 1분 안에 반영돼요.');
                 return r;
               });
             });

@@ -24,10 +24,13 @@
   // 모달 배경에 깔 대표 장르 태그 색 — 장르 태그가 둘이면 두 번째 색을
   // 반대쪽 모서리에 깐다. 색이 정해진 태그가 없으면 기본 색 하나만 쓴다.
   function applyTagTint(card, tags) {
-    var picked = (global.TagConfig && global.TagConfig.coverTags) ? global.TagConfig.coverTags(tags, 2) : [];
-    if (!picked.length) return;
-    card.style.setProperty('--pds-tint-1', 'var(--tag-glow-' + picked[0] + ')');
-    card.style.setProperty('--pds-tint-2', 'var(--tag-glow-' + (picked[1] || picked[0]) + ')');
+    var cfg = global.TagConfig;
+    var picked = (cfg && cfg.coverTags) ? cfg.coverTags(tags, 2) : [];
+    if (!picked.length || !cfg.glowValue) return;
+    // 관리 페이지에서 정의한 새 태그는 tags.css 에 변수가 없으므로 glowValue 가
+    // 정의 색이나 기본 색으로 바꿔 준다(없는 변수를 쓰면 배경이 통째로 사라진다).
+    card.style.setProperty('--pds-tint-1', cfg.glowValue(picked[0]));
+    card.style.setProperty('--pds-tint-2', cfg.glowValue(picked[1] || picked[0]));
   }
 
   function ensureOverlay() {

@@ -904,10 +904,9 @@
       kicker.className = 'grid-mag-tags';
       sortTags(tagsField(s)).slice(0, 3).forEach(function (tag) {
         var item = textEl('span', 'grid-mag-tag', tag);
-        // 색이 정해진 태그만 CSS 변수 이름으로 쓸 수 있다(유저 태그는 임의 문자열)
-        var known = Object.prototype.hasOwnProperty.call(TAG_EMOJI, tag);
-        item.style.setProperty('--dot-color',
-          known ? 'var(--tag-glow-' + tag + ', var(--tag-glow-default))' : 'var(--tag-glow-default)');
+        // 색이 정해진 태그만 CSS 변수 이름으로 쓸 수 있다(유저 태그는 임의 문자열).
+        // 관리 페이지에서 정의한 태그의 색도 glowValue 가 함께 처리한다.
+        item.style.setProperty('--dot-color', global.TagConfig.glowValue(tag));
         kicker.appendChild(item);
       });
       card.appendChild(kicker);

@@ -70,3 +70,25 @@ test('pending definitions are applied on load', () => {
   TagConfig.applyDefinitions(defs);
   assert.equal(document.head.children.length, 1, 'the style element is reused');
 });
+
+// 리뷰 #1: 정의만 있고 색이 없는 태그(이모티콘·새 태그)가 존재하지 않는 CSS 변수를
+// 가리키면 모달 배경·표지 선언이 통째로 무효가 된다.
+test('glow values only point at stylesheet variables that exist', () => {
+  const document = fakeDocument();
+  document.createElement = () => ({ setAttribute() {}, appendChild() {}, className: '', textContent: '' });
+  const { TagConfig } = loadTagConfig({ document });
+  TagConfig.applyDefinitions({ tags: [
+    { name: '일상', emoji: '☀️', color: null, votable: true },
+    { name: '이모티콘', emoji: '🏷️', color: null, votable: false },
+    { name: '새 태그', emoji: '✨', color: null, votable: false },
+    { name: '파랑', emoji: '🔵', color: '#6688cc', votable: false }
+  ], renames: {} });
+  assert.equal(TagConfig.glowValue('일상'), 'var(--tag-glow-일상, var(--tag-glow-default))');
+  assert.equal(TagConfig.glowValue('이모티콘'), 'var(--tag-glow-default)');
+  assert.equal(TagConfig.glowValue('새 태그'), 'var(--tag-glow-default)');
+  assert.equal(TagConfig.glowValue('파랑'), '102, 136, 204');
+  const props = {};
+  const el = { style: { setProperty: (k, v) => { props[k] = v; } }, classList: { add() {} }, appendChild() {} };
+  TagConfig.applyTextCover(el, { tags: ['새 태그'], text: false });
+  assert.equal(props['--cover-color'], 'var(--tag-glow-default)');
+});

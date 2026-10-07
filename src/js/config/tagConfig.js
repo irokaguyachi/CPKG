@@ -100,9 +100,7 @@
     if (!el) return;
     info = info || {};
     var tag = coverTag(info.tags);
-    var glow = tag ? glowColor(tag) : null;
-    el.style.setProperty('--cover-color', glow ||
-      (tag ? 'var(--tag-glow-' + tag + ', var(--tag-glow-default))' : 'var(--tag-glow-default)'));
+    el.style.setProperty('--cover-color', tag ? glowValue(tag) : 'var(--tag-glow-default)');
     el.classList.add('text-cover');
 
     el.appendChild(span('text-cover-glow'));
@@ -134,6 +132,8 @@
   // 덮어쓴다. 다른 스크립트가 TAG_ORDER·TAG_EMOJI 를 이미 잡아 두었을 수 있어서
   // 새 객체로 바꾸지 않고 제자리에서 고친다. BUILTIN 은 관리 화면의 초기값이다.
   var BUILTIN = { order: TAG_ORDER.slice(), emoji: Object.assign({}, TAG_EMOJI) };
+  // tags.css 의 --tag-glow-<태그> 는 내장 TAG_EMOJI 의 태그와 같은 목록이다.
+  var BUILTIN_GLOW = BUILTIN.emoji;
   var definedColors = {};
   var renames = {};
   var STYLE_ID = 'tag-defs-style';
@@ -170,6 +170,16 @@
 
   function glowColor(tag) {
     return Object.prototype.hasOwnProperty.call(definedColors, tag) ? definedColors[tag] : null;
+  }
+
+  // 표지·상세 모달·매거진 점 색처럼 "R, G, B" 를 받는 자리에 넣을 값. 정의 색이 있으면
+  // 그 값, tags.css 에 --tag-glow-<태그> 가 있는 내장 태그면 그 변수, 나머지(정의만 있고
+  // 색이 없는 새 태그)는 기본 색이다 — 없는 변수를 가리키면 선언 전체가 무효가 된다.
+  function glowValue(tag) {
+    var defined = glowColor(tag);
+    if (defined) return defined;
+    if (Object.prototype.hasOwnProperty.call(BUILTIN_GLOW, tag)) return 'var(--tag-glow-' + tag + ', var(--tag-glow-default))';
+    return 'var(--tag-glow-default)';
   }
 
   function applyDefinitions(defs) {
@@ -212,6 +222,7 @@
     applyTextCover: applyTextCover,
     definitionCss: definitionCss,
     glowColor: glowColor,
+    glowValue: glowValue,
     applyDefinitions: applyDefinitions
   };
 
