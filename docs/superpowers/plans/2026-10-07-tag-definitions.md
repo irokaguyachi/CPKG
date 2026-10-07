@@ -32,13 +32,13 @@
 
 | Task | 상태 | 메모 |
 | --- | --- | --- |
-| 1. 스키마 + 공용 모듈 + v2 공개 파일 + 투표 목록 | | |
-| 2. 관리 API `tag-defs` 조회·저장 | | |
-| 3. 관리 API 이름 바꾸기·되돌리기 | | |
-| 4. 클라이언트 로더(cdnConfig) | | |
-| 5. `TagConfig.applyDefinitions` | | |
-| 6. 관리 화면 "태그 정의" 탭 | | |
-| 7. 전체 검증 | | |
+| 1. 스키마 + 공용 모듈 + v2 공개 파일 + 투표 목록 | ✅ | site_documents, worker/tagDocs.js(cleanTagName·readTagDefinitions·publishTagFile), /tags/official v2, 투표 후보가 정의 문서를 따름. npm test 64/64 |
+| 2. 관리 API `tag-defs` 조회·저장 | ✅ | worker/adminTagDefs.js, version 409(충돌 시 작업 기록도 남지 않게 조건부 기록), 본문 32KB. npm test 69/69 |
+| 3. 관리 API 이름 바꾸기·되돌리기 | ✅ | rename(투표·덮어쓰기·정의·renames 한 batch + 스냅샷 재생성), unrename. npm test 73/73 |
+| 4. 클라이언트 로더(cdnConfig) | ✅ | renames 적용·중복 제거, UserTagCatalog 바꿔치기, TagConfig/__tagDefinitions 전달. npm test 76/76 |
+| 5. `TagConfig.applyDefinitions` | ✅ | 순서·이모지 제자리 교체, definitionCss·glowColor, 표지 색. tests/tag-config.test.cjs. npm test 79/79 |
+| 6. 관리 화면 "태그 정의" 탭 | ✅ | 로컬 wrangler dev 에서 저장·이름 바꾸기·문학 목록 필터와 칩·라이트/다크 색 확인. build OK |
+| 7. 전체 검증 | ✅ | npm test 79/79, npm run build exit 0. 원격 D1 적용은 사용자 요청 시 |
 
 ---
 
