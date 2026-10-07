@@ -467,7 +467,7 @@ test('public official tag overrides default to empty', async () => {
   const t = await setupAdmin([]);
   let res = await t.pub('GET', '/tags/official');
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body, { v: 1, items: {} });
+  assert.deepEqual(res.body, { v: 2, items: {}, tags: null, renames: {} });
   assert.equal(res.headers.get('Cache-Control'), 'public, max-age=60');
   await t.env.FAVORITES_BUCKET.put('tags/official-overrides.json', JSON.stringify({ v: 1, items: { 'novel:123': ['슬픔'] } }));
   res = await t.pub('GET', '/tags/official');
@@ -519,4 +519,28 @@ test('official tag edits are validated', async () => {
   assert.equal(unknown.body.error, 'unknown item');
   assert.deepEqual(await officialItems(t), {});
   assert.equal(t.env.TAGS_DB.rows('SELECT COUNT(*) AS n FROM official_tag_overrides')[0].n, 0);
+});
+
+// ---- 태그 정의 ----
+const SAMPLE_DEFS = { v: 1, tags: [{ name: '슬픔', emoji: '💧', color: null, votable: true }], renames: { 짧문: '짧은글' } };
+function putDefs(t, doc, version = 1) {
+  t.env.TAGS_DB.db.prepare('INSERT OR REPLACE INTO site_documents (key, doc, version, updated_at) VALUES (?, ?, ?, ?)')
+    .run('tag-definitions', JSON.stringify(doc), version, 1);
+}
+
+test('official tag edits publish the v2 file with tag definitions', async () => {
+  const t = await setupAdmin();
+  putDefs(t, SAMPLE_DEFS);
+  assert.equal((await t.api('POST', 'official-tags/set', { itemType: 'novel', itemId: 123, tags: ['슬픔'] })).status, 200);
+  const res = await t.pub('GET', '/tags/official');
+  assert.deepEqual(res.body, { v: 2, items: { 'novel:123': ['슬픔'] }, tags: SAMPLE_DEFS.tags, renames: SAMPLE_DEFS.renames });
+});
+
+test('tag voting follows votable definitions when present', async () => {
+  const t = await setupAdmin();
+  assert.equal((await vote(t, 1, 123, '일상')).status, 200);
+  assert.equal((await vote(t, 1, 123, '슬픔')).status, 400);
+  putDefs(t, SAMPLE_DEFS);
+  assert.equal((await vote(t, 2, 123, '슬픔')).status, 200);
+  assert.equal((await vote(t, 2, 123, '일상')).status, 400);
 });

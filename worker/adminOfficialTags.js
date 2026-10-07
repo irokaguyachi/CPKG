@@ -1,17 +1,15 @@
 import { json, readBody, logAction, intParam } from './adminCommon.js';
+import { cleanTagName, publishTagFile } from './tagDocs.js';
 
 // 관리 페이지의 공식 태그 탭. 작품(종류 + 첫 게시물 ID)의 공식 태그를 통째로
 // 교체하는 덮어쓰기를 D1 official_tag_overrides 에 두고, 바뀔 때마다 전체 목록을
-// R2 tags/official-overrides.json 으로 다시 굽는다. 공개 GET /tags/official
-// (favoritesShareWorker.js)이 그 파일을 내려주고, 브라우저(cdnConfig.js)가 pageData
-// JSON 을 읽을 때 tags 를 교체한다 — 정적 데이터를 다시 빌드해도 수정이 남는다.
+// R2 tags/official-overrides.json 으로 태그 정의와 함께 다시 굽는다(worker/tagDocs.js).
+// 공개 GET /tags/official(favoritesShareWorker.js)이 그 파일을 내려주고, 브라우저
+// (cdnConfig.js)가 pageData JSON 을 읽을 때 tags 를 교체한다 — 정적 데이터를 다시
+// 빌드해도 수정이 남는다.
 
 var TYPES = ['novel', 'translation', 'series', 'hof', 'official'];
-var OVERRIDES_KEY = 'tags/official-overrides.json';
 var MAX_TAGS = 10;
-var MAX_TAG_LENGTH = 20;
-// 쉼표는 태그보정.md 의 구분자라 막고, 제어·폭 없는·방향 문자도 막는다.
-var BAD_TAG_RE = /[,\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/;
 
 function cleanType(raw) {
   return TYPES.indexOf(raw) !== -1 ? raw : null;
@@ -22,10 +20,8 @@ function cleanTags(raw) {
   if (!Array.isArray(raw) || raw.length > MAX_TAGS) return null;
   var out = [];
   for (var i = 0; i < raw.length; i++) {
-    if (typeof raw[i] !== 'string') return null;
-    var tag = raw[i].normalize('NFC').trim();
-    var length = Array.from(tag).length;
-    if (length < 1 || length > MAX_TAG_LENGTH || BAD_TAG_RE.test(tag)) return null;
+    var tag = cleanTagName(raw[i]);
+    if (tag === null) return null;
     if (out.indexOf(tag) === -1) out.push(tag);
   }
   return out;
@@ -51,21 +47,6 @@ async function currentOverride(env, type, id) {
     'SELECT tags FROM official_tag_overrides WHERE item_type = ? AND item_id = ?'
   ).bind(type, id).first();
   return row ? JSON.parse(row.tags) : null;
-}
-
-// D1 의 전체 덮어쓰기로 R2 JSON 을 다시 만든다. 실패하면 false — 다음 변경 때 다시 구워진다.
-async function publishOverrides(env) {
-  try {
-    var rows = (await env.TAGS_DB.prepare('SELECT item_type, item_id, tags FROM official_tag_overrides').all()).results || [];
-    var items = {};
-    rows.forEach(function (r) { items[r.item_type + ':' + r.item_id] = JSON.parse(r.tags); });
-    await env.FAVORITES_BUCKET.put(OVERRIDES_KEY, JSON.stringify({ v: 1, items: items }), {
-      httpMetadata: { contentType: 'application/json' }
-    });
-    return true;
-  } catch (e) {
-    return false;
-  }
 }
 
 function published(ok, body) {
@@ -105,7 +86,7 @@ async function handleSet(request, env, ctx, session) {
     ).bind(type, id, JSON.stringify(tags), Date.now()),
     logAction(env, session.actor, 'official-tags.set', type + ' ' + id, { before: before, after: tags })
   ]);
-  return published(await publishOverrides(env), { ok: true, tags: tags });
+  return published(await publishTagFile(env), { ok: true, tags: tags });
 }
 
 // POST official-tags/reset { itemType, itemId } — 덮어쓰기를 지워 원래 태그로 돌린다.
@@ -121,7 +102,7 @@ async function handleReset(request, env, ctx, session) {
     env.TAGS_DB.prepare('DELETE FROM official_tag_overrides WHERE item_type = ? AND item_id = ?').bind(type, id),
     logAction(env, session.actor, 'official-tags.reset', type + ' ' + id, { before: existing, after: null })
   ]);
-  return published(await publishOverrides(env), { ok: true });
+  return published(await publishTagFile(env), { ok: true });
 }
 
 export var officialTagRoutes = {

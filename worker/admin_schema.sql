@@ -60,3 +60,14 @@ CREATE TABLE IF NOT EXISTS library_hidden (
   name      TEXT,
   hidden_at INTEGER NOT NULL
 );
+
+-- 관리 페이지가 통째로 편집하는 사이트 문서. key 하나에 JSON 문서 하나를 두고,
+-- 저장할 때마다 version 을 1씩 올려 두 창에서 동시에 고친 내용이 서로를 덮지
+-- 않게 한다(낡은 version 으로 저장하면 409). 지금은 태그 정의('tag-definitions',
+-- worker/adminTagDefs.js)만 쓰고, 공지·사이트 설정도 다른 key 로 이어서 쓴다.
+CREATE TABLE IF NOT EXISTS site_documents (
+  key        TEXT    PRIMARY KEY,
+  doc        TEXT    NOT NULL,
+  version    INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);

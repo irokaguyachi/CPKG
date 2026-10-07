@@ -1,5 +1,6 @@
 import { readJsonLimited } from './requestBody.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
+import { readTagDefinitions } from './tagDocs.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -170,8 +171,16 @@ function cleanTagPostId(raw) {
 // UserTagCatalog.json은 다른 pageData/*.json과 똑같이 정상 배포되는 정적
 // 자산이다 — R2에 따로 복사하지 않고 같은 Worker의 ASSETS 바인딩으로 그대로
 // 읽는다(src/_worker.js가 짧은 주소를 실제 파일로 매핑할 때 쓰는 것과 같은
-// new URL + env.ASSETS.fetch 패턴).
+// new URL + env.ASSETS.fetch 패턴). 관리 페이지에서 태그 정의(worker/
+// adminTagDefs.js)를 저장한 뒤로는 그 문서의 votable 태그가 이 목록을 대신한다.
+// 문서가 없거나 읽기에 실패하면 정적 파일로 돌아간다.
 async function loadTagCatalog(request, env) {
+  try {
+    var defs = await readTagDefinitions(env);
+    if (defs && Array.isArray(defs.doc.tags)) {
+      return defs.doc.tags.filter(function (t) { return t && t.votable; }).map(function (t) { return t.name; });
+    }
+  } catch (e) {}
   var assetUrl = new URL(request.url);
   assetUrl.pathname = '/data/pageData/UserTagCatalog.json';
   var res = await env.ASSETS.fetch(new Request(assetUrl, { method: 'GET' }));
@@ -596,7 +605,7 @@ async function handleOfficialTags(request, env) {
     { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
     corsHeaders(request)
   );
-  if (!object) return new Response(JSON.stringify({ v: 1, items: {} }), { headers: headers });
+  if (!object) return new Response(JSON.stringify({ v: 2, items: {}, tags: null, renames: {} }), { headers: headers });
   return new Response(object.body, { headers: headers });
 }
 
