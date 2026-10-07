@@ -1,6 +1,7 @@
 import { readJsonLimited } from './requestBody.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 import { readTagDefinitions } from './tagDocs.js';
+import { cleanNickname, bannedWordIn } from './nickname.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -655,16 +656,9 @@ function cleanGameToken(raw) {
   return (typeof raw === 'string' && GAME_TOKEN_RE.test(raw)) ? raw : null;
 }
 
-// 제어 문자·폭 없는 문자·방향 바꾸는 문자를 지우고 공백을 하나로 줄인다.
-// 남은 글자가 1~10자여야 한다.
+// 정리 규칙은 worker/nickname.js 의 cleanNickname 과 같다(프로필은 12자, 랭킹은 10자).
 export function cleanGameNickname(raw) {
-  if (typeof raw !== 'string' || raw.length > 64) return null;
-  var name = raw.normalize('NFC')
-    .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  var length = Array.from(name).length;
-  return length >= 1 && length <= GAME_NICKNAME_MAX ? name : null;
+  return cleanNickname(raw, GAME_NICKNAME_MAX);
 }
 
 async function gamePlayerHash(playerId) {
@@ -839,16 +833,12 @@ async function handleGameEnd(request, env) {
 // 실패하면 막지 않는다 — 부가 제약이 랭킹 등록 자체를 막지 않도록.
 async function gameSubmitBlocked(env, playerHash, nickname) {
   try {
-    var results = await env.TAGS_DB.batch([
-      env.TAGS_DB.prepare('SELECT 1 AS hit FROM game_bans WHERE player_hash = ?').bind(playerHash),
-      env.TAGS_DB.prepare('SELECT word FROM banned_nicknames')
-    ]);
-    if ((results[0].results || []).length) return true;
-    var lower = nickname.toLowerCase();
-    return (results[1].results || []).some(function (r) { return lower.indexOf(r.word) !== -1; });
+    var banned = await env.TAGS_DB.prepare('SELECT 1 AS hit FROM game_bans WHERE player_hash = ?').bind(playerHash).first();
+    if (banned) return true;
   } catch (e) {
     return false;
   }
+  return bannedWordIn(env, [nickname]);
 }
 
 // 등록: 닉네임 확인 → 판(nonce) 소모 → 전체·주간 최고 기록 갱신. 판 소모는
