@@ -620,3 +620,74 @@ test('a large definition document fits', async () => {
   const res = await t.api('POST', 'tag-defs/save', { doc: { v: 1, tags }, version: 0 });
   assert.equal(res.status, 200, JSON.stringify(res.body));
 });
+
+const def = (name, emoji, votable = false) => ({ name, emoji, color: null, votable });
+function putVote(t, postId, tag, voterId) {
+  t.env.TAGS_DB.db.prepare('INSERT INTO tag_votes (post_id, tag_name, voter_hash, created_at) VALUES (?, ?, ?, 1)').run(postId, tag, voterId);
+}
+function putOverride(t, id, tags) {
+  t.env.TAGS_DB.db.prepare('INSERT INTO official_tag_overrides (item_type, item_id, tags, updated_at) VALUES (?, ?, ?, 1)').run('novel', id, JSON.stringify(tags));
+}
+
+test('renaming a tag moves votes, overrides and definitions', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [def('A', '🅰️', true), def('C', '©️')], renames: {} });
+  putVote(t, 10, 'A', 'v1'); putVote(t, 10, 'A', 'v2'); putVote(t, 10, 'B', 'v2');
+  putOverride(t, 123, ['A', 'B']); putOverride(t, 456, ['A', 'C']);
+  const res = await t.api('POST', 'tag-defs/rename', { from: 'A', to: 'B', version: 1 });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.deepEqual(res.body, { ok: true, merged: false, movedVotes: 2, changedOverrides: 2, version: 2 });
+  assert.equal(t.env.TAGS_DB.rows("SELECT COUNT(*) AS n FROM tag_votes WHERE tag_name = 'A'")[0].n, 0);
+  assert.equal(t.env.TAGS_DB.rows("SELECT COUNT(*) AS n FROM tag_votes WHERE post_id = 10 AND tag_name = 'B'")[0].n, 2);
+  const overrides = t.env.TAGS_DB.rows('SELECT item_id, tags FROM official_tag_overrides ORDER BY item_id').map(r => JSON.parse(r.tags));
+  assert.deepEqual(overrides, [['B'], ['B', 'C']]);
+  assert.deepEqual(storedDefs(t).doc, { v: 1, tags: [def('B', '🅰️', true), def('C', '©️')], renames: { A: 'B' } });
+  assert.deepEqual((await snapshot(t))['10'], [{ tag: 'B', votes: 2 }]);
+  const pub = (await t.pub('GET', '/tags/official')).body;
+  assert.deepEqual(pub.renames, { A: 'B' });
+  assert.deepEqual(pub.items['novel:123'], ['B']);
+  const log = (await t.api('GET', 'actions?action=tag-defs')).body.items;
+  assert.equal(log[0].action, 'tag-defs.rename');
+  assert.equal(log[0].detail.from, 'A');
+  assert.equal(log[0].detail.to, 'B');
+  assert.equal(log[0].detail.merged, false);
+  assert.deepEqual(log[0].detail.before.tags.map(x => x.name), ['A', 'C']);
+});
+
+test('merging keeps the target definition and chains renames', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [def('A', '🅰️'), def('B', '🅱️')], renames: { X: 'A' } });
+  let res = await t.api('POST', 'tag-defs/rename', { from: 'A', to: 'B', version: 1 });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.merged, true);
+  assert.deepEqual(storedDefs(t).doc, { v: 1, tags: [def('B', '🅱️')], renames: { X: 'B', A: 'B' } });
+  res = await t.api('POST', 'tag-defs/rename', { from: 'B', to: 'A', version: 2 });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.merged, false);
+  assert.deepEqual(storedDefs(t).doc, { v: 1, tags: [def('A', '🅱️')], renames: { X: 'A', B: 'A' } });
+});
+
+test('renaming without a saved document starts an empty one', async () => {
+  const t = await setupAdmin();
+  const res = await t.api('POST', 'tag-defs/rename', { from: '짧문', to: '짧은 글', version: 0 });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.deepEqual(storedDefs(t).doc, { v: 1, tags: [], renames: { 짧문: '짧은 글' } });
+});
+
+test('rename and unrename are validated', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [], renames: { A: 'B' } });
+  assert.equal((await t.api('POST', 'tag-defs/rename', { from: 'C', to: ' C ', version: 1 })).status, 400);
+  assert.equal((await t.api('POST', 'tag-defs/rename', { from: 'a,b', to: 'C', version: 1 })).status, 400);
+  assert.equal((await t.api('POST', 'tag-defs/rename', { from: 'C', to: 'D', version: 0 })).status, 409);
+  assert.equal((await t.api('POST', 'tag-defs/unrename', { from: 'Z', version: 1 })).status, 404);
+  assert.equal((await t.api('POST', 'tag-defs/unrename', { from: 'A', version: 0 })).status, 409);
+  const res = await t.api('POST', 'tag-defs/unrename', { from: 'A', version: 1 });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body, { ok: true, version: 2 });
+  assert.deepEqual(storedDefs(t).doc.renames, {});
+  assert.deepEqual((await t.pub('GET', '/tags/official')).body.renames, {});
+  const log = (await t.api('GET', 'actions?action=tag-defs')).body.items;
+  assert.equal(log[0].action, 'tag-defs.unrename');
+  assert.equal(storedDefs(t).version, 2);
+});

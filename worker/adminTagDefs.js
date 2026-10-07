@@ -1,5 +1,6 @@
 import { json, readBody } from './adminCommon.js';
 import { TAG_DEFS_KEY, BAD_TAG_RE, cleanTagName, readTagDefinitions, publishTagFile } from './tagDocs.js';
+import { recordTagSnapshot } from './tagSnapshot.js';
 
 // 관리 페이지의 태그 정의 탭. 태그의 이모지·색·순서·투표 허용 여부와 이름 바꾸기
 // 기록(renames)을 D1 site_documents['tag-definitions'] 문서 하나에 두고, 바뀔 때마다
@@ -114,7 +115,98 @@ async function handleSave(request, env, ctx, session) {
   return published(await publishTagFile(env), { ok: true, version: version + 1 });
 }
 
+// 문서 안에서 from → to 를 처리한다. to 가 정의 목록에 이미 있으면 합치기(to 설정
+// 유지, from 항목 삭제), 없으면 이름 바꾸기(from 항목이 이름만 바꿔 자리·설정 유지).
+// renames 는 X → from 을 X → to 로 고쳐 연결을 잇고, 자기 자신을 가리키는 항목은 지운다.
+function renameDoc(doc, from, to) {
+  var merged = doc.tags.some(function (t) { return t.name === to; });
+  var tags = merged
+    ? doc.tags.filter(function (t) { return t.name !== from; })
+    : doc.tags.map(function (t) { return t.name === from ? Object.assign({}, t, { name: to }) : t; });
+  var renames = {};
+  Object.keys(doc.renames || {}).forEach(function (key) {
+    renames[key] = doc.renames[key] === from ? to : doc.renames[key];
+  });
+  renames[from] = to;
+  Object.keys(renames).forEach(function (key) { if (renames[key] === key) delete renames[key]; });
+  return { doc: { v: 1, tags: tags, renames: renames }, merged: merged };
+}
+
+function replaceTag(tags, from, to) {
+  var out = [];
+  tags.forEach(function (tag) {
+    var next = tag === from ? to : tag;
+    if (out.indexOf(next) === -1) out.push(next);
+  });
+  return out;
+}
+
+// POST tag-defs/rename { from, to, version } — 이름 바꾸기·합치기. 문서, 유저 투표,
+// 공식 태그 덮어쓰기를 한 batch 로 옮긴다. 같은 사람이 from·to 둘 다 찍은 표는
+// UPDATE OR IGNORE 로 건너뛴 뒤 남은 from 행을 지워 한 표로 합친다.
+async function handleRename(request, env, ctx, session) {
+  var body = await readBody(request);
+  if (body instanceof Response) return body;
+  var from = cleanTagName(body.from);
+  var to = cleanTagName(body.to);
+  var version = cleanVersion(body.version);
+  if (from === null || to === null || from === to || version === null) return json({ error: 'invalid payload shape' }, 400);
+
+  var current = await readTagDefinitions(env);
+  if ((current ? current.version : 0) !== version) return conflict();
+  var before = current ? current.doc : { v: 1, tags: [], renames: {} };
+  var result = renameDoc(before, from, to);
+
+  var movedVotes = (await env.TAGS_DB.prepare('SELECT COUNT(*) AS n FROM tag_votes WHERE tag_name = ?').bind(from).first()).n;
+  var overrideRows = (await env.TAGS_DB.prepare('SELECT item_type, item_id, tags FROM official_tag_overrides').all()).results || [];
+  var now = Date.now();
+  var extra = [
+    env.TAGS_DB.prepare('UPDATE OR IGNORE tag_votes SET tag_name = ? WHERE tag_name = ?').bind(to, from),
+    env.TAGS_DB.prepare('DELETE FROM tag_votes WHERE tag_name = ?').bind(from)
+  ];
+  var changedOverrides = 0;
+  overrideRows.forEach(function (r) {
+    var tags = JSON.parse(r.tags);
+    if (tags.indexOf(from) === -1) return;
+    changedOverrides++;
+    extra.push(env.TAGS_DB.prepare(
+      'UPDATE official_tag_overrides SET tags = ?, updated_at = ? WHERE item_type = ? AND item_id = ?'
+    ).bind(JSON.stringify(replaceTag(tags, from, to)), now, r.item_type, r.item_id));
+  });
+
+  var detail = { from: from, to: to, merged: result.merged, movedVotes: movedVotes, changedOverrides: changedOverrides, before: current ? current.doc : null };
+  var statements = docWriteStatements(env, session, 'tag-defs.rename', detail, result.doc, version, extra);
+  if (!(await runDocBatch(env, statements))) return conflict();
+  await recordTagSnapshot(env);
+  return published(await publishTagFile(env), {
+    ok: true, merged: result.merged, movedVotes: movedVotes, changedOverrides: changedOverrides, version: version + 1
+  });
+}
+
+// POST tag-defs/unrename { from, version } — renames 항목 하나만 지운다. 이미 옮긴
+// 표와 덮어쓰기는 그대로 새 이름에 남는다.
+async function handleUnrename(request, env, ctx, session) {
+  var body = await readBody(request);
+  if (body instanceof Response) return body;
+  var from = cleanTagName(body.from);
+  var version = cleanVersion(body.version);
+  if (from === null || version === null) return json({ error: 'invalid payload shape' }, 400);
+
+  var current = await readTagDefinitions(env);
+  if ((current ? current.version : 0) !== version) return conflict();
+  if (!current || !Object.prototype.hasOwnProperty.call(current.doc.renames || {}, from)) return json({ error: 'not found' }, 404);
+  var renames = Object.assign({}, current.doc.renames);
+  var to = renames[from];
+  delete renames[from];
+  var doc = { v: 1, tags: current.doc.tags, renames: renames };
+  var statements = docWriteStatements(env, session, 'tag-defs.unrename', { from: from, to: to }, doc, version);
+  if (!(await runDocBatch(env, statements))) return conflict();
+  return published(await publishTagFile(env), { ok: true, version: version + 1 });
+}
+
 export var tagDefRoutes = {
   'GET /tag-defs': handleGet,
-  'POST /tag-defs/save': handleSave
+  'POST /tag-defs/save': handleSave,
+  'POST /tag-defs/rename': handleRename,
+  'POST /tag-defs/unrename': handleUnrename
 };
