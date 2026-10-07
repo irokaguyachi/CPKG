@@ -1,0 +1,189 @@
+/* 유저 프로필 칩·카드(src/js/components/profileCard.js)와 설정창 프로필 탭.
+   색은 series-card.css/theme.css 가 라이트·다크로 바꿔 주는 --card-* 변수만 쓰고,
+   프로필마다 다른 색은 --profile-color 로 받는다. 라이트 모드 --card-* 는 series-card.css 에만
+   있어서 그 파일을 싣지 않는 페이지(오디오 노벨·변경 내역)를 위해 기본값을 함께 적는다. 팝오버 틀(위치·열림)은
+   bookmarks.css 의 .bkm-picker 를 그대로 쓴다. */
+
+.profile-avatar {
+  --avatar-size: 36px;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  overflow: hidden;
+  background: var(--profile-color, #607089);
+  border-radius: 50%;
+}
+.profile-avatar img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+}
+.profile-avatar.is-small {
+  --avatar-size: 22px;
+}
+.profile-avatar.is-large {
+  --avatar-size: 72px;
+  box-shadow: 0 0 0 4px var(--card-surface, #ffffff);
+}
+
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 10px 2px 3px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--card-ink, #000000);
+  background: var(--card-hover, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--card-line, rgba(0, 0, 0, 0.1));
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.profile-badge:hover {
+  border-color: var(--profile-color, var(--card-line, rgba(0, 0, 0, 0.1)));
+}
+.profile-badge-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.profile-badge.is-unknown {
+  padding: 2px 10px;
+  color: var(--card-muted, rgba(0, 0, 0, 0.55));
+  cursor: default;
+}
+
+.profile-card {
+  overflow: hidden;
+  color: var(--card-ink, #000000);
+  background: var(--card-surface, #ffffff);
+  border: 1px solid var(--card-line, rgba(0, 0, 0, 0.1));
+  border-radius: 16px;
+}
+.profile-card-band {
+  height: 44px;
+  background: var(--profile-color, #607089);
+}
+.profile-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 16px;
+  margin-top: -36px;
+  text-align: center;
+}
+.profile-card-name {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  word-break: break-all;
+}
+.profile-card-bio {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--card-muted, rgba(0, 0, 0, 0.55));
+  word-break: break-word;
+}
+
+/* 틀은 .bkm-picker 를 빌리되 배경·테두리는 카드가 직접 그린다. theme.css 의
+   다크 모드 .bkm-picker 규칙보다 뒤에 와도 이기도록 다크 쪽도 한 번 더 적는다. */
+.bkm-picker.profile-popover,
+[data-theme="dark"] .bkm-picker.profile-popover {
+  width: 280px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+}
+
+/* ---- 헤더 아바타(siteHeader.js paintAvatar) ---- */
+.site-avatar.has-profile img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+}
+
+/* ---- 설정창 프로필 탭(profileEditor.js) ---- */
+.profile-editor-preview {
+  max-width: 320px;
+  margin: 0 0 18px;
+}
+.profile-editor-input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 360px;
+  height: 42px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--card-ink, #000000);
+  background: var(--card-surface, #ffffff);
+  border: 1px solid var(--card-line, rgba(0, 0, 0, 0.1));
+  border-radius: 10px;
+}
+.profile-editor-input:focus {
+  outline: 2px solid var(--profile-color, var(--mint, #00ffcc));
+  outline-offset: 1px;
+}
+.profile-editor-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.profile-editor-icons,
+.profile-editor-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.profile-editor-choice {
+  padding: 3px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.profile-editor-choice .profile-avatar {
+  --avatar-size: 44px;
+}
+.profile-editor-swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: var(--profile-color);
+  border: 3px solid var(--card-surface, #ffffff);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--card-line, rgba(0, 0, 0, 0.1));
+  cursor: pointer;
+}
+.profile-editor-choice.is-active {
+  border-color: var(--card-ink, #000000);
+}
+.profile-editor-swatch.is-active {
+  box-shadow: 0 0 0 2px var(--card-ink, #000000);
+}
+.profile-editor-bio-label {
+  display: flex;
+  justify-content: space-between;
+  max-width: 360px;
+}
+.profile-editor-count {
+  font-weight: 500;
+}
+.profile-editor-count.is-over,
+.profile-editor-status.is-error {
+  color: #e03131;
+}
+.profile-editor-status {
+  min-height: 20px;
+  margin: 12px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--card-muted, rgba(0, 0, 0, 0.55));
+}

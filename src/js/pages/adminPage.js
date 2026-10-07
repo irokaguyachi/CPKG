@@ -35,6 +35,7 @@
     { key: 'tagdefs', label: '태그 정의', href: '#tagdefs' },
     { key: 'bumps', label: '끌올', href: '#bumps' },
     { key: 'library', label: '공개 서재', href: '#library' },
+    { key: 'profiles', label: '프로필', href: '#profiles' },
     { key: 'actions', label: '작업 기록', href: '#actions' }
   ];
   var ACTION_LABELS = {
@@ -56,7 +57,10 @@
     'bump.cancel': '끌올 취소',
     'library.hide': '서재 숨기기',
     'library.unhide': '서재 숨김 해제',
-    'library.delete': '서재 영구 삭제'
+    'library.delete': '서재 영구 삭제',
+    'profile.reset-nickname': '프로필 닉네임 초기화',
+    'profile.clear-bio': '프로필 자기소개 지우기',
+    'profile.delete': '프로필 삭제'
   };
   var BUMP_STATES = { active: '노출 중', waiting: '대기', done: '종료' };
   var TYPE_LABELS = { novel: '문학', translation: '번역', series: '시리즈', hof: '명예관', official: '공식' };
@@ -363,7 +367,7 @@
       }), '아직 기록이 없어요.'));
       frag.appendChild(board);
 
-      var words = section('금지 닉네임', '이 단어가 들어간 닉네임은 랭킹에 등록할 수 없어요(대소문자 무시).');
+      var words = section('금지 닉네임', '이 단어가 들어간 랭킹·프로필 닉네임과 프로필 자기소개는 등록할 수 없어요(대소문자 무시).');
       var form = el('form', 'admin-toolbar');
       var wordInput = el('input', 'bkm-inline-create-input admin-input');
       wordInput.placeholder = '금지할 단어';
@@ -1023,12 +1027,62 @@
     });
   }
 
+  // ---- 탭: 프로필 ----
+  // 유저 프로필(worker/adminProfiles.js). 아이콘은 사이트와 같은 ProfileCard.avatar 로 그린다.
+  var profileQuery = '';
+  function renderProfiles() {
+    var store = global.ProfileStore;
+    var catalogLoad = store ? store.catalog() : Promise.resolve({ icons: [], colors: [] });
+    var path = 'profiles' + (profileQuery ? '?q=' + encodeURIComponent(profileQuery) : '');
+    return Promise.all([api('GET', path), catalogLoad]).then(function (res) {
+      var list = res[0];
+      var catalog = res[1];
+      var sec = section('프로필', '유저가 만든 공개 프로필이에요(최근 수정 순 50개). 닉네임을 초기화하면 "유저" + 공개 ID 앞 6자로 바뀌고, 본인은 바로 새 닉네임을 정할 수 있어요.');
+      var form = el('form', 'admin-toolbar');
+      var q = el('input', 'bkm-inline-create-input admin-input admin-search');
+      q.type = 'search';
+      q.placeholder = '닉네임';
+      q.value = profileQuery;
+      var go = el('button', 'bkm-inline-create-btn', '검색');
+      go.type = 'submit';
+      form.appendChild(q);
+      form.appendChild(go);
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        profileQuery = q.value.trim();
+        renderTab('profiles');
+      });
+      sec.appendChild(form);
+
+      function avatarCell(p) {
+        return global.ProfileCard ? global.ProfileCard.avatar(p, catalog, 'small') : '-';
+      }
+      sec.appendChild(table(['', '닉네임', '자기소개', '공개 ID', '만든 날', ''], list.items.map(function (p) {
+        return [avatarCell(p), p.nickname, p.bio || '-', mono(p.id), fmtTime(p.createdAt), actionsCell([
+          button('닉네임 초기화', null, function (btn) {
+            dialog({ title: '닉네임 초기화', desc: '"' + p.nickname + '"을(를) "유저' + p.id.slice(0, 6) + '"(으)로 바꿔요. 이전 닉네임은 작업 기록에 남아요.', confirmLabel: '초기화' })
+              .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'profiles/reset-nickname', { id: p.id }); }, '닉네임을 초기화했어요.'); });
+          }),
+          p.bio ? button('자기소개 지우기', null, function (btn) {
+            dialog({ title: '자기소개 지우기', desc: '"' + p.bio + '"을(를) 지워요. 원문은 작업 기록에 남아요.', confirmLabel: '지우기' })
+              .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'profiles/clear-bio', { id: p.id }); }, '자기소개를 지웠어요.'); });
+          }) : null,
+          button('삭제', 'danger', function (btn) {
+            dialog({ title: '프로필 삭제', desc: '"' + p.nickname + '" 프로필을 지워요. 원본은 작업 기록에 남아요.', confirmLabel: '삭제', danger: true, requireText: p.nickname })
+              .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'profiles/delete', { id: p.id }); }, '프로필을 지웠어요.'); });
+          })
+        ])];
+      }), profileQuery ? '검색 결과가 없어요.' : '프로필이 없어요.'));
+      return sec;
+    });
+  }
+
   // ---- 탭: 작업 기록 ----
   var actionFilter = '';
   function renderActions() {
     var sec = section('작업 기록', '데이터를 바꾼 관리 작업이 모두 남아요. 삭제한 항목은 세부 내용에 원본이 들어 있어요.');
     var bar = el('div', 'admin-toolbar');
-    [['', '전체'], ['game', '랭킹'], ['tags', '태그 투표'], ['official-tags', '공식 태그'], ['tag-defs', '태그 정의'], ['bump', '끌올'], ['library', '공개 서재']].forEach(function (f) {
+    [['', '전체'], ['game', '랭킹'], ['tags', '태그 투표'], ['official-tags', '공식 태그'], ['tag-defs', '태그 정의'], ['bump', '끌올'], ['library', '공개 서재'], ['profile', '프로필']].forEach(function (f) {
       bar.appendChild(button(f[1], actionFilter === f[0] ? 'primary' : null, function () {
         actionFilter = f[0];
         renderTab('actions');
@@ -1067,7 +1121,7 @@
     return load(null).then(function () { return sec; });
   }
 
-  var RENDERERS = { game: renderGame, tags: renderTags, official: renderOfficial, tagdefs: renderTagDefs, bumps: renderBumps, library: renderLibrary, actions: renderActions };
+  var RENDERERS = { game: renderGame, tags: renderTags, official: renderOfficial, tagdefs: renderTagDefs, bumps: renderBumps, library: renderLibrary, profiles: renderProfiles, actions: renderActions };
 
   function renderTab(key) {
     currentTab = key;

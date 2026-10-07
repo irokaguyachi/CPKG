@@ -109,13 +109,50 @@
   function makeAvatar(loggedIn) {
     var avatar = el('span', 'site-avatar' + (loggedIn ? ' is-logged-in' : ''));
     avatar.innerHTML = ICONS.person;
+    paintAvatar(avatar);
     return avatar;
+  }
+
+  function myProfile() {
+    return (isLoggedIn() && global.ProfileStore && global.ProfileStore.mine()) || null;
+  }
+
+  // 프로필이 있으면 사람 아이콘 대신 내 프로필 아이콘을 내 색 위에 그린다
+  // (profileStore.js / profile.css). 목록은 비동기로 받으므로 받은 뒤에 칠한다.
+  function paintAvatar(avatar) {
+    if (!avatar) return;
+    var profile = myProfile();
+    if (!profile) {
+      if (avatar.classList.contains('has-profile')) {
+        avatar.classList.remove('has-profile');
+        avatar.style.background = '';
+        avatar.innerHTML = ICONS.person;
+      }
+      return;
+    }
+    global.ProfileStore.catalog().then(function (catalog) {
+      if (myProfile() !== profile) return;
+      var file = global.ProfileStore.iconFile(catalog, profile.icon);
+      var hex = global.ProfileStore.colorHex(catalog, profile.color);
+      avatar.classList.add('has-profile');
+      avatar.style.background = hex || '';
+      avatar.innerHTML = '';
+      if (file) {
+        var img = el('img');
+        img.src = file;
+        img.alt = '';
+        avatar.appendChild(img);
+      }
+    });
   }
 
   function paintProfileButton() {
     if (!profileBtn) return;
     var loggedIn = isLoggedIn();
-    if (buttonAvatar) buttonAvatar.classList.toggle('is-logged-in', loggedIn);
+    if (buttonAvatar) {
+      buttonAvatar.classList.toggle('is-logged-in', loggedIn);
+      paintAvatar(buttonAvatar);
+    }
     if (buttonDot) {
       buttonDot.hidden = !loggedIn;
       buttonDot.className = 'site-sync-dot is-' + syncState();
@@ -150,7 +187,8 @@
     var head = el('div', 'site-profile-head');
     head.appendChild(makeAvatar(loggedIn));
     var headText = el('div', 'site-profile-head-text');
-    headText.appendChild(el('p', 'site-profile-title', loggedIn ? t('로그인됨') : t('로그인하지 않았어요')));
+    var profile = myProfile();
+    headText.appendChild(el('p', 'site-profile-title', profile ? profile.nickname : (loggedIn ? t('로그인됨') : t('로그인하지 않았어요'))));
     headText.appendChild(el('p', 'site-profile-sub', loggedIn ? maskedCode() : t('게스트')));
     head.appendChild(headText);
     menu.appendChild(head);
@@ -191,6 +229,10 @@
       menu.appendChild(sync);
 
       var links = el('div', 'site-profile-links');
+      links.appendChild(menuLink(ICONS.person, t('프로필 편집'), function () {
+        closeProfileMenu();
+        if (global.SettingsModal) global.SettingsModal.open('profile');
+      }));
       links.appendChild(menuLink(ICONS.key, t('개인 코드 보기'), function () {
         closeProfileMenu();
         if (global.SettingsModal) global.SettingsModal.open('account');
@@ -241,6 +283,7 @@
   }
   global.addEventListener('chokaguya:auth-change', onAccountChange);
   global.addEventListener('chokaguya:sync-state', onAccountChange);
+  global.addEventListener('chokaguya:profile-change', onAccountChange);
 
   // ── 통합 검색 ──────────────────────────────────────────────────────────
   var searchWrap = headerEl.querySelector('.site-search');
@@ -614,7 +657,10 @@
     pagesTab.setAttribute('aria-expanded', mtbOpen === 'pages' ? 'true' : 'false');
     profileTab.setAttribute('aria-expanded', mtbOpen === 'profile' ? 'true' : 'false');
     var av = profileTab.querySelector('.site-avatar');
-    if (av) av.classList.toggle('is-logged-in', isLoggedIn());
+    if (av) {
+      av.classList.toggle('is-logged-in', isLoggedIn());
+      paintAvatar(av);
+    }
   }
 
   // 메뉴 시트 — 맨 위에 큰 '문학·번역' 타일, 그 아래 나머지 페이지를 2열
@@ -986,6 +1032,7 @@
     if (mtbQuery.addEventListener) mtbQuery.addEventListener('change', function () { if (!mtbQuery.matches) closeMobileSheet(); });
   }
   global.addEventListener('chokaguya:auth-change', function () { paintMtbTabs(); if (mtbOpen === 'profile') renderMobileSheet(); });
+  global.addEventListener('chokaguya:profile-change', function () { paintMtbTabs(); if (mtbOpen === 'profile') renderMobileSheet(); });
   global.addEventListener('chokaguya:sync-state', function () { if (mtbOpen === 'profile') renderMobileSheet(); });
 
   document.body.appendChild(mtbBackdrop);

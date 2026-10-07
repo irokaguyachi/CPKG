@@ -1,0 +1,22 @@
+{
+  "icons": [
+    { "id": "fushi-nyam", "file": "/offlineSrc/loadingLogo/후시 냠냠.gif", "label": "후시 냠냠" },
+    { "id": "fushi-tears", "file": "/offlineSrc/loadingLogo/후시 눈물.gif", "label": "후시 눈물" },
+    { "id": "fushi-stare", "file": "/offlineSrc/loadingLogo/후시 물끄럼.gif", "label": "후시 물끄럼" },
+    { "id": "fushi-sleep", "file": "/offlineSrc/loadingLogo/후시 잠.gif", "label": "후시 잠" }
+  ],
+  "colors": [
+    { "id": "rose", "hex": "#e0306e" },
+    { "id": "coral", "hex": "#f06543" },
+    { "id": "amber", "hex": "#e5a00d" },
+    { "id": "lime", "hex": "#7cb518" },
+    { "id": "green", "hex": "#2f9e44" },
+    { "id": "teal", "hex": "#12a594" },
+    { "id": "sky", "hex": "#1c9bd6" },
+    { "id": "blue", "hex": "#3b5bdb" },
+    { "id": "indigo", "hex": "#5f3dc4" },
+    { "id": "purple", "hex": "#9c36b5" },
+    { "id": "brown", "hex": "#8d6e63" },
+    { "id": "slate", "hex": "#607089" }
+  ]
+}

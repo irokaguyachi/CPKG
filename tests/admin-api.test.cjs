@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { D1 } = require('./helpers/workerHarness.cjs');
 
-const ALL_SCHEMAS = ['game_schema.sql', 'tags_schema.sql', 'bump_schema.sql', 'admin_schema.sql'];
+const ALL_SCHEMAS = ['game_schema.sql', 'tags_schema.sql', 'bump_schema.sql', 'admin_schema.sql', 'profile_schema.sql'];
 
 test('schema applies cleanly', () => {
   const db = new D1(ALL_SCHEMAS);
@@ -19,6 +19,7 @@ const { load, Bucket, hash, allow, request, clock } = require('./helpers/workerH
 const ADMIN_CODE = 'admin_personal_code_0001';
 const OTHER_CODE = 'someone_else_code_0002';
 const PASSWORD = 'correct horse battery';
+const PROFILE_ICONS = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'src/data/config/ProfileIcons.json'), 'utf8'));
 
 async function setupAdmin(schemas = ALL_SCHEMAS) {
   const admin = (await load('worker/adminApi.js')).default;
@@ -30,10 +31,11 @@ async function setupAdmin(schemas = ALL_SCHEMAS) {
     ADMIN_USER_HASHES: 'ffff, ' + hash('user-v2:' + ADMIN_CODE),
     ADMIN_PASSWORD: PASSWORD, ADMIN_SESSION_SECRET: 'session-secret-for-tests',
     RL_ADMIN_LOGIN: allow, RL_GAME: allow, RL_GAME_SUBMIT: allow, RL_TAG_WRITE: allow, RL_BUMP_WRITE: allow,
-    RL_USER_AUTH: allow, RL_LIB_LIST: allow, RL_LIB_WRITE: allow, GAME_TOKEN_SECRET: 'game-secret',
+    RL_USER_AUTH: allow, RL_USER_SYNC: allow, RL_LIB_LIST: allow, RL_LIB_WRITE: allow, GAME_TOKEN_SECRET: 'game-secret',
     ASSETS: { fetch: async req => {
       const p = new URL(req.url).pathname;
       if (p.endsWith('UserTagCatalog.json')) return Response.json(['일상', '로맨스', '피폐']);
+      if (p.endsWith('ProfileIcons.json')) return Response.json(PROFILE_ICONS);
       if (p.endsWith('Lookup.json')) return Response.json({ novel: { 123: {}, 456: {}, 789: {} } });
       return Response.json([{ posts: [{ id: 123 }, { id: 456 }] }]);
     } }
@@ -736,4 +738,87 @@ test('renaming onto a renamed name follows it to the final name', async () => {
   assert.equal(res.body.to, 'C');
   assert.deepEqual(storedDefs(t).doc.renames, { A: 'C', B: 'C', D: 'C' });
   assert.deepEqual(JSON.parse(t.env.TAGS_DB.rows('SELECT tags FROM official_tag_overrides')[0].tags), ['C']);
+});
+
+// ---- 프로필 탭 ----
+const PROFILE_DAY = 86400000;
+async function setupProfileAdmin() {
+  const t = await setupAdmin();
+  const account = code => t.env.FAVORITES_BUCKET.put('user/' + hash('user-v2:' + code) + '.json', '{}');
+  const save = (code, fields = {}) => t.pub('POST', '/profile/save', {
+    personalCode: code, nickname: 'Kaguya', icon: 'fushi-nyam', color: 'rose', bio: '', ...fields
+  });
+  const make = async (code, fields) => { await account(code); return (await save(code, fields)).body.profile; };
+  const profileActions = () => t.env.TAGS_DB.rows("SELECT action, target, detail FROM admin_actions WHERE action LIKE 'profile.%' ORDER BY id");
+  return { ...t, account, save, make, profileActions };
+}
+
+test('admin lists and searches profiles', async () => {
+  const t = await setupProfileAdmin();
+  const a = await t.make(OTHER_CODE, { nickname: 'Kaguya', bio: '안녕' });
+  clock.now += 1000;
+  const b = await t.make('third_profile_code_0003', { nickname: '야치요' });
+  clock.now -= 1000;
+  const all = await t.api('GET', 'profiles');
+  assert.equal(all.status, 200);
+  assert.deepEqual(all.body.items.map(i => i.id), [b.id, a.id], 'most recently updated first');
+  assert.deepEqual(Object.keys(all.body.items[1]).sort(), ['bio', 'color', 'createdAt', 'icon', 'id', 'nickname', 'updatedAt']);
+  assert.deepEqual((await t.api('GET', 'profiles?q=KAG')).body.items.map(i => i.id), [a.id]);
+  assert.deepEqual((await t.api('GET', 'profiles?q=%25')).body.items, [], 'LIKE wildcards are escaped');
+  assert.deepEqual((await t.api('GET', 'profiles?q=_')).body.items, []);
+});
+
+test('admin reset nickname lets the owner rename right away', async () => {
+  const t = await setupProfileAdmin();
+  const p = await t.make(OTHER_CODE, { nickname: '처음' });
+  assert.equal((await t.save(OTHER_CODE, { nickname: '나쁜이름' })).status, 200);
+  assert.equal((await t.save(OTHER_CODE, { nickname: '또바꿈' })).status, 429, 'owner is in cooldown');
+  const res = await t.api('POST', 'profiles/reset-nickname', { id: p.id });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.profile.nickname, '유저' + p.id.slice(0, 6));
+  const logs = t.profileActions();
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].action, 'profile.reset-nickname');
+  assert.equal(logs[0].target, p.id);
+  assert.equal(JSON.parse(logs[0].detail).before.nickname, '나쁜이름');
+  // 초기화된 이름을 그대로 둔 채 아이콘만 바꾸는 저장도 된다
+  const keep = await t.save(OTHER_CODE, { nickname: '유저' + p.id.slice(0, 6), icon: 'fushi-sleep' });
+  assert.equal(keep.status, 200);
+  assert.equal((await t.save(OTHER_CODE, { nickname: '새이름' })).status, 200, 'cooldown was lifted');
+});
+
+test('reset nickname falls back to the full id on collision', async () => {
+  const t = await setupProfileAdmin();
+  const first = await t.make(OTHER_CODE, { nickname: '첫째' });
+  const second = await t.make('third_profile_code_0003', { nickname: '둘째' });
+  const swapped = [...first.id.slice(0, 6)].map(c => c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase()).join('');
+  const secondId = swapped + second.id.slice(6);
+  t.env.TAGS_DB.db.prepare('UPDATE profiles SET profile_id = ? WHERE profile_id = ?').run(secondId, second.id);
+  assert.equal((await t.api('POST', 'profiles/reset-nickname', { id: first.id })).status, 200);
+  const res = await t.api('POST', 'profiles/reset-nickname', { id: secondId });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.profile.nickname, '유저' + secondId);
+});
+
+test('admin clears bio and deletes profiles with logs', async () => {
+  const t = await setupProfileAdmin();
+  const p = await t.make(OTHER_CODE, { bio: '지울 소개' });
+  const cleared = await t.api('POST', 'profiles/clear-bio', { id: p.id });
+  assert.equal(cleared.status, 200);
+  assert.equal(cleared.body.profile.bio, '');
+  assert.equal((await t.api('POST', 'profiles/delete', { id: p.id })).status, 200);
+  assert.deepEqual((await t.pub('POST', '/profile/me', { personalCode: OTHER_CODE })).body, { profile: null });
+  const logs = t.profileActions();
+  assert.deepEqual(logs.map(l => l.action), ['profile.clear-bio', 'profile.delete']);
+  assert.equal(JSON.parse(logs[0].detail).before.bio, '지울 소개');
+  assert.equal(JSON.parse(logs[1].detail).before.profile_id, p.id);
+});
+
+test('unknown profile ids return 404', async () => {
+  const t = await setupProfileAdmin();
+  for (const route of ['profiles/reset-nickname', 'profiles/clear-bio', 'profiles/delete']) {
+    assert.equal((await t.api('POST', route, { id: 'zzzzzzzzzzzz' })).status, 404, route);
+    assert.equal((await t.api('POST', route, { id: 5 })).status, 400, route);
+  }
+  assert.deepEqual(t.profileActions(), []);
 });

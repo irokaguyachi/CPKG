@@ -22,6 +22,7 @@
   var TABS = [
     { id: 'general', label: t('일반') },
     { id: 'view', label: t('보기') },
+    { id: 'profile', label: t('프로필') },
     { id: 'account', label: t('계정') },
     { id: 'audio', label: t('오디오 문학') },
     { id: 'info', label: t('정보') }
@@ -338,6 +339,15 @@
     if (global.AuthUI) global.AuthUI.renderAccountSettings(container);
   }
 
+  // ---- 프로필 탭 ----
+  // 내용은 src/js/components/profileEditor.js 가 그린다(계정 탭을 auth.js 에 맡기는 것과 같다).
+  function renderProfilePane(pane) {
+    pane.appendChild(el('h3', 'settings-pane-title', t('프로필')));
+    var container = el('div', 'profile-editor');
+    pane.appendChild(container);
+    if (global.ProfileEditor) global.ProfileEditor.render(container);
+  }
+
   // ---- 오디오 문학 탭 ----
   // 일반 탭과 같은 "왼쪽 라벨 / 오른쪽 컨트롤 + 아래 구분선" 행 구조
   // (.settings-row)를 그대로 쓴다.
@@ -504,6 +514,7 @@
       paneEl.innerHTML = '';
       if (tabId === 'general') renderGeneralPane(paneEl);
       else if (tabId === 'view') renderViewPane(paneEl);
+      else if (tabId === 'profile') renderProfilePane(paneEl);
       else if (tabId === 'account') renderAccountPane(paneEl);
       else if (tabId === 'audio') renderAudioPane(paneEl);
       else if (tabId === 'info') renderInfoPane(paneEl);

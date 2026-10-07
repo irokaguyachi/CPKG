@@ -52,6 +52,22 @@ test('browser JSON references and Worker imports resolve after organization', ()
   }
 });
 
+test('profile icon list points at origin-served files and a 12-color palette', () => {
+  const catalog = JSON.parse(fs.readFileSync(path.join(src, 'data', 'config', 'ProfileIcons.json'), 'utf8'));
+  assert.ok(catalog.icons.length > 0);
+  const ids = new Set();
+  for (const icon of catalog.icons) {
+    assert.ok(!ids.has(icon.id), `duplicate icon id ${icon.id}`);
+    ids.add(icon.id);
+    assert.ok(icon.file.startsWith('/offlineSrc/'), icon.file);
+    assert.ok(fs.existsSync(path.join(root, icon.file)), `missing ${icon.file}`);
+    assert.equal(typeof icon.label, 'string');
+  }
+  assert.equal(catalog.colors.length, 12);
+  assert.equal(new Set(catalog.colors.map(c => c.id)).size, 12);
+  for (const color of catalog.colors) assert.match(color.hex, /^#[0-9a-f]{6}$/);
+});
+
 test('main page keeps translation sections in the requested order', () => {
   const source = fs.readFileSync(path.join(src, 'js', 'pages', 'mainPage.js'), 'utf8');
   const recent = source.indexOf("'최근 등록 번역'");
