@@ -58,14 +58,28 @@
   };
   var officialTagsPromise = null;
 
+  // 관리 페이지의 태그 정의(worker/adminTagDefs.js)도 같은 파일(v2)에 실려 온다:
+  // tags = 이모지·색·순서·투표 허용 정의(없으면 null), renames = { 옛 이름: 새 이름 }.
+  // 받은 정의는 화면을 그리기 전에 TagConfig.applyDefinitions 로 한 번 넘긴다.
+  // tagConfig.js 가 아직 실행 전이면 window.__tagDefinitions 에 두고 가져가게 한다.
   function officialTagOverrides() {
     if (!officialTagsPromise) {
       officialTagsPromise = fetch(OFFICIAL_TAGS_URL)
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
-          return (data && data.items && typeof data.items === 'object') ? data.items : {};
+          var result = {
+            items: (data && data.items && typeof data.items === 'object') ? data.items : {},
+            tags: (data && Array.isArray(data.tags)) ? data.tags : null,
+            renames: (data && data.renames && typeof data.renames === 'object') ? data.renames : {}
+          };
+          if (result.tags || Object.keys(result.renames).length) {
+            var defs = { tags: result.tags, renames: result.renames };
+            if (global.TagConfig && global.TagConfig.applyDefinitions) global.TagConfig.applyDefinitions(defs);
+            else global.__tagDefinitions = defs;
+          }
+          return result;
         })
-        .catch(function () { return {}; });
+        .catch(function () { return { items: {}, tags: null, renames: {} }; });
     }
     return officialTagsPromise;
   }
@@ -74,30 +88,48 @@
     var m = /pageData\/([A-Za-z]+\.json)/.exec(path || '');
     if (!m) return null;
     var name = m[1];
-    return (PAGE_DATA_TYPES[name] || name === 'Lookup.json' || name === 'Recent.json') ? name : null;
+    return (PAGE_DATA_TYPES[name] || name === 'Lookup.json' || name === 'Recent.json' ||
+      name === 'UserTagCatalog.json') ? name : null;
   }
 
-  function overrideEntry(entry, type, items, fallbackId) {
+  // 이름 바꾸기(renames)는 덮어쓰기 뒤에 적용하고, 바꾼 결과가 겹치면 하나만 남긴다.
+  function renameTags(tags, renames) {
+    var out = [];
+    tags.forEach(function (tag) {
+      var next = Object.prototype.hasOwnProperty.call(renames, tag) ? renames[tag] : tag;
+      if (out.indexOf(next) === -1) out.push(next);
+    });
+    return out;
+  }
+
+  function overrideEntry(entry, type, items, renames, fallbackId) {
     if (!entry) return;
     var id = entry.posts && entry.posts[0] && entry.posts[0].id;
     var tags = items[type + ':' + (id != null ? id : fallbackId)];
     if (Array.isArray(tags)) entry.tags = tags.slice();
+    if (renames && Array.isArray(entry.tags)) entry.tags = renameTags(entry.tags, renames);
   }
 
   // data 를 제자리에서 고쳐 돌려준다. 파일 형식은 세 가지다 — 작품 배열(Novel 등),
-  // { 종류: { id: 작품 } }(Lookup), { novels: [...] }(Recent).
-  function applyOfficialTagOverrides(path, data, items) {
+  // { 종류: { id: 작품 } }(Lookup), { novels: [...] }(Recent). defs 는 { tags, renames }
+  // (선택)로, 태그 정의가 있으면 투표 후보 목록(UserTagCatalog.json)도 바꿔 돌려준다.
+  function applyOfficialTagOverrides(path, data, items, defs) {
     var name = pageDataName(path);
     if (!name || !data || !items) return data;
+    var renames = (defs && defs.renames && Object.keys(defs.renames).length) ? defs.renames : null;
+    if (name === 'UserTagCatalog.json') {
+      if (!defs || !Array.isArray(defs.tags)) return data;
+      return defs.tags.filter(function (t) { return t && t.votable; }).map(function (t) { return t.name; });
+    }
     if (name === 'Lookup.json') {
       Object.keys(data).forEach(function (type) {
         var group = data[type] || {};
-        Object.keys(group).forEach(function (key) { overrideEntry(group[key], type, items, key); });
+        Object.keys(group).forEach(function (key) { overrideEntry(group[key], type, items, renames, key); });
       });
     } else if (name === 'Recent.json') {
-      (Array.isArray(data.novels) ? data.novels : []).forEach(function (e) { overrideEntry(e, 'novel', items); });
+      (Array.isArray(data.novels) ? data.novels : []).forEach(function (e) { overrideEntry(e, 'novel', items, renames); });
     } else if (Array.isArray(data)) {
-      data.forEach(function (e) { overrideEntry(e, PAGE_DATA_TYPES[name], items); });
+      data.forEach(function (e) { overrideEntry(e, PAGE_DATA_TYPES[name], items, renames); });
     }
     return data;
   }
@@ -105,7 +137,7 @@
   function withOfficialTags(path, dataPromise) {
     if (!pageDataName(path)) return dataPromise;
     return Promise.all([dataPromise, officialTagOverrides()]).then(function (r) {
-      return applyOfficialTagOverrides(path, r[0], r[1]);
+      return applyOfficialTagOverrides(path, r[0], r[1].items, r[1]);
     });
   }
 

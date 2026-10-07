@@ -9,10 +9,11 @@ const root = path.resolve(__dirname, '..');
 
 const novel = (id, tags) => ({ name: 'n' + id, tags, posts: [{ id }] });
 
-function loadConfig(files, overrides) {
+function loadConfig(files, overrides, tagConfig) {
   const calls = [];
   const window = {};
   window.window = window;
+  if (tagConfig) window.TagConfig = tagConfig;
   window.fetch = async url => {
     calls.push(url);
     const pathname = url.split('?')[0];
@@ -74,4 +75,42 @@ test('a failed overrides request falls back to the original tags', async () => {
     const { window } = loadConfig(FILES, overrides);
     assert.deepEqual((await window.fetchPageData('../data/pageData/Novel.json'))[0].tags, ['일상']);
   }
+});
+
+// ---- 태그 정의(v2 파일의 tags·renames) ----
+test('renames apply to every page data shape and remove duplicates', async () => {
+  const v2 = { v: 2, items: { 'novel:1': ['A', 'B'] }, tags: null, renames: { A: 'B', 로맨스: '사랑' } };
+  const { window } = loadConfig(FILES, v2);
+  // 바뀐 tags 배열은 vm 안에서 새로 만들어지므로 JSON 으로 옮겨 비교한다.
+  const get = async name => JSON.parse(JSON.stringify(await window.fetchPageData('../data/pageData/' + name)));
+  assert.deepEqual((await get('Novel.json')).map(e => e.tags), [['B'], ['사랑']]);
+  const lookup = await get('Lookup.json');
+  assert.deepEqual(lookup.novel[1].tags, ['B']);
+  assert.deepEqual(lookup.novel[2].tags, ['사랑']);
+  assert.deepEqual((await get('Recent.json')).novels[0].tags, ['B']);
+});
+
+test('the user tag catalog follows votable definitions', async () => {
+  const files = { ...FILES, 'UserTagCatalog.json': ['일상'] };
+  const tags = [{ name: '슬픔', emoji: '💧', color: null, votable: true }, { name: '감동', emoji: '🥹', color: null, votable: false }];
+  let { window } = loadConfig(files, { v: 2, items: {}, tags, renames: {} });
+  assert.deepEqual(JSON.parse(JSON.stringify(await window.fetchJsonCached('../data/pageData/UserTagCatalog.json'))), ['슬픔']);
+  ({ window } = loadConfig(files, { v: 2, items: {}, tags: null, renames: {} }));
+  assert.deepEqual(await window.fetchJsonCached('../data/pageData/UserTagCatalog.json'), ['일상']);
+});
+
+test('definitions reach TagConfig once, even if it loads later', async () => {
+  const defs = { tags: [{ name: '슬픔', emoji: '💧', color: null, votable: true }], renames: { A: 'B' } };
+  const seen = [];
+  let { window } = loadConfig(FILES, { v: 2, items: {}, ...defs }, { applyDefinitions: d => seen.push(d) });
+  await window.fetchPageData('../data/pageData/Novel.json');
+  await window.fetchPageData('../data/pageData/Series.json');
+  assert.equal(seen.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(seen[0])), defs);
+  ({ window } = loadConfig(FILES, { v: 2, items: {}, ...defs }));
+  await window.fetchPageData('../data/pageData/Novel.json');
+  assert.deepEqual(JSON.parse(JSON.stringify(window.__tagDefinitions)), defs);
+  ({ window } = loadConfig(FILES, OVERRIDES));
+  await window.fetchPageData('../data/pageData/Novel.json');
+  assert.equal(window.__tagDefinitions, undefined);
 });
