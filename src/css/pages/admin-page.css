@@ -305,6 +305,38 @@
   border-radius: 10px;
 }
 
+/* ---- 태그 정의 탭 ---- */
+.admin-tagdefs-status {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--card-muted);
+}
+.admin-tagdefs-status.is-dirty {
+  font-weight: 700;
+  color: #e03131;
+}
+.admin-emoji-input {
+  width: 72px;
+  text-align: center;
+}
+.admin-order-cell {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+.admin-color-cell {
+  justify-content: flex-start;
+  align-items: center;
+}
+.admin-color-input {
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 /* ---- 확인 창(auth-card 위에 얹는 부분만) ---- */
 .admin-dialog {
   max-width: 440px;

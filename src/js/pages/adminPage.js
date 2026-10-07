@@ -5,7 +5,7 @@
  *   비밀번호를 POST /api/admin/login 으로 확인받아 12시간짜리 세션 토큰을 받고,
  *   sessionStorage 에 두었다가 모든 요청에 Authorization: Bearer 로 싣는다
  *   (탭을 닫으면 사라진다). 401 이면 세션을 지우고 비밀번호 화면으로 돌아간다.
- * - 탭: 랭킹 / 태그 투표 / 끌올 / 공개 서재 / 작업 기록. 탭 바는 북마크·공지
+ * - 탭: 랭킹 / 태그 투표 / 공식 태그 / 태그 정의 / 끌올 / 공개 서재 / 작업 기록. 탭 바는 북마크·공지
  *   페이지와 같은 tabsKit.js 알약 탭, 확인 창은 로그인 창과 같은 auth-overlay
  *   카드, 버튼은 설정창의 settings-btn 을 그대로 써서 사이트 디자인을 따른다.
  * - 운영자 전용 화면이라 번역(t())을 쓰지 않는다 — 번역 사전 대상이 아니다.
@@ -32,6 +32,7 @@
     { key: 'game', label: '랭킹', href: '#game' },
     { key: 'tags', label: '태그 투표', href: '#tags' },
     { key: 'official', label: '공식 태그', href: '#official' },
+    { key: 'tagdefs', label: '태그 정의', href: '#tagdefs' },
     { key: 'bumps', label: '끌올', href: '#bumps' },
     { key: 'library', label: '공개 서재', href: '#library' },
     { key: 'actions', label: '작업 기록', href: '#actions' }
@@ -49,6 +50,9 @@
     'tags.unlock': '태그 투표 잠금 해제',
     'official-tags.set': '공식 태그 변경',
     'official-tags.reset': '공식 태그 원래대로',
+    'tag-defs.save': '태그 정의 저장',
+    'tag-defs.rename': '태그 이름 바꾸기',
+    'tag-defs.unrename': '태그 이름 바꾸기 해제',
     'bump.cancel': '끌올 취소',
     'library.hide': '서재 숨기기',
     'library.unhide': '서재 숨김 해제',
@@ -111,6 +115,7 @@
     if (code === 'ambiguous voter') return '같은 앞자리를 쓰는 투표자가 여럿이라 지울 수 없어요.';
     if (code === 'nickname taken') return '다른 플레이어가 쓰는 닉네임이에요.';
     if (code === 'not cancellable') return '이미 끝난 끌올은 취소할 수 없어요.';
+    if (code === 'version conflict') return '다른 창에서 먼저 바뀌었어요. "새로 불러오기" 후 다시 해 주세요.';
     if (status === 400) return '입력값을 확인해 주세요.';
     if (status === 503) return '관리 기능이 아직 설정되지 않았거나 잠시 쓸 수 없어요.';
     return '요청에 실패했어요 (' + status + ')';
@@ -668,6 +673,280 @@
     });
   }
 
+  // ---- 탭: 태그 정의 ----
+  // 태그의 이모지·색·순서·투표 허용과 이름 바꾸기(worker/adminTagDefs.js). 목록 전체를
+  // 화면에서 고친 뒤 한 번에 저장한다. 문서가 아직 없으면 지금 코드에 박힌 값
+  // (TagConfig.BUILTIN)과 UserTagCatalog.json 으로 초기 목록을 채운다. 미리보기 칩은
+  // 사이트와 같은 data-tag 스타일이고, 편집 중인 색은 tagConfig.js 의 definitionCss 로
+  // 사이트와 같은 <style id="tag-defs-style"> 에 바로 넣는다(관리 페이지 안에서만).
+  var TAG_DEFAULT_COLOR = '#8c96af'; // tags.css 의 --tag-glow-default(140, 150, 175)
+  var tagDefsDraft = null;  // 편집 중인 정의 배열
+  var tagDefsDirty = false;
+  var tagDefsSaved = null;  // { doc, version } — 마지막으로 받은 서버 값
+
+  function rawUserTagCatalog() {
+    var url = (global.dataUrl || function (p) { return p; })('../data/pageData/UserTagCatalog.json');
+    return fetch(url).then(function (r) { return r.json(); }).catch(function () { return []; });
+  }
+
+  function seedDefinitions(catalog) {
+    var cfg = global.TagConfig || {};
+    var builtin = cfg.BUILTIN || { order: [], emoji: {} };
+    var names = builtin.order.slice();
+    Object.keys(builtin.emoji).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
+    return names.map(function (name) {
+      return { name: name, emoji: builtin.emoji[name] || cfg.DEFAULT_EMOJI || '🏷️', color: null, votable: catalog.indexOf(name) !== -1 };
+    });
+  }
+
+  // 데이터(Lookup.json 다섯 종류)에서 태그별 작품 수. 이름 바꾸기가 이미 적용된 값이다.
+  function dataTagCounts(data) {
+    var counts = {};
+    Object.keys(OFFICIAL_FILES).forEach(function (type) {
+      var group = (data && data[type]) || {};
+      Object.keys(group).forEach(function (key) {
+        (group[key].tags || []).forEach(function (tag) { counts[tag] = (counts[tag] || 0) + 1; });
+      });
+    });
+    return counts;
+  }
+
+  function paintDefinitionStyle(tags) {
+    var cfg = global.TagConfig;
+    if (!cfg || !cfg.definitionCss) return;
+    var style = document.getElementById('tag-defs-style');
+    if (!style) {
+      style = el('style');
+      style.id = 'tag-defs-style';
+      document.head.appendChild(style);
+    }
+    style.textContent = cfg.definitionCss(tags);
+  }
+
+  function discardTagDefs() {
+    tagDefsDraft = null;
+    tagDefsDirty = false;
+    paintDefinitionStyle(tagDefsSaved && tagDefsSaved.doc ? tagDefsSaved.doc.tags : []);
+  }
+
+  global.addEventListener('beforeunload', function (e) {
+    if (!tagDefsDirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  function renderTagDefs() {
+    return Promise.all([api('GET', 'tag-defs'), lookup(), api('GET', 'official-tags'), rawUserTagCatalog()]).then(function (res) {
+      tagDefsSaved = res[0];
+      var data = res[1];
+      var overrides = res[2].items;
+      var catalog = res[3];
+      var saved = tagDefsSaved.doc;
+      if (!tagDefsDraft) {
+        tagDefsDraft = saved ? saved.tags.map(function (t) { return Object.assign({}, t); }) : seedDefinitions(catalog);
+        tagDefsDirty = false;
+      }
+      var counts = dataTagCounts(data);
+      overrides.forEach(function (o) { o.tags.forEach(function (tag) { if (!counts[tag]) counts[tag] = 0; }); });
+      var frag = document.createDocumentFragment();
+
+      // -- 정의 목록 --
+      var sec = section('태그 정의', '태그의 순서·이모지·색·투표 허용을 바꿔요. 저장하면 1분 안에 사이트 전체에 반영되고, 데이터를 다시 빌드해도 유지돼요. 색을 "기본"으로 두면 지금 스타일시트의 색을 그대로 써요.');
+      if (!saved) sec.appendChild(el('p', 'admin-dialog-hint', '아직 저장된 정의가 없어서 지금 코드에 있는 값을 보여 줘요. 처음 저장하는 순간부터 이 목록을 써요.'));
+      var status = el('p', 'admin-tagdefs-status');
+      var listHost = el('div');
+      sec.appendChild(status);
+      sec.appendChild(listHost);
+
+      function markDirty() {
+        tagDefsDirty = true;
+        paint();
+      }
+      function move(i, delta) {
+        var j = i + delta;
+        if (j < 0 || j >= tagDefsDraft.length) return;
+        var item = tagDefsDraft.splice(i, 1)[0];
+        tagDefsDraft.splice(j, 0, item);
+        markDirty();
+      }
+      function preview(t) {
+        var chip = el('span', 'series-card-tag', (t.emoji || '') + ' ' + t.name);
+        chip.setAttribute('data-tag', t.name);
+        return chip;
+      }
+      function row(t, i) {
+        var order = actionsCell([
+          button('▲', null, function () { move(i, -1); }),
+          button('▼', null, function () { move(i, 1); })
+        ]);
+        order.classList.add('admin-order-cell');
+        var emoji = el('input', 'bkm-inline-create-input admin-input admin-emoji-input');
+        emoji.value = t.emoji;
+        emoji.maxLength = 16;
+        emoji.setAttribute('aria-label', t.name + ' 이모지');
+        emoji.addEventListener('change', function () {
+          var v = emoji.value.trim();
+          if (!v) { emoji.value = t.emoji; return; }
+          t.emoji = v;
+          markDirty();
+        });
+        var colorCell = el('div', 'admin-row-actions admin-color-cell');
+        var picker = el('input', 'admin-color-input');
+        picker.type = 'color';
+        picker.value = t.color || TAG_DEFAULT_COLOR;
+        picker.setAttribute('aria-label', t.name + ' 색');
+        picker.addEventListener('change', function () { t.color = picker.value.toLowerCase(); markDirty(); });
+        colorCell.appendChild(picker);
+        colorCell.appendChild(t.color ? button('기본색', null, function () { t.color = null; markDirty(); }) : badge('기본'));
+        var vote = el('input');
+        vote.type = 'checkbox';
+        vote.checked = !!t.votable;
+        vote.setAttribute('aria-label', t.name + ' 투표 허용');
+        vote.addEventListener('change', function () { t.votable = vote.checked; markDirty(); });
+        return [order, preview(t), emoji, colorCell, vote, String(counts[t.name] || 0), actionsCell([
+          button('삭제', 'danger', function () { tagDefsDraft.splice(i, 1); markDirty(); })
+        ])];
+      }
+      function paint() {
+        status.textContent = tagDefsDirty ? '저장하지 않은 변경이 있어요.' : (saved ? '저장된 정의 (버전 ' + tagDefsSaved.version + ')' : '');
+        status.className = 'admin-tagdefs-status' + (tagDefsDirty ? ' is-dirty' : '');
+        paintDefinitionStyle(tagDefsDraft);
+        listHost.innerHTML = '';
+        listHost.appendChild(table(['순서', '미리보기', '이모지', '색', '투표', '작품', ''], tagDefsDraft.map(row), '정의된 태그가 없어요.'));
+        renameBtn.disabled = tagDefsDirty;
+        renameHint.hidden = !tagDefsDirty;
+      }
+
+      // 태그 추가 — 자동완성은 데이터·덮어쓰기에 쓰였지만 아직 목록에 없는 태그.
+      var addForm = el('form', 'admin-toolbar admin-tag-add');
+      var addListId = 'admin-tagdefs-candidates';
+      var addList = el('datalist');
+      addList.id = addListId;
+      Object.keys(counts).sort(function (a, b) { return a.localeCompare(b, 'ko'); }).forEach(function (tag) {
+        if (tagDefsDraft.some(function (t) { return t.name === tag; })) return;
+        var o = el('option');
+        o.value = tag;
+        addList.appendChild(o);
+      });
+      var addInput = el('input', 'bkm-inline-create-input admin-input');
+      addInput.placeholder = '태그 추가';
+      addInput.maxLength = 20;
+      addInput.setAttribute('list', addListId);
+      var addBtn = el('button', 'settings-btn', '추가');
+      addBtn.type = 'submit';
+      addForm.appendChild(addList);
+      addForm.appendChild(addInput);
+      addForm.appendChild(addBtn);
+      addForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = addInput.value.trim();
+        if (!name) return;
+        if (/,/.test(name)) { toast('태그에는 쉼표를 쓸 수 없어요.', true); return; }
+        if (tagDefsDraft.some(function (t) { return t.name === name; })) { toast('이미 목록에 있는 태그예요.', true); return; }
+        if (tagDefsDraft.length >= 100) { toast('태그는 100개까지예요.', true); return; }
+        var cfg = global.TagConfig || {};
+        tagDefsDraft.push({ name: name, emoji: (cfg.TAG_EMOJI && cfg.TAG_EMOJI[name]) || cfg.DEFAULT_EMOJI || '🏷️', color: null, votable: false });
+        addInput.value = '';
+        markDirty();
+        addInput.focus();
+      });
+      sec.appendChild(addForm);
+
+      sec.appendChild(actionsCell([
+        button('저장', 'primary', function (btn) {
+          run(btn, function () {
+            return api('POST', 'tag-defs/save', { doc: { v: 1, tags: tagDefsDraft }, version: tagDefsSaved.version })
+              .then(function (r) { tagDefsDraft = null; tagDefsDirty = false; return r; });
+          }, '태그 정의를 저장했어요. 사이트에는 1분 안에 반영돼요.');
+        }),
+        button('새로 불러오기', null, function () {
+          if (!tagDefsDirty) { discardTagDefs(); renderTab('tagdefs'); return; }
+          dialog({ title: '변경 버리기', desc: '저장하지 않은 변경을 버리고 서버 값을 다시 불러와요.', confirmLabel: '버리기', danger: true })
+            .then(function (ok) { if (ok) { discardTagDefs(); renderTab('tagdefs'); } });
+        })
+      ]));
+      frag.appendChild(sec);
+
+      // -- 이름 바꾸기·합치기 --
+      var renameSec = section('이름 바꾸기·합치기', '태그 A 를 B 로 바꿔요. 모든 작품, 공식 태그 덮어쓰기, 유저 투표가 함께 옮겨져요. B 가 이미 있으면 둘이 하나로 합쳐지고, 합치기는 완전히 되돌릴 수 없어요.');
+      var renameForm = el('form', 'admin-toolbar');
+      var known = Object.keys(counts);
+      tagDefsDraft.forEach(function (t) { if (known.indexOf(t.name) === -1) known.push(t.name); });
+      known.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
+      var fromSelect = el('select', 'bkm-inline-create-input admin-input');
+      fromSelect.setAttribute('aria-label', '바꿀 태그');
+      known.forEach(function (tag) {
+        var o = el('option', null, tag + ' (' + (counts[tag] || 0) + ')');
+        o.value = tag;
+        fromSelect.appendChild(o);
+      });
+      var toListId = 'admin-tagdefs-targets';
+      var toList = el('datalist');
+      toList.id = toListId;
+      known.forEach(function (tag) { var o = el('option'); o.value = tag; toList.appendChild(o); });
+      var toInput = el('input', 'bkm-inline-create-input admin-input');
+      toInput.placeholder = '새 이름 (B)';
+      toInput.maxLength = 20;
+      toInput.setAttribute('list', toListId);
+      toInput.setAttribute('aria-label', '새 이름');
+      var renameBtn = el('button', 'settings-btn', '실행');
+      renameBtn.type = 'submit';
+      renameForm.appendChild(fromSelect);
+      renameForm.appendChild(el('span', 'admin-muted', '→'));
+      renameForm.appendChild(toList);
+      renameForm.appendChild(toInput);
+      renameForm.appendChild(renameBtn);
+      var renameHint = el('p', 'admin-dialog-hint', '저장하지 않은 변경이 있어요. 먼저 저장하거나 새로 불러온 뒤에 이름을 바꿀 수 있어요.');
+      renameForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (tagDefsDirty) return;
+        var from = fromSelect.value;
+        var to = toInput.value.trim();
+        if (!from || !to) return;
+        if (/,/.test(to)) { toast('태그에는 쉼표를 쓸 수 없어요.', true); return; }
+        if (from === to) { toast('같은 이름으로는 바꿀 수 없어요.', true); return; }
+        var merged = !!(saved && saved.tags.some(function (t) { return t.name === to; }));
+        var joins = merged || !!counts[to];
+        var desc = '"' + from + '" 이(가) 붙은 작품 ' + (counts[from] || 0) + '개를 "' + to + '" 로 옮겨요.';
+        if (merged) desc += ' "' + to + '" 은(는) 이미 정의된 태그라 둘이 합쳐지고 "' + to + '" 의 설정을 유지해요.';
+        else if (counts[to]) desc += ' "' + to + '" 이(가) 이미 붙은 작품 ' + counts[to] + '개와 합쳐져요.';
+        else desc += ' 이모지·색·순서는 그대로 물려받아요.';
+        if (joins) desc += ' 합치기는 완전히 되돌릴 수 없어요.';
+        dialog({ title: joins ? '태그 합치기' : '태그 이름 바꾸기', desc: desc, confirmLabel: joins ? '합치기' : '바꾸기', danger: joins })
+          .then(function (ok) {
+            if (!ok) return;
+            run(renameBtn, function () {
+              return api('POST', 'tag-defs/rename', { from: from, to: to, version: tagDefsSaved.version }).then(function (r) {
+                tagDefsDraft = null;
+                toast('옮긴 투표 ' + r.movedVotes + '개, 바꾼 덮어쓰기 ' + r.changedOverrides + '개. 사이트에는 1분 안에 반영돼요.');
+                return r;
+              });
+            });
+          });
+      });
+      renameSec.appendChild(renameForm);
+      renameSec.appendChild(renameHint);
+
+      var renames = (saved && saved.renames) || {};
+      renameSec.appendChild(el('p', 'admin-field-label', '적용 중인 이름 바꾸기'));
+      renameSec.appendChild(el('p', 'admin-section-desc', '항목을 지우면 정적 데이터는 다시 옛 이름으로 보여요. 이미 옮긴 투표와 덮어쓰기는 새 이름에 그대로 남아요.'));
+      renameSec.appendChild(table(['옛 이름', '새 이름', ''], Object.keys(renames).map(function (from) {
+        return [from, renames[from], actionsCell([
+          button('지우기', 'danger', function (btn) {
+            dialog({ title: '이름 바꾸기 지우기', desc: '"' + from + ' → ' + renames[from] + '" 를 지워요.', confirmLabel: '지우기', danger: true })
+              .then(function (ok) {
+                if (ok) run(btn, function () { return api('POST', 'tag-defs/unrename', { from: from, version: tagDefsSaved.version }); }, '이름 바꾸기를 지웠어요.');
+              });
+          })
+        ])];
+      }), '적용 중인 이름 바꾸기가 없어요.'));
+      frag.appendChild(renameSec);
+
+      paint();
+      return frag;
+    });
+  }
+
   // ---- 탭: 끌올 ----
   function renderBumps() {
     return Promise.all([lookup(), api('GET', 'bumps')]).then(function (res) {
@@ -747,7 +1026,7 @@
   function renderActions() {
     var sec = section('작업 기록', '데이터를 바꾼 관리 작업이 모두 남아요. 삭제한 항목은 세부 내용에 원본이 들어 있어요.');
     var bar = el('div', 'admin-toolbar');
-    [['', '전체'], ['game', '랭킹'], ['tags', '태그 투표'], ['official-tags', '공식 태그'], ['bump', '끌올'], ['library', '공개 서재']].forEach(function (f) {
+    [['', '전체'], ['game', '랭킹'], ['tags', '태그 투표'], ['official-tags', '공식 태그'], ['tag-defs', '태그 정의'], ['bump', '끌올'], ['library', '공개 서재']].forEach(function (f) {
       bar.appendChild(button(f[1], actionFilter === f[0] ? 'primary' : null, function () {
         actionFilter = f[0];
         renderTab('actions');
@@ -786,7 +1065,7 @@
     return load(null).then(function () { return sec; });
   }
 
-  var RENDERERS = { game: renderGame, tags: renderTags, official: renderOfficial, bumps: renderBumps, library: renderLibrary, actions: renderActions };
+  var RENDERERS = { game: renderGame, tags: renderTags, official: renderOfficial, tagdefs: renderTagDefs, bumps: renderBumps, library: renderLibrary, actions: renderActions };
 
   function renderTab(key) {
     currentTab = key;
@@ -830,8 +1109,18 @@
     if (!tabs) {
       tabs = global.TabsKit.createTabs(TABS, {
         onActivate: function (item) {
-          if (global.history && global.history.replaceState) global.history.replaceState(null, '', item.href);
-          renderTab(item.key);
+          function go() {
+            if (global.history && global.history.replaceState) global.history.replaceState(null, '', item.href);
+            renderTab(item.key);
+          }
+          // 태그 정의 탭에 저장하지 않은 변경이 있으면 떠나기 전에 묻는다.
+          if (currentTab === 'tagdefs' && item.key !== 'tagdefs' && tagDefsDirty) {
+            tabs.setActive('tagdefs');
+            dialog({ title: '저장하지 않은 변경', desc: '태그 정의에 저장하지 않은 변경이 있어요. 버리고 이동할까요?', confirmLabel: '버리고 이동', danger: true })
+              .then(function (ok) { if (ok) { discardTagDefs(); go(); } });
+            return;
+          }
+          go();
         }
       });
       tabsHost.appendChild(tabs.el);
