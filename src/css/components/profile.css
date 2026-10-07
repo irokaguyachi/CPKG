@@ -1,0 +1,103 @@
+/* 유저 프로필 칩·카드(src/js/components/profileCard.js)와 설정창 프로필 탭.
+   색은 series-card.css/theme.css 가 라이트·다크로 바꿔 주는 --card-* 변수만 쓰고,
+   프로필마다 다른 색은 --profile-color 로 받는다. 팝오버 틀(위치·열림)은
+   bookmarks.css 의 .bkm-picker 를 그대로 쓴다. */
+
+.profile-avatar {
+  --avatar-size: 36px;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  overflow: hidden;
+  background: var(--profile-color, #607089);
+  border-radius: 50%;
+}
+.profile-avatar img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+}
+.profile-avatar.is-small {
+  --avatar-size: 22px;
+}
+.profile-avatar.is-large {
+  --avatar-size: 72px;
+  box-shadow: 0 0 0 4px var(--card-surface);
+}
+
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 10px 2px 3px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--card-ink);
+  background: var(--card-hover);
+  border: 1px solid var(--card-line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.profile-badge:hover {
+  border-color: var(--profile-color, var(--card-line));
+}
+.profile-badge-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.profile-badge.is-unknown {
+  padding: 2px 10px;
+  color: var(--card-muted);
+  cursor: default;
+}
+
+.profile-card {
+  overflow: hidden;
+  color: var(--card-ink);
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: 16px;
+}
+.profile-card-band {
+  height: 44px;
+  background: var(--profile-color, #607089);
+}
+.profile-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 16px;
+  margin-top: -36px;
+  text-align: center;
+}
+.profile-card-name {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  word-break: break-all;
+}
+.profile-card-bio {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--card-muted);
+  word-break: break-word;
+}
+
+/* 틀은 .bkm-picker 를 빌리되 배경·테두리는 카드가 직접 그린다. theme.css 의
+   다크 모드 .bkm-picker 규칙보다 뒤에 와도 이기도록 다크 쪽도 한 번 더 적는다. */
+.bkm-picker.profile-popover,
+[data-theme="dark"] .bkm-picker.profile-popover {
+  width: 280px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+}
