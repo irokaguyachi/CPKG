@@ -5,6 +5,7 @@ import { bumpRoutes } from './adminBumps.js';
 import { libraryRoutes } from './adminLibrary.js';
 import { officialTagRoutes } from './adminOfficialTags.js';
 import { tagDefRoutes } from './adminTagDefs.js';
+import { profileRoutes } from './adminProfiles.js';
 
 /**
  * adminApi — 관리 페이지(/admin, src/js/pages/adminPage.js)용 API.
@@ -258,7 +259,7 @@ async function handleActions(request, env, ctx, session, url) {
 
 var ROUTES = Object.assign({
   'GET /actions': handleActions
-}, gameRoutes, tagRoutes, bumpRoutes, libraryRoutes, officialTagRoutes, tagDefRoutes);
+}, gameRoutes, tagRoutes, bumpRoutes, libraryRoutes, officialTagRoutes, tagDefRoutes, profileRoutes);
 
 export default {
   async fetch(request, env, ctx) {
