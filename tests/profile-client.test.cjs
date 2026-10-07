@@ -143,3 +143,36 @@ test('mine is cached so page loads do not hit the auth limiter', async () => {
   assert.equal(window.ProfileStore.mine().nickname, '카구야', 'cached profile is available synchronously');
   assert.equal(calls.length, 0, 'fresh cache skips /profile/me');
 });
+
+const PROFILE_UI_STRINGS = [
+  '프로필', '프로필 편집', '프로필 만들기', '로그인하면 프로필을 만들 수 있어요',
+  '만든 뒤의 태그 투표·끌올·공개 북마크·랭킹 활동에 이 프로필이 표시돼요',
+  '알 수 없는 유저', '닉네임', '아이콘', '색', '자기소개', '저장', '저장했어요', '프로필 삭제',
+  '프로필을 삭제할까요? 지금 닉네임은 다른 사람이 쓸 수 있게 돼요.', '불러오는 중…',
+  '이미 쓰이는 닉네임이에요', '쓸 수 없는 단어가 들어 있어요', '쓸 수 없는 닉네임 형식이에요',
+  '닉네임은 1~12자로 정해 주세요', '자기소개는 40자까지 쓸 수 있어요', '{date}부터 닉네임을 바꿀 수 있어요',
+  '계정을 찾지 못했어요. 다시 로그인해 주세요', '잠시 후 다시 시도해 주세요'
+];
+
+test('profile error codes map to readable messages', () => {
+  const { window } = loadProfiles({ fetch: () => jsonRes({}) });
+  const msg = window.ProfileStore.errorMessage;
+  assert.equal(msg('nickname taken'), '이미 쓰이는 닉네임이에요');
+  assert.equal(msg('banned word'), '쓸 수 없는 단어가 들어 있어요');
+  assert.equal(msg('reserved nickname'), '쓸 수 없는 닉네임 형식이에요');
+  assert.equal(msg('invalid nickname'), '닉네임은 1~12자로 정해 주세요');
+  assert.equal(msg('invalid bio'), '자기소개는 40자까지 쓸 수 있어요');
+  assert.equal(msg('account not found'), '계정을 찾지 못했어요. 다시 로그인해 주세요');
+  assert.equal(msg('something else'), '잠시 후 다시 시도해 주세요');
+  assert.equal(msg('network'), '잠시 후 다시 시도해 주세요');
+  const cooldown = msg('nickname cooldown', Date.parse('2026-10-15T12:00:00+09:00'));
+  assert.match(cooldown, /10월 15일부터 닉네임을 바꿀 수 있어요/);
+});
+
+test('profile UI strings have English and Japanese translations', () => {
+  for (const lang of ['English', 'Japanese']) {
+    const dict = JSON.parse(fs.readFileSync(path.join(root, 'src/data/i18n', lang + '.json'), 'utf8'));
+    for (const key of PROFILE_UI_STRINGS) assert.ok(dict[key], `${lang}: ${key}`);
+    assert.ok(dict['{date}부터 닉네임을 바꿀 수 있어요'].includes('{date}'));
+  }
+});

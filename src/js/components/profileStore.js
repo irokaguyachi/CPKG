@@ -200,6 +200,32 @@
     return color ? color.hex : null;
   }
 
+  // ---- 서버 오류 → 문구 ----
+  function errorMessage(code, retryAt) {
+    var t = global.I18n.t;
+    switch (code) {
+      case 'nickname taken': return t('이미 쓰이는 닉네임이에요');
+      case 'banned word': return t('쓸 수 없는 단어가 들어 있어요');
+      case 'reserved nickname': return t('쓸 수 없는 닉네임 형식이에요');
+      case 'invalid nickname': return t('닉네임은 1~12자로 정해 주세요');
+      case 'invalid bio': return t('자기소개는 40자까지 쓸 수 있어요');
+      case 'account not found': return t('계정을 찾지 못했어요. 다시 로그인해 주세요');
+      case 'nickname cooldown': return t('{date}부터 닉네임을 바꿀 수 있어요', { date: formatDate(retryAt) });
+      default: return t('잠시 후 다시 시도해 주세요');
+    }
+  }
+
+  function formatDate(ms) {
+    var i18n = global.I18n;
+    var locale = 'ko-KR';
+    (i18n.LANGUAGES || []).forEach(function (lang) { if (lang.code === i18n.lang) locale = lang.locale; });
+    try {
+      return new Date(ms).toLocaleDateString(locale, { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
+    } catch (e) {
+      return new Date(ms).toLocaleDateString();
+    }
+  }
+
   // ---- 시작 ----
   global.addEventListener('chokaguya:auth-change', function (e) {
     if (e && e.detail && e.detail.loggedIn) {
@@ -230,6 +256,7 @@
     fetchMany: fetchMany,
     catalog: catalog,
     iconFile: iconFile,
-    colorHex: colorHex
+    colorHex: colorHex,
+    errorMessage: errorMessage
   };
 })(window);
