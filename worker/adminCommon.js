@@ -16,8 +16,9 @@ export function json(body, status) {
 }
 
 // 본문이 객체가 아니면 400 응답을 돌려준다. 호출부는 `instanceof Response` 로 거른다.
-export async function readBody(request) {
-  var parsed = await readJsonLimited(request, ADMIN_MAX_BODY_BYTES);
+// maxBytes 는 문서 전체를 받는 경로(태그 정의 저장 등)만 늘려 쓴다.
+export async function readBody(request, maxBytes) {
+  var parsed = await readJsonLimited(request, maxBytes || ADMIN_MAX_BODY_BYTES);
   if (parsed.error) return json({ error: parsed.error }, parsed.status);
   if (!parsed.value || typeof parsed.value !== 'object' || Array.isArray(parsed.value)) {
     return json({ error: 'invalid payload shape' }, 400);

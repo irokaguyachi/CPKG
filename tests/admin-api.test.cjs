@@ -544,3 +544,79 @@ test('tag voting follows votable definitions when present', async () => {
   assert.equal((await vote(t, 2, 123, '슬픔')).status, 200);
   assert.equal((await vote(t, 2, 123, '일상')).status, 400);
 });
+
+const storedDefs = t => {
+  const row = t.env.TAGS_DB.rows("SELECT doc, version FROM site_documents WHERE key = 'tag-definitions'")[0];
+  return row ? { doc: JSON.parse(row.doc), version: row.version } : null;
+};
+
+test('admin saves tag definitions and republishes', async () => {
+  const t = await setupAdmin();
+  assert.deepEqual((await t.api('GET', 'tag-defs')).body, { doc: null, version: 0 });
+  const doc = { v: 1, tags: [
+    { name: ' 슬픔 ', emoji: '💧', color: '#6688CC', votable: true },
+    { name: '새 태그', emoji: '✨', color: null, votable: false }
+  ] };
+  const res = await t.api('POST', 'tag-defs/save', { doc, version: 0 });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.version, 1);
+  const saved = {
+    v: 1,
+    tags: [{ name: '슬픔', emoji: '💧', color: '#6688cc', votable: true }, { name: '새 태그', emoji: '✨', color: null, votable: false }],
+    renames: {}
+  };
+  assert.deepEqual((await t.api('GET', 'tag-defs')).body, { doc: saved, version: 1 });
+  const pub = (await t.pub('GET', '/tags/official')).body;
+  assert.deepEqual(pub.tags, saved.tags);
+  const log = (await t.api('GET', 'actions?action=tag-defs')).body.items;
+  assert.deepEqual(log.map(r => r.action), ['tag-defs.save']);
+  assert.deepEqual(log[0].detail, { before: null, after: saved });
+});
+
+test('stale tag definition saves are rejected', async () => {
+  const t = await setupAdmin();
+  const doc = { v: 1, tags: [{ name: '슬픔', emoji: '💧', color: null, votable: true }] };
+  assert.equal((await t.api('POST', 'tag-defs/save', { doc, version: 0 })).status, 200);
+  const other = { v: 1, tags: [{ name: '감동', emoji: '🥹', color: null, votable: true }] };
+  const res = await t.api('POST', 'tag-defs/save', { doc: other, version: 0 });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error, 'version conflict');
+  assert.equal(storedDefs(t).doc.tags[0].name, '슬픔');
+  assert.equal(storedDefs(t).version, 1);
+});
+
+test('save keeps the server renames', async () => {
+  const t = await setupAdmin();
+  putDefs(t, { v: 1, tags: [], renames: { a: 'b' } });
+  const res = await t.api('POST', 'tag-defs/save', { doc: { v: 1, tags: [], renames: {} }, version: 1 });
+  assert.equal(res.status, 200);
+  assert.deepEqual(storedDefs(t).doc.renames, { a: 'b' });
+  assert.equal(storedDefs(t).version, 2);
+});
+
+test('tag definitions are validated', async () => {
+  const t = await setupAdmin();
+  const tag = (over = {}) => ({ name: '슬픔', emoji: '💧', color: null, votable: true, ...over });
+  const bad = [
+    { v: 2, tags: [] },
+    { v: 1, tags: 'x' },
+    { v: 1, tags: Array.from({ length: 101 }, (_, i) => tag({ name: 't' + i })) },
+    { v: 1, tags: [tag(), tag({ name: ' 슬픔' })] },
+    { v: 1, tags: [tag({ name: 'a,b' })] },
+    { v: 1, tags: [tag({ name: '가'.repeat(21) })] },
+    { v: 1, tags: [tag({ emoji: '' })] },
+    { v: 1, tags: [tag({ emoji: 'abcdefghi' })] },
+    { v: 1, tags: [tag({ color: 'red' })] },
+    { v: 1, tags: [tag({ votable: 'yes' })] },
+    null
+  ];
+  for (const doc of bad) assert.equal((await t.api('POST', 'tag-defs/save', { doc, version: 0 })).status, 400, JSON.stringify(doc));
+  assert.equal(storedDefs(t), null);
+});
+
+test('a large definition document fits', async () => {
+  const t = await setupAdmin();
+  const tags = Array.from({ length: 100 }, (_, i) => ({ name: '가'.repeat(17) + String(i).padStart(3, '0'), emoji: '🏷️', color: '#aabbcc', votable: true }));
+  const res = await t.api('POST', 'tag-defs/save', { doc: { v: 1, tags }, version: 0 });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+});
