@@ -2,6 +2,7 @@ import { readJsonLimited } from './requestBody.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 import { readTagDefinitions } from './tagDocs.js';
 import { cleanNickname, bannedWordIn } from './nickname.js';
+import { PROFILE_PATHS, handleProfileRequest } from './profileApi.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -1865,6 +1866,12 @@ async function handleUserSync(request, env) {
   }, 409);
 }
 
+// 프로필 API(profileApi.js)가 쓰는 공용 함수. 저쪽에서 이 파일을 import 하면 순환이 생겨서 넘겨준다.
+var PROFILE_TOOLS = {
+  jsonResponse: jsonResponse, checkLimit: checkLimit, clientIp: clientIp,
+  readJsonBody: readJsonBody, cleanPersonalCode: cleanPersonalCode, userStoreKey: userStoreKey
+};
+
 // 라우팅 본체. 예외 처리는 아래 fetch() 가 한 겹 감싸서 담당한다.
 async function route(request, env) {
   var url = new URL(request.url);
@@ -1931,6 +1938,9 @@ async function route(request, env) {
   }
   if (url.pathname === '/pancake/add' && request.method === 'POST') {
     return handlePancakeAdd(request, env);
+  }
+  if (PROFILE_PATHS.indexOf(url.pathname) !== -1) {
+    return handleProfileRequest(request, env, PROFILE_TOOLS);
   }
   if (url.pathname.indexOf('/library/') === 0) {
     var libRest = url.pathname.slice('/library/'.length);

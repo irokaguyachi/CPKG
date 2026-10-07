@@ -8,13 +8,19 @@ export const RESERVED_NICKNAME_RE = /^유저[A-Za-z0-9_-]{6,12}$/;
 // 제어 문자·폭 없는 문자·방향 바꾸는 문자를 지우고 공백을 하나로 줄인다.
 // 남은 글자가 1~max 자(코드 포인트)여야 한다.
 export function cleanNickname(raw, max) {
-  if (typeof raw !== 'string' || raw.length > 64) return null;
+  var name = cleanText(raw, max);
+  return name ? name : null;
+}
+
+// cleanNickname 과 같은 정리를 하되 빈 문자열도 받는다(자기소개). 0~max 자.
+// 원문 길이 상한은 이모지(UTF-16 두 칸)와 지워질 문자를 넉넉히 셈한 값이다.
+export function cleanText(raw, max) {
+  if (typeof raw !== 'string' || raw.length > max * 8) return null;
   var name = raw.normalize('NFC')
     .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  var length = Array.from(name).length;
-  return length >= 1 && length <= max ? name : null;
+  return Array.from(name).length <= max ? name : null;
 }
 
 // 관리 페이지의 금지어(banned_nicknames, 소문자로 저장)가 texts 중 하나에라도
