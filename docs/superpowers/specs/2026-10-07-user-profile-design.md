@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_updated ON profiles(updated_at DESC);
 
 - 닉네임: `cleanGameNickname` 을 공용 함수 `cleanNickname(raw, max)` 로 옮긴다(NFC, 제어·폭 없는·방향
   문자 제거, 공백 하나로). 프로필은 1~12자, 게임 랭킹은 지금처럼 10자.
-- 예약 형식 `/^유저[A-Za-z0-9_-]{6}$/` 은 유저가 고를 수 없다(관리자 초기화 전용).
+- 예약 형식 `/^유저[A-Za-z0-9_-]{6,12}$/` 은 유저가 고를 수 없다(관리자 초기화 전용).
 - 금지어: 기존 `banned_nicknames` 를 닉네임과 자기소개 모두에 적용한다(소문자 포함 검사).
   테이블 조회가 실패하면 게임과 같이 막지 않는다.
 - 자기소개: 같은 정리 규칙, 0~40자.
@@ -133,7 +133,8 @@ CREATE INDEX IF NOT EXISTS idx_profiles_updated ON profiles(updated_at DESC);
 - `GET /api/admin/profiles?q=`: q 가 없으면 최근 수정 50개, 있으면 `nickname_key` 부분 일치 50개.
   행: 아이콘, 닉네임, 자기소개, 공개 ID, 만든 날짜.
 - `POST /api/admin/profiles/reset-nickname {id}`: 닉네임을 `유저` + 공개 ID 앞 6자로 바꾸고
-  `nickname_changed_at = 0`(본인이 바로 다시 정할 수 있게).
+  `nickname_changed_at = 0`(본인이 바로 다시 정할 수 있게). 앞 6자가 다른 초기화 이름과 대소문자
+  무시로 겹치면 `유저` + 전체 ID 를 쓴다.
 - `POST /api/admin/profiles/clear-bio {id}`, `POST /api/admin/profiles/delete {id}`.
 - 모든 작업은 변경과 같은 batch 로 `admin_actions` 에 남기고 detail 에 바뀌기 전 행을 담는다
   (`profile.reset-nickname`, `profile.clear-bio`, `profile.delete`). 작업 기록 필터에 "프로필".
