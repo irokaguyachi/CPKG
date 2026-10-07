@@ -100,8 +100,9 @@
     if (!el) return;
     info = info || {};
     var tag = coverTag(info.tags);
-    el.style.setProperty('--cover-color',
-      tag ? 'var(--tag-glow-' + tag + ', var(--tag-glow-default))' : 'var(--tag-glow-default)');
+    var glow = tag ? glowColor(tag) : null;
+    el.style.setProperty('--cover-color', glow ||
+      (tag ? 'var(--tag-glow-' + tag + ', var(--tag-glow-default))' : 'var(--tag-glow-default)'));
     el.classList.add('text-cover');
 
     el.appendChild(span('text-cover-glow'));
@@ -126,13 +127,97 @@
     el.appendChild(text);
   }
 
+  // ---- 관리 페이지의 태그 정의(worker/adminTagDefs.js) ----
+  // cdnConfig.js 가 /tags/official 에서 받은 { tags, renames } 를 화면을 그리기 전에
+  // 넘겨준다. tags 순서가 정렬 순서가 되고, 정의 이모지가 내장 이모지를 덮는다.
+  // 색이 정해진 태그는 tags.css 와 같은 변수(--tag-bg 등)를 <style> 하나로 만들어
+  // 덮어쓴다. 다른 스크립트가 TAG_ORDER·TAG_EMOJI 를 이미 잡아 두었을 수 있어서
+  // 새 객체로 바꾸지 않고 제자리에서 고친다. BUILTIN 은 관리 화면의 초기값이다.
+  var BUILTIN = { order: TAG_ORDER.slice(), emoji: Object.assign({}, TAG_EMOJI) };
+  var definedColors = {};
+  var renames = {};
+  var STYLE_ID = 'tag-defs-style';
+
+  function hexRgb(hex) {
+    var n = parseInt(String(hex).slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  // 색을 흰색과 섞는다. amount 는 원래 색의 비율.
+  function mixWhite(rgb, amount) {
+    return '#' + rgb.map(function (c) {
+      var v = Math.round(c * amount + 255 * (1 - amount));
+      return (v < 16 ? '0' : '') + v.toString(16);
+    }).join('');
+  }
+  // 따옴표 속 속성값으로 넣는다. 태그 이름엔 제어 문자가 없으니(서버 검증) \ 와 " 만 막으면 된다.
+  function cssString(text) {
+    return '"' + String(text).replace(/["\\]/g, '\\$&') + '"';
+  }
+
+  function definitionCss(tags) {
+    var out = [];
+    (tags || []).forEach(function (t) {
+      if (!t || !t.color) return;
+      var rgb = hexRgb(t.color);
+      var rgba = function (a) { return 'rgba(' + rgb.join(', ') + ', ' + a + ')'; };
+      var sel = '[data-tag=' + cssString(t.name) + ']';
+      out.push(sel + ' { --tag-bg: ' + mixWhite(rgb, 0.12) + '; }');
+      out.push('[data-theme="dark"] ' + sel + ' { --tag-bg: ' + rgba(0.22) + '; --tag-text: ' +
+        mixWhite(rgb, 0.45) + '; --tag-border: ' + rgba(0.35) + '; }');
+    });
+    return out.join('\n');
+  }
+
+  function glowColor(tag) {
+    return Object.prototype.hasOwnProperty.call(definedColors, tag) ? definedColors[tag] : null;
+  }
+
+  function applyDefinitions(defs) {
+    defs = defs || {};
+    var tags = Array.isArray(defs.tags) ? defs.tags : null;
+    if (tags) {
+      TAG_ORDER.length = 0;
+      Object.keys(TAG_EMOJI).forEach(function (k) { delete TAG_EMOJI[k]; });
+      Object.assign(TAG_EMOJI, BUILTIN.emoji);
+      definedColors = {};
+      tags.forEach(function (t) {
+        if (!t || !t.name) return;
+        TAG_ORDER.push(t.name);
+        if (t.emoji) TAG_EMOJI[t.name] = t.emoji;
+        if (t.color) definedColors[t.name] = hexRgb(t.color).join(', ');
+      });
+      if (typeof document !== 'undefined' && document && document.head) {
+        var style = document.getElementById(STYLE_ID);
+        if (!style) {
+          style = document.createElement('style');
+          style.id = STYLE_ID;
+          document.head.appendChild(style);
+        }
+        style.textContent = definitionCss(tags);
+      }
+    }
+    renames = (defs.renames && typeof defs.renames === 'object') ? defs.renames : {};
+    global.TagConfig.renames = renames;
+  }
+
   global.TagConfig = {
     TAG_EMOJI: TAG_EMOJI,
     DEFAULT_EMOJI: DEFAULT_EMOJI,
     TAG_ORDER: TAG_ORDER,
+    BUILTIN: BUILTIN,
+    renames: renames,
     sortTags: sortTags,
     maskAuthor: maskAuthor,
     coverTags: coverTags,
-    applyTextCover: applyTextCover
+    applyTextCover: applyTextCover,
+    definitionCss: definitionCss,
+    glowColor: glowColor,
+    applyDefinitions: applyDefinitions
   };
+
+  // cdnConfig.js 가 이 파일보다 먼저 정의를 받았으면 여기서 적용한다.
+  if (global.__tagDefinitions) {
+    applyDefinitions(global.__tagDefinitions);
+    global.__tagDefinitions = null;
+  }
 })(window);
