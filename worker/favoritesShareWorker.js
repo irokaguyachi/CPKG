@@ -2,7 +2,7 @@ import { readJsonLimited } from './requestBody.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 import { readTagDefinitions } from './tagDocs.js';
 import { cleanNickname, bannedWordIn } from './nickname.js';
-import { PROFILE_PATHS, handleProfileRequest } from './profileApi.js';
+import { PROFILE_PATHS, handleProfileRequest, profileIdForCode } from './profileApi.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -1275,7 +1275,20 @@ function libraryPublicView(code, record) {
     name: record.name,
     items: record.items,
     createdAt: record.createdAt,
-    updatedAt: record.updatedAt
+    updatedAt: record.updatedAt,
+    profileId: record.profileId || null
+  };
+}
+
+// R2 서재 기록의 customMetadata. 공개 색인(libraryIndex.js)을 다시 만들 때 기록 본문을
+// 읽지 않고 이 값만 쓰므로, 목록에 보이는 값(만든 사람 프로필 포함)은 전부 여기에 둔다.
+function libraryMetadata(record) {
+  return {
+    name: record.name,
+    itemCount: String(record.items.length),
+    createdAt: String(record.createdAt || record.updatedAt),
+    updatedAt: String(record.updatedAt),
+    profileId: record.profileId || ''
   };
 }
 
@@ -1325,18 +1338,15 @@ async function handleLibraryCreate(request, env) {
     items: clean.items,
     editTokenHash: editTokenHash,
     ownerHash: ownerHash,
+    // 만든 사람의 프로필(유저 프로필 2단계). 게시할 때 프로필이 있어야 붙는다.
+    profileId: clean.personalCode ? await profileIdForCode(env, clean.personalCode) : null,
     createdAt: now,
     updatedAt: now
   };
 
   await env.FAVORITES_BUCKET.put('library/' + code + '.json', JSON.stringify(record), {
     httpMetadata: { contentType: 'application/json' },
-    customMetadata: {
-      name: clean.name,
-      itemCount: String(clean.items.length),
-      createdAt: String(now),
-      updatedAt: String(now)
-    }
+    customMetadata: libraryMetadata(record)
   });
 
   if (clean.personalCode) {
@@ -1456,16 +1466,17 @@ async function handleLibraryUpdate(code, request, env) {
 
   if (clean.name !== undefined) record.name = clean.name;
   if (clean.items !== undefined) record.items = clean.items;
+  // 주인이 개인 코드와 함께 고치면 지금 프로필로 맞춘다(지웠으면 빠진다). 편집 토큰만
+  // 가진 다른 사람의 코드로는 바꾸지 않는다.
+  if (clean.personalCode && record.ownerHash &&
+      (await ownerHashFor(clean.personalCode, code)) === record.ownerHash) {
+    record.profileId = await profileIdForCode(env, clean.personalCode);
+  }
   record.updatedAt = Date.now();
 
   await env.FAVORITES_BUCKET.put('library/' + code + '.json', JSON.stringify(record), {
     httpMetadata: { contentType: 'application/json' },
-    customMetadata: {
-      name: record.name,
-      itemCount: String(record.items.length),
-      createdAt: String(record.createdAt || record.updatedAt),
-      updatedAt: String(record.updatedAt)
-    }
+    customMetadata: libraryMetadata(record)
   });
 
   await updateLibraryIndex(env, code, record);
@@ -1560,12 +1571,7 @@ async function handleLibraryClaimOwner(code, request, env) {
   record.ownerHash = await ownerHashFor(personalCode, code);
   await env.FAVORITES_BUCKET.put('library/' + code + '.json', JSON.stringify(record), {
     httpMetadata: { contentType: 'application/json' },
-    customMetadata: {
-      name: record.name,
-      itemCount: String(record.items.length),
-      createdAt: String(record.createdAt || record.updatedAt),
-      updatedAt: String(record.updatedAt)
-    }
+    customMetadata: libraryMetadata(record)
   });
   await addToOwnerIndex(env, personalCode, code);
 

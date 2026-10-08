@@ -11,7 +11,8 @@ function metadataRow(object) {
     name: meta.name || '',
     itemCount: Number(meta.itemCount) || 0,
     createdAt: Number(meta.createdAt || meta.updatedAt) || 0,
-    updatedAt: Number(meta.updatedAt) || 0
+    updatedAt: Number(meta.updatedAt) || 0,
+    profileId: meta.profileId || null
   };
 }
 
@@ -71,7 +72,8 @@ export async function updateLibraryIndex(env, code, record) {
       const items = index.items.filter(row => row.code !== code);
       if (record) items.push({
         code, name: record.name, itemCount: record.items.length,
-        createdAt: record.createdAt || record.updatedAt, updatedAt: record.updatedAt
+        createdAt: record.createdAt || record.updatedAt, updatedAt: record.updatedAt,
+        profileId: record.profileId || null
       });
       if (await env.FAVORITES_BUCKET.put(INDEX_KEY, JSON.stringify({
         items, generatedAt: Date.now()

@@ -143,6 +143,56 @@ test('bump get works without link tables', withClock(async () => {
   assert.equal(got.body.active.requesterProfileId, null);
 }));
 
+// ---- 공개 북마크 ----
+const publish = (t, personalCode, name = '내 서재') =>
+  t.send('POST', '/library', { personalCode, name, items: [{ type: 'novel', id: 123 }] });
+const listRow = async (t, libCode) => (await t.send('GET', '/library')).body.items.find(r => r.code === libCode);
+
+test('publishing with a profile stores profileId', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1)); await t.account(code(2));
+  const id = await t.makeProfile(code(1));
+  const mine = await publish(t, code(1));
+  assert.equal(mine.status, 201);
+  assert.equal((await t.send('GET', '/library/' + mine.body.code)).body.profileId, id);
+  assert.equal((await listRow(t, mine.body.code)).profileId, id);
+  const plain = await publish(t, code(2), '프로필 없음');
+  assert.equal((await t.send('GET', '/library/' + plain.body.code)).body.profileId, null);
+  const anonymous = await t.send('POST', '/library', { name: '익명', items: [] });
+  assert.equal((await listRow(t, anonymous.body.code)).profileId, null);
+}));
+
+test('owner edits refresh profileId but strangers cannot', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1)); await t.account(code(2));
+  const lib = (await publish(t, code(1))).body;
+  const id = await t.makeProfile(code(1));
+  await t.makeProfile(code(2));
+  const edited = await t.send('PUT', '/library/' + lib.code, { editToken: lib.editToken, personalCode: code(1), name: '고침' });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.body.profileId, id);
+  const stranger = await t.send('PUT', '/library/' + lib.code, { editToken: lib.editToken, personalCode: code(2), name: '남이 고침' });
+  assert.equal(stranger.status, 200);
+  assert.equal(stranger.body.profileId, id, 'a stranger with the edit token cannot swap the profile');
+  assert.equal((await listRow(t, lib.code)).profileId, id);
+  // 주인이 프로필을 지운 뒤 다시 고치면 프로필이 빠진다
+  await t.send('POST', '/profile/delete', { personalCode: code(1) });
+  const cleared = await t.send('PUT', '/library/' + lib.code, { editToken: lib.editToken, personalCode: code(1), name: '다시' });
+  assert.equal(cleared.body.profileId, null);
+}));
+
+test('index rebuild keeps profileId', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1));
+  const id = await t.makeProfile(code(1));
+  const lib = (await publish(t, code(1))).body;
+  const { refreshLibraryIndex } = await load('worker/libraryIndex.js');
+  await t.env.FAVORITES_BUCKET.delete('library-index.json');
+  for (const key of [...t.env.FAVORITES_BUCKET.objects.keys()].filter(k => k.includes('index'))) await t.env.FAVORITES_BUCKET.delete(key);
+  await refreshLibraryIndex(t.env);
+  assert.equal((await listRow(t, lib.code)).profileId, id);
+}));
+
 test('tags/voters route is exposed by the site worker', () => {
   const worker = fs.readFileSync(path.join(root, 'src/_worker.js'), 'utf8');
   assert.ok(worker.includes("'/tags/voters'"));
