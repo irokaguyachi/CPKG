@@ -252,3 +252,19 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* 우주 미니게임 순위표(spaceRanking.js) — 순위별 글자 색·크기를 그대로 따르도록 칩을 비운다 */
+.space-rank .profile-badge {
+  max-width: 100%;
+  padding: 0 2px 0 0;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+}
+.space-rank-entry-profile {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+}

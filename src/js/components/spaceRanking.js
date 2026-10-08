@@ -18,7 +18,7 @@
   var PLAYER_KEY = 'chokaguya_space_player';
   var NICKNAME_KEY = 'chokaguya_space_nickname';
   var PLAYED_KEY = 'chokaguya_space_played';
-  var NICKNAME_MAX = 10; // 서버의 GAME_NICKNAME_MAX 와 맞춘다
+  var NICKNAME_MAX = 12; // 서버의 GAME_NICKNAME_MAX 와 맞춘다(프로필 닉네임과 같은 길이)
   var BOARD_TTL = 30000; // 순위표를 다시 열 때 이 시간 안이면 받아 둔 것을 그대로 쓴다
   var OPEN_DELAY = 650; // 게임이 끝나고 장면이 원래 크기로 줄어든 뒤에 연다
   var ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -83,8 +83,8 @@
   }
 
   var SUBMIT_ERRORS = {
-    'nickname taken': '이미 쓰이고 있는 닉네임이에요',
-    'invalid nickname': '닉네임은 1~10자로 입력해 주세요',
+    'nickname taken': '이미 쓰이고 있는 닉네임이에요(다른 사람의 프로필 닉네임 포함)',
+    'invalid nickname': '닉네임은 1~12자로 입력해 주세요',
     'invalid run': '이번 판은 등록할 수 없어요',
     'run too slow': '게임이 멈추거나 느려진 판은 등록할 수 없어요'
   };
@@ -95,6 +95,22 @@
     if (SUBMIT_ERRORS[error]) return t(SUBMIT_ERRORS[error]);
     if (res.status === 429) return t('잠시 후 다시 시도해 주세요');
     return t('랭킹 서버에 연결하지 못했어요');
+  }
+
+  // ---- 프로필(유저 프로필 2단계) ----
+  // 로그인해서 프로필이 있으면 닉네임 입력 대신 프로필로 등록한다. 순위 줄 중 프로필로
+  // 등록한 줄(profileId)은 프로필 칩으로 그린다(profileStore.js / profileCard.js).
+  function personalCode() {
+    var lib = global.BookmarkLibrary;
+    return (lib && lib.isLoggedIn() && lib.getPersonalCode()) || null;
+  }
+  function myProfile() {
+    return (personalCode() && global.ProfileStore && global.ProfileStore.mine()) || null;
+  }
+  function withCode(body) {
+    var code = personalCode();
+    if (code) body.personalCode = code;
+    return body;
   }
 
   // opts: { scene }
@@ -110,6 +126,8 @@
     var openTimer = 0;
     var currentRun = null; // 지금 하는 판의 run 토큰을 기다리는 Promise
     var played = false; // 이번 게임에서 기록이 남았는지 — afterGame 이 순위표를 열지 정한다
+    var profiles = {}; // 순위 줄의 프로필 { id: 공개 프로필 | null }
+    var catalog = null; // ProfileIcons.json
 
     // ---- 화면 ----------------------------------------------------------------
 
@@ -144,7 +162,9 @@
     input.setAttribute('aria-label', t('닉네임'));
     var submitBtn = el('button', 'space-rank-submit', t('등록'));
     submitBtn.type = 'submit';
+    var entryProfile = el('span', 'space-rank-entry-profile'); // 프로필로 등록할 때 입력 칸 자리
     entryRow.appendChild(input);
+    entryRow.appendChild(entryProfile);
     entryRow.appendChild(submitBtn);
     var entryMsg = el('p', 'space-rank-msg');
     entryMsg.setAttribute('aria-live', 'polite');
@@ -194,14 +214,33 @@
     scene.appendChild(root);
     if (readStore(PLAYED_KEY)) root.classList.add('is-ready');
 
-    function rowNode(rank, nickname, scoreMs, isMe) {
+    function rowNode(rank, row, isMe) {
       var li = el('li', 'space-rank-row' + (isMe ? ' is-me' : ''));
       if (rank <= 3) li.setAttribute('data-rank', String(rank));
       li.appendChild(el('span', 'space-rank-pos', rank + '.'));
-      li.appendChild(el('span', 'space-rank-name', nickname));
+      var name = el('span', 'space-rank-name');
+      var profile = row.profileId && profiles[row.profileId];
+      if (profile && catalog && global.ProfileCard) name.appendChild(global.ProfileCard.nameCell(profile, row.nickname, catalog));
+      else name.textContent = row.nickname;
+      li.appendChild(name);
       li.appendChild(el('span', 'space-rank-sep', '|'));
-      li.appendChild(el('span', 'space-rank-time', formatScore(scoreMs)));
+      li.appendChild(el('span', 'space-rank-time', formatScore(row.scoreMs)));
       return li;
+    }
+
+    // 순위 줄의 프로필을 한 번에 받아 두고 다시 그린다. 실패하면 글자로 남는다.
+    function loadProfiles() {
+      if (!board || !global.ProfileStore) return;
+      var ids = [];
+      ['all', 'weekly'].forEach(function (name) {
+        (board[name] || []).forEach(function (row) { if (row.profileId) ids.push(row.profileId); });
+      });
+      if (!ids.length) return;
+      Promise.all([global.ProfileStore.fetchMany(ids), global.ProfileStore.catalog()]).then(function (r) {
+        Object.keys(r[0]).forEach(function (id) { profiles[id] = r[0][id]; });
+        catalog = r[1];
+        render();
+      });
     }
 
     function render() {
@@ -214,6 +253,13 @@
       entry.hidden = !pending;
       if (pending) entryScore.textContent = t('내 기록 {time}', { time: formatScore(pending.scoreMs) });
       input.disabled = submitBtn.disabled = submitting;
+      var profile = myProfile();
+      input.hidden = !!profile;
+      entryProfile.hidden = !profile;
+      entryProfile.textContent = '';
+      if (profile && catalog && global.ProfileCard) entryProfile.appendChild(global.ProfileCard.nameCell(profile, profile.nickname, catalog));
+      else if (profile) entryProfile.textContent = profile.nickname;
+      submitBtn.textContent = profile ? t('내 프로필로 등록') : t('등록');
 
       list.textContent = '';
       mine.textContent = '';
@@ -231,12 +277,13 @@
         status.textContent = t('아직 기록이 없어요');
       }
       for (var i = 0; i < rows.length; i++) {
-        list.appendChild(rowNode(rows[i].rank, rows[i].nickname, rows[i].scoreMs, !!me && me.rank === rows[i].rank));
+        list.appendChild(rowNode(rows[i].rank, rows[i], !!me && me.rank === rows[i].rank));
       }
       // 10위 밖이면 순위표 아래에 내 자리를 따로 보여 준다
       if (me && me.rank > rows.length) {
         mine.hidden = false;
-        mine.textContent = t('내 순위') + ' ' + me.rank + '. ' + (readStore(NICKNAME_KEY) || '') + ' | ' + formatScore(me.scoreMs);
+        var myName = myProfile() ? myProfile().nickname : (readStore(NICKNAME_KEY) || '');
+        mine.textContent = t('내 순위') + ' ' + me.rank + '. ' + myName + ' | ' + formatScore(me.scoreMs);
       }
     }
 
@@ -249,11 +296,12 @@
     function load(force) {
       if (loading) return loading;
       if (!force && board && Date.now() - boardAt < BOARD_TTL) return Promise.resolve(board);
-      loading = postJson('/game/ranking', { playerId: playerId() })
+      loading = postJson('/game/ranking', withCode({ playerId: playerId() }))
         .then(function (res) {
           if (res.ok) {
             board = res.data;
             boardAt = Date.now();
+            loadProfiles();
           }
         })
         .catch(function () {
@@ -269,9 +317,10 @@
 
     function submit() {
       if (!pending || submitting) return;
+      var profile = myProfile();
       var nickname = input.value.replace(/\s+/g, ' ').trim();
       var length = Array.from(nickname).length;
-      if (length < 1 || length > NICKNAME_MAX) {
+      if (!profile && (length < 1 || length > NICKNAME_MAX)) {
         setMessage(t(SUBMIT_ERRORS['invalid nickname']));
         return;
       }
@@ -282,7 +331,9 @@
       run.result
         .then(function (ended) {
           if (!ended.ok) return ended;
-          return postJson('/game/submit', { playerId: playerId(), resultToken: ended.data.resultToken, nickname: nickname });
+          var body = { playerId: playerId(), resultToken: ended.data.resultToken, nickname: nickname };
+          // 프로필이 있으면 서버가 닉네임 대신 프로필로 등록한다
+          return postJson('/game/submit', profile ? withCode(body) : body);
         })
         .catch(function () {
           return { status: 0, data: {} };
@@ -291,9 +342,10 @@
           submitting = false;
           var error = res.data && res.data.error;
           if (res.ok) {
-            writeStore(NICKNAME_KEY, nickname);
+            if (!profile) writeStore(NICKNAME_KEY, nickname);
             board = res.data;
             boardAt = Date.now();
+            loadProfiles();
             if (pending === run) pending = null;
             var me = board.me || {};
             setMessage(t('등록했어요! 전체 {all}위 · 주간 {week}위', {
@@ -375,6 +427,14 @@
         setOpen(true);
       }, OPEN_DELAY);
     }
+
+    global.addEventListener('chokaguya:profile-change', function () {
+      if (!catalog && global.ProfileStore) {
+        global.ProfileStore.catalog().then(function (c) { catalog = c; render(); });
+      }
+      render();
+    });
+    if (global.ProfileStore) global.ProfileStore.catalog().then(function (c) { catalog = c; render(); });
 
     render();
 

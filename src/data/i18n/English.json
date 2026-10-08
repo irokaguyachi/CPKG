@@ -457,5 +457,8 @@
   "익명 {n}명": "{n} anonymous",
   "아직 투표한 사람이 없어요": "No one has voted yet",
   "만든 사람": "Created by",
-  "투표한 사람 보기": "Show voters"
+  "투표한 사람 보기": "Show voters",
+  "내 프로필로 등록": "Submit with my profile",
+  "이미 쓰이고 있는 닉네임이에요(다른 사람의 프로필 닉네임 포함)": "That nickname is already in use (including other people's profile nicknames)",
+  "닉네임은 1~12자로 입력해 주세요": "Please enter a nickname of 1–12 characters"
 }

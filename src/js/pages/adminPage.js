@@ -346,7 +346,14 @@
       });
       board.appendChild(toggle);
       board.appendChild(table(['순위', '닉네임', '기록', '달성 시각', '플레이어', ''], scores.items.map(function (r, i) {
-        return [i + 1, r.nickname, fmtScore(r.scoreMs), fmtTime(r.achievedAt), mono(r.playerShort), actionsCell([
+        // 프로필로 등록한 줄(유저 프로필 2단계)은 닉네임이 프로필에서 오므로 여기서 바꾸지 않는다.
+        var nameCell = r.nickname;
+        if (r.profileId) {
+          nameCell = el('span');
+          nameCell.appendChild(document.createTextNode(r.nickname + ' '));
+          nameCell.appendChild(badge('프로필', 'primary'));
+        }
+        return [i + 1, nameCell, fmtScore(r.scoreMs), fmtTime(r.achievedAt), mono(r.playerShort), actionsCell([
           gamePeriod === 'weekly' ? button('이번 주 기록 삭제', null, function (btn) {
             dialog({ title: '이번 주 기록 삭제', desc: '"' + r.nickname + '"의 이번 주 기록만 지워요. 전체 기록은 남아요.', confirmLabel: '삭제', danger: true })
               .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'game/delete', { playerHash: r.playerHash, scope: 'period', period: scores.period }); }, '이번 주 기록을 지웠어요.'); });
@@ -355,8 +362,8 @@
             dialog({ title: '전체 기록 삭제', desc: '"' + r.nickname + '"의 전체·주간 기록을 모두 지워요.', confirmLabel: '영구 삭제', danger: true, requireText: r.nickname })
               .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'game/delete', { playerHash: r.playerHash, scope: 'all' }); }, '기록을 지웠어요.'); });
           }),
-          button('닉네임 변경', null, function (btn) {
-            dialog({ title: '닉네임 강제 변경', desc: '모든 기간의 기록에 새 닉네임이 보여요(1~10자).', confirmLabel: '변경', input: { value: r.nickname, placeholder: '새 닉네임' } })
+          r.profileId ? el('span', 'admin-muted', '프로필 탭에서 초기화하세요') : button('닉네임 변경', null, function (btn) {
+            dialog({ title: '닉네임 강제 변경', desc: '모든 기간의 기록에 새 닉네임이 보여요(1~12자).', confirmLabel: '변경', input: { value: r.nickname, placeholder: '새 닉네임' } })
               .then(function (name) { if (name) run(btn, function () { return api('POST', 'game/rename', { playerHash: r.playerHash, nickname: name }); }, '닉네임을 바꿨어요.'); });
           }),
           button('차단', 'danger', function (btn) {
