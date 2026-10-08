@@ -206,6 +206,43 @@ async function tagVoteLocked(env, postId) {
   }
 }
 
+// 태그 하나에 투표한 사람 중 프로필이 있는 사람(유저 프로필 2단계). 투표 행을
+// profile_links 의 vote_hash 와 잇되, 프로필을 만든 뒤(linked_at 이후)의 표만
+// 프로필로 보고 나머지는 익명 수로 센다. 최근 순 50개까지 프로필 ID 를 주고 그보다
+// 많은 표도 익명 수에 넣는다. 연결 테이블이 없으면 전부 익명이다.
+var TAG_VOTERS_MAX = 50;
+async function handleTagsVoters(request, env) {
+  if (!(await checkLimit(env.RL_LIB_LIST, clientIp(request)))) {
+    return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
+  }
+  var body = await readJsonBody(request, 512);
+  if (body.error) return body.error;
+  var raw = body.value || {};
+  var postId = cleanTagPostId(raw.postId);
+  var tagName = typeof raw.tagName === 'string' ? raw.tagName : '';
+  if (postId === null || !tagName || tagName.length > 40) {
+    return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+  var total = 0;
+  try {
+    var counted = await env.TAGS_DB.prepare('SELECT COUNT(*) AS n FROM tag_votes WHERE post_id = ? AND tag_name = ?')
+      .bind(postId, tagName).first();
+    total = (counted && counted.n) || 0;
+  } catch (e) {
+    return jsonResponse(request, { profileIds: [], anonymous: 0 });
+  }
+  var profileIds = [];
+  try {
+    var rows = (await env.TAGS_DB.prepare(
+      'SELECT l.profile_id FROM tag_votes v JOIN profile_links l ' +
+      'ON l.vote_hash = v.voter_hash AND v.created_at >= l.linked_at ' +
+      'WHERE v.post_id = ? AND v.tag_name = ? ORDER BY v.created_at DESC LIMIT ?'
+    ).bind(postId, tagName, TAG_VOTERS_MAX).all()).results || [];
+    profileIds = rows.map(function (r) { return r.profile_id; });
+  } catch (e) {}
+  return jsonResponse(request, { profileIds: profileIds, anonymous: total - profileIds.length });
+}
+
 // 비로그인 방문자도 득표수는 볼 수 있어야 하므로 personalCode는 선택이다
 // (readUserBody는 필수라 여기서는 못 쓴다). 그래서 레이트리밋도 걸지 않는다 —
 // GET /library/<code>처럼 읽기 전용 조회는 이 프로젝트에서 원래 열려 있다.
@@ -426,8 +463,25 @@ async function cancelledActiveBumpId(env, now) {
 }
 
 // endAt은 교체 시각(다음 대기 항목의 시작 시각)이고, 대기자가 없으면 null이다.
-function bumpPublicRow(row, nextStartAt) {
-  return row ? { type: row.item_type, id: row.item_id, startAt: row.start_at, endAt: nextStartAt || null } : null;
+function bumpPublicRow(row, nextStartAt, requesterProfileId) {
+  return row ? {
+    type: row.item_type, id: row.item_id, startAt: row.start_at, endAt: nextStartAt || null,
+    requesterProfileId: requesterProfileId || null
+  } : null;
+}
+
+// 끌올 신청자의 프로필(유저 프로필 2단계). 프로필을 만든 뒤에 신청한 경우만 잇는다.
+// 연결 테이블이 없거나 실패하면 null(익명).
+async function bumpRequesterProfileId(env, bumpId) {
+  try {
+    var row = await env.TAGS_DB.prepare(
+      'SELECT l.profile_id FROM bumps b JOIN profile_links l ' +
+      'ON l.bump_hash = b.requester_hash AND b.requested_at >= l.linked_at WHERE b.id = ?'
+    ).bind(bumpId).first();
+    return row ? row.profile_id : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // 조회는 공개 정보(지금 활성인 항목/대기열 길이)라 레이트리밋을 걸지 않는다
@@ -469,7 +523,7 @@ async function handleBumpGet(request, env) {
     }
 
     return jsonResponse(request, {
-      active: bumpPublicRow(active, nextStartAt),
+      active: bumpPublicRow(active, nextStartAt, active ? await bumpRequesterProfileId(env, active.id) : null),
       waitingCount: waitingCount,
       cooldownRemainingMs: cooldownRemainingMs
     });
@@ -1905,6 +1959,9 @@ async function route(request, env) {
   }
   if (url.pathname === '/tags/vote' && request.method === 'POST') {
     return handleTagsVote(request, env);
+  }
+  if (url.pathname === '/tags/voters' && request.method === 'POST') {
+    return handleTagsVoters(request, env);
   }
   if (url.pathname === '/tags/snapshot' && request.method === 'GET') {
     return handleTagsSnapshot(request, env);
