@@ -840,6 +840,22 @@ test('admin scores mark profile rows and refuse renaming them', async () => {
   assert.equal(rename.body.error, 'profile row');
 });
 
+test('admin reset and delete rename the profile ranking row', async () => {
+  const t = await setupProfileAdmin();
+  const p = await t.make(OTHER_CODE, { nickname: '나쁜이름' });
+  const start = await t.pub('POST', '/game/start', { playerId: 'admin-profile-player-0002' });
+  clock.now += 12800;
+  const end = await t.pub('POST', '/game/end', { playerId: 'admin-profile-player-0002', runToken: start.body.runToken, scoreMs: 10000 });
+  assert.equal((await t.pub('POST', '/game/submit', { playerId: 'admin-profile-player-0002', resultToken: end.body.resultToken, personalCode: OTHER_CODE })).status, 200);
+  const gameHash = hash('spacegame-profile:' + p.id);
+  const names = () => t.env.TAGS_DB.rows('SELECT DISTINCT nickname FROM game_scores WHERE player_hash = ?', gameHash).map(r => r.nickname);
+  await t.api('POST', 'profiles/reset-nickname', { id: p.id });
+  assert.deepEqual(names(), ['유저' + p.id.slice(0, 6)]);
+  await t.pub('POST', '/profile/save', { personalCode: OTHER_CODE, nickname: '또나쁜이름', icon: 'fushi-nyam', color: 'rose', bio: '' });
+  await t.api('POST', 'profiles/delete', { id: p.id });
+  assert.deepEqual(names(), ['유저' + p.id.slice(0, 6)], 'a deleted profile leaves no old nickname on the board');
+});
+
 test('unknown profile ids return 404', async () => {
   const t = await setupProfileAdmin();
   for (const route of ['profiles/reset-nickname', 'profiles/clear-bio', 'profiles/delete']) {

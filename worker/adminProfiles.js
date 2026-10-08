@@ -5,7 +5,7 @@
 //   POST /profiles/delete           {id}
 // 바꾸는 작업은 같은 batch 로 admin_actions 에 남기고 detail.before 에 바뀌기 전 행을 담는다.
 import { json, readBody, logAction } from './adminCommon.js';
-import { nicknameKey } from './profileApi.js';
+import { nicknameKey, gameHashFor } from './profileApi.js';
 
 var LIST_LIMIT = 50;
 var QUERY_MAX = 40;
@@ -43,12 +43,18 @@ async function readTarget(request, env) {
   return row;
 }
 
-function updateWithLog(env, session, action, row, sql, args) {
+function updateWithLog(env, session, action, row, sql, args, extra) {
   var statement = env.TAGS_DB.prepare(sql);
-  return env.TAGS_DB.batch([
-    statement.bind.apply(statement, args),
+  return env.TAGS_DB.batch([statement.bind.apply(statement, args)].concat(extra || [], [
     logAction(env, session.actor, action, row.profile_id, { before: row })
-  ]);
+  ]));
+}
+
+// 프로필로 등록한 랭킹 줄(유저 프로필 2단계)에 저장된 닉네임도 함께 바꾼다. 프로필이
+// 지워지면 그 줄은 이 글자로만 보이므로, 정리한 닉네임이 순위표에 남지 않게 한다.
+async function rankingRename(env, profileId, nickname) {
+  return env.TAGS_DB.prepare('UPDATE game_scores SET nickname = ? WHERE player_hash = ?')
+    .bind(nickname, await gameHashFor(profileId));
 }
 
 async function handleResetNickname(request, env, ctx, session) {
@@ -61,7 +67,8 @@ async function handleResetNickname(request, env, ctx, session) {
     try {
       await updateWithLog(env, session, 'profile.reset-nickname', row,
         'UPDATE profiles SET nickname = ?, nickname_key = ?, nickname_changed_at = 0, updated_at = ? WHERE profile_id = ?',
-        [candidates[i], nicknameKey(candidates[i]), now, row.profile_id]);
+        [candidates[i], nicknameKey(candidates[i]), now, row.profile_id],
+        [await rankingRename(env, row.profile_id, candidates[i])]);
       return json({ ok: true, profile: listItem(Object.assign({}, row, { nickname: candidates[i], updated_at: now })) });
     } catch (e) {
       if (String(e && e.message || '').indexOf('UNIQUE') === -1 || i === candidates.length - 1) throw e;
@@ -88,6 +95,7 @@ async function handleDelete(request, env, ctx, session) {
   } catch (e) {}
   var statements = [env.TAGS_DB.prepare('DELETE FROM profiles WHERE profile_id = ?').bind(row.profile_id)];
   if (link) statements.push(env.TAGS_DB.prepare('DELETE FROM profile_links WHERE profile_id = ?').bind(row.profile_id));
+  statements.push(await rankingRename(env, row.profile_id, '유저' + row.profile_id.slice(0, 6)));
   statements.push(logAction(env, session.actor, 'profile.delete', row.profile_id, { before: row, link: link }));
   await env.TAGS_DB.batch(statements);
   return json({ ok: true });

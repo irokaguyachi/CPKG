@@ -267,6 +267,25 @@ test('game works without profile tables', withClock(async () => {
   assert.deepEqual(res.body.all, [{ rank: 1, nickname: '직접입력', scoreMs: 10000, profileId: null }]);
 }));
 
+test('orphan link rows of deleted profiles are ignored', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1));
+  const id = await t.makeProfile(code(1), '살아있음');
+  t.tick();
+  await t.vote(code(1), 123, '일상');
+  await t.send('POST', '/bump/request', { personalCode: code(1), type: 'novel', id: 123 });
+  await play(t, player(11), 8000, { personalCode: code(1) });
+  // 삭제와 겹친 /profile/me 가 되살린 것 같은, 지워진 프로필의 연결 행
+  t.env.TAGS_DB.db.prepare('INSERT INTO profile_links VALUES (?, ?, ?, ?, ?)')
+    .run('ghostghost12', hash('tagvote:' + code(1)), hash('bump:' + code(1)), hash('spacegame-profile:ghostghost12'), 0);
+  t.env.TAGS_DB.db.prepare("INSERT INTO game_scores VALUES ('all', ?, '유령', 9000, 1)").run(hash('spacegame-profile:ghostghost12'));
+  assert.deepEqual((await t.voters(123, '일상')).body, { profileIds: [id], anonymous: 0 });
+  assert.equal((await t.send('POST', '/bump/get', {})).body.active.requesterProfileId, id);
+  const board = (await t.send('POST', '/game/ranking', {})).body.all;
+  assert.equal(board.find(r => r.nickname === '유령').profileId, null);
+  assert.equal(board.find(r => r.nickname === '살아있음').profileId, id);
+}));
+
 test('tags/voters route is exposed by the site worker', () => {
   const worker = fs.readFileSync(path.join(root, 'src/_worker.js'), 'utf8');
   assert.ok(worker.includes("'/tags/voters'"));

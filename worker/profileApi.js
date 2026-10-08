@@ -79,10 +79,12 @@ export function gameHashFor(profileId) {
 // 연결 테이블이 없거나 실패해도 프로필 기능은 막지 않는다 — 다음 /profile/me 때 다시 채운다.
 async function ensureLink(env, profileId, personalCode, linkedAt) {
   try {
+    // 삭제와 겹쳐 지워진 프로필의 연결 행이 되살아나지 않게 프로필이 있을 때만 넣는다.
     await env.TAGS_DB.prepare(
-      'INSERT OR IGNORE INTO profile_links (profile_id, vote_hash, bump_hash, game_hash, linked_at) VALUES (?, ?, ?, ?, ?)'
+      'INSERT OR IGNORE INTO profile_links (profile_id, vote_hash, bump_hash, game_hash, linked_at) ' +
+      'SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM profiles WHERE profile_id = ?)'
     ).bind(profileId, await sha256Hex('tagvote:' + personalCode), await sha256Hex('bump:' + personalCode),
-      await gameHashFor(profileId), linkedAt).run();
+      await gameHashFor(profileId), linkedAt, profileId).run();
   } catch (e) {}
 }
 

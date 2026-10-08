@@ -236,6 +236,7 @@ async function handleTagsVoters(request, env) {
     var rows = (await env.TAGS_DB.prepare(
       'SELECT l.profile_id FROM tag_votes v JOIN profile_links l ' +
       'ON l.vote_hash = v.voter_hash AND v.created_at >= l.linked_at ' +
+      'JOIN profiles p ON p.profile_id = l.profile_id ' +
       'WHERE v.post_id = ? AND v.tag_name = ? ORDER BY v.created_at DESC LIMIT ?'
     ).bind(postId, tagName, TAG_VOTERS_MAX).all()).results || [];
     profileIds = rows.map(function (r) { return r.profile_id; });
@@ -476,7 +477,8 @@ async function bumpRequesterProfileId(env, bumpId) {
   try {
     var row = await env.TAGS_DB.prepare(
       'SELECT l.profile_id FROM bumps b JOIN profile_links l ' +
-      'ON l.bump_hash = b.requester_hash AND b.requested_at >= l.linked_at WHERE b.id = ?'
+      'ON l.bump_hash = b.requester_hash AND b.requested_at >= l.linked_at ' +
+      'JOIN profiles p ON p.profile_id = l.profile_id WHERE b.id = ?'
     ).bind(bumpId).first();
     return row ? row.profile_id : null;
   } catch (e) {
@@ -793,8 +795,9 @@ async function readGameRankingRows(env, playerHash, now, withProfiles) {
   var statements = [];
   for (var i = 0; i < periods.length; i++) {
     statements.push(env.TAGS_DB.prepare(withProfiles
-      ? 'SELECT s.nickname, s.score_ms, l.profile_id FROM game_scores s ' +
+      ? 'SELECT s.nickname, s.score_ms, p.profile_id FROM game_scores s ' +
         'LEFT JOIN profile_links l ON l.game_hash = s.player_hash ' +
+        'LEFT JOIN profiles p ON p.profile_id = l.profile_id ' +
         'WHERE s.period = ? ORDER BY s.score_ms DESC, s.achieved_at ASC LIMIT ?'
       : 'SELECT nickname, score_ms FROM game_scores WHERE period = ? ORDER BY score_ms DESC, achieved_at ASC LIMIT ?'
     ).bind(periods[i], GAME_BOARD_SIZE));

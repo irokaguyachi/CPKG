@@ -38,9 +38,9 @@ async function handleScores(request, env, ctx, session, url) {
   var select = function (withProfiles) {
     return env.TAGS_DB.prepare(
       'SELECT s.player_hash, s.nickname, s.score_ms, s.achieved_at, b.player_hash IS NOT NULL AS banned' +
-      (withProfiles ? ', l.profile_id ' : ' ') +
+      (withProfiles ? ', p.profile_id ' : ' ') +
       'FROM game_scores s LEFT JOIN game_bans b ON b.player_hash = s.player_hash ' +
-      (withProfiles ? 'LEFT JOIN profile_links l ON l.game_hash = s.player_hash ' : '') +
+      (withProfiles ? 'LEFT JOIN profile_links l ON l.game_hash = s.player_hash LEFT JOIN profiles p ON p.profile_id = l.profile_id ' : '') +
       'WHERE s.period = ? ORDER BY s.score_ms DESC, s.achieved_at ASC LIMIT ?'
     ).bind(period, SCORES_LIMIT).all();
   };

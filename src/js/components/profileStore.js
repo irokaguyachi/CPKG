@@ -12,6 +12,9 @@
 (function (global) {
   var CACHE_KEY = 'chokaguya_profile_mine';
   var CACHE_TTL_MS = 10 * 60 * 1000;
+  // /profile/me 가 실패하면(스키마 미적용·장애·429) 이 시간 동안은 페이지마다 다시 묻지 않는다.
+  // 로그인과 같은 제한기를 쓰므로, 실패를 바로 되풀이하면 같은 IP 의 로그인까지 막힌다.
+  var FAILURE_BACKOFF_MS = 2 * 60 * 1000;
   var LOOKUP_CHUNK = 50;
   var CATALOG_PATH = '../data/config/ProfileIcons.json';
 
@@ -42,6 +45,16 @@
       var code = personalCode();
       if (!code) global.localStorage.removeItem(CACHE_KEY);
       else global.localStorage.setItem(CACHE_KEY, JSON.stringify({ tag: codeTag(code), at: Date.now(), profile: profile }));
+    } catch (e) {}
+  }
+
+  // 실패를 기록한다. 지금 들고 있는 프로필은 그대로 둔다.
+  function markFailure() {
+    try {
+      var code = personalCode();
+      if (code) {
+        global.localStorage.setItem(CACHE_KEY, JSON.stringify({ tag: codeTag(code), at: Date.now(), profile: mine, failed: true }));
+      }
     } catch (e) {}
   }
 
@@ -87,8 +100,12 @@
     return postJson('/profile/me', { personalCode: code }).then(function (r) {
       if (seq !== mineSeq || personalCode() !== code) return mine;
       if (r.ok) setMine(r.data.profile || null);
+      else markFailure();
       return mine;
-    }, function () { return mine; });
+    }, function () {
+      if (seq === mineSeq && personalCode() === code) markFailure();
+      return mine;
+    });
   }
 
   function saveMine(fields) {
@@ -131,12 +148,15 @@
 
   function requestChunk(ids) {
     fetch('/profiles?ids=' + ids.join(','))
-      .then(function (res) { return res.ok ? res.json() : { profiles: {} }; })
+      .then(function (res) {
+        if (!res.ok) throw new Error('profile lookup failed');
+        return res.json();
+      })
       .then(function (body) {
         var profiles = (body && body.profiles) || {};
         ids.forEach(function (id) { settle(id, profiles[id] || null, true); });
       }, function () {
-        // 네트워크 실패는 캐시하지 않는다 — 다음에 다시 묻는다.
+        // 네트워크 실패나 오류 응답(429·503)은 캐시하지 않는다 — 다음에 다시 묻는다.
         ids.forEach(function (id) { settle(id, null, false); });
       });
   }
@@ -243,7 +263,8 @@
     if (cached && cached.tag === codeTag(code)) {
       mine = cached.profile || null;
       if (mine) known[mine.id] = publicPart(mine);
-      if (Date.now() - (cached.at || 0) < CACHE_TTL_MS) return;
+      var age = Date.now() - (cached.at || 0);
+      if (age < (cached.failed ? FAILURE_BACKOFF_MS : CACHE_TTL_MS)) return;
     }
     loadMine();
   })();

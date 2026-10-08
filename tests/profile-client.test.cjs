@@ -103,6 +103,36 @@ test('fetchMany batches requests in the same tick', async () => {
   assert.equal(calls.length, 1, 'cached ids are not fetched again');
 });
 
+test('fetchMany does not remember failed responses', async () => {
+  let fail = true;
+  const { window, calls } = loadProfiles({
+    fetch: () => fail ? Promise.resolve({ ok: false, status: 429, json: () => Promise.resolve({}) })
+      : jsonRes({ profiles: { a: { ...PROFILE, id: 'a' } } })
+  });
+  assert.equal((await window.ProfileStore.fetchMany(['a'])).a, null);
+  fail = false;
+  assert.equal((await window.ProfileStore.fetchMany(['a'])).a.nickname, '카구야');
+  assert.equal(calls.length, 2, 'the failed lookup is asked again');
+});
+
+test('failed me lookups back off before retrying', async () => {
+  const first = loadProfiles({ code: null, fetch: () => Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({ error: 'profile unavailable' }) }) });
+  first.setCode('personal_code_0001');
+  await new Promise(r => setTimeout(r, 0));
+  // 같은 브라우저에서 바로 다음 페이지를 연 상황
+  const window = new EventTarget();
+  window.window = window;
+  window.I18n = { t: s => s };
+  window.BookmarkLibrary = { getPersonalCode: () => 'personal_code_0001', isLoggedIn: () => true };
+  window.localStorage = first.window.localStorage;
+  const calls = [];
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'src/js/components/profileStore.js'), 'utf8'), {
+    window, console, CustomEvent, localStorage: window.localStorage,
+    fetch: url => { calls.push(url); return jsonRes({ profile: PROFILE }); }
+  });
+  assert.equal(calls.length, 0, 'a recent failure is not retried on every page load');
+});
+
 test('fetchMany splits more than fifty ids', async () => {
   const { window, calls } = loadProfiles({ fetch: () => jsonRes({ profiles: {} }) });
   const ids = Array.from({ length: 120 }, (_, i) => 'p' + i);
