@@ -842,8 +842,27 @@
         section.appendChild(card);
         section.hidden = false;
         startCountdown(active.endAt);
+        showRequester(active.requesterProfileId, key);
       }).catch(function () {
         if (currentKey === key) section.hidden = true;
+      });
+    }
+
+    // 끌올을 신청한 사람의 프로필 칩(유저 프로필 2단계). 카드를 누르는 동작과 겹치지
+    // 않게 카드 아래 한 줄로 둔다. 프로필이 없거나 지워졌으면 붙이지 않는다.
+    function showRequester(profileId, key) {
+      if (!profileId || !global.ProfileStore || !global.ProfileCard) return;
+      Promise.all([global.ProfileStore.fetchMany([profileId]), global.ProfileStore.catalog()]).then(function (r) {
+        var profile = r[0][profileId];
+        if (!profile || currentKey !== key) return;
+        var row = document.createElement('div');
+        row.className = 'bump-requester';
+        var label = document.createElement('span');
+        label.className = 'bump-requester-label';
+        label.textContent = t('끌올');
+        row.appendChild(label);
+        row.appendChild(global.ProfileCard.badge(profile, r[1]));
+        section.appendChild(row);
       });
     }
 

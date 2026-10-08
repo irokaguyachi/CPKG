@@ -187,3 +187,68 @@
   font-weight: 600;
   color: var(--card-muted, rgba(0, 0, 0, 0.55));
 }
+
+/* ---- 2단계: 활동에 붙는 프로필 ---- */
+/* 공개 서재 목록·상세(bookmarksPage.js attachCreator) */
+.bkm-creator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+.bkm-creator-label,
+.bump-requester-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--card-muted, rgba(0, 0, 0, 0.55));
+}
+.bkm-detail-creator {
+  margin-top: 10px;
+}
+/* 메인 끌올 배너(mainPage.js showRequester) */
+.bump-requester {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+/* 태그 투표자(postDetailSeries.js votersPanel, profileCard.js voterList) */
+/* 글자 크기·색은 modal-series.css 의 원래 "n표" 를 그대로 두고 버튼 기본값만 지운다. */
+.pds-tagpicker-row-count {
+  padding: 2px 8px;
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.pds-tagpicker-row-count:hover:not(:disabled),
+.pds-tagpicker-row-count[aria-expanded="true"] {
+  border-color: var(--card-line, rgba(0, 0, 0, 0.1));
+}
+.pds-tagpicker-row-count:disabled {
+  cursor: default;
+}
+.pds-tagpicker-voters {
+  padding: 4px 12px 12px 44px;
+  font-size: 13px;
+  color: var(--card-muted, rgba(0, 0, 0, 0.55));
+}
+.profile-voters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.profile-voters-anon,
+.profile-voters-empty {
+  font-size: 13px;
+  color: var(--card-muted, rgba(0, 0, 0, 0.55));
+}
+.profile-name-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

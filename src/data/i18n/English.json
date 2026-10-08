@@ -453,5 +453,9 @@
   "닉네임은 1~12자로 정해 주세요": "Nicknames must be 1–12 characters",
   "자기소개는 40자까지 쓸 수 있어요": "About me can be up to 40 characters",
   "{date}부터 닉네임을 바꿀 수 있어요": "You can change your nickname from {date}",
-  "계정을 찾지 못했어요. 다시 로그인해 주세요": "Account not found. Please log in again"
+  "계정을 찾지 못했어요. 다시 로그인해 주세요": "Account not found. Please log in again",
+  "익명 {n}명": "{n} anonymous",
+  "아직 투표한 사람이 없어요": "No one has voted yet",
+  "만든 사람": "Created by",
+  "투표한 사람 보기": "Show voters"
 }

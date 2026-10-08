@@ -72,6 +72,26 @@
     return node;
   }
 
+  // 랭킹처럼 이름 칸 하나: 프로필이 있으면 칩, 없으면 원래 글자(직접 입력한 닉네임 등).
+  function nameCell(profile, fallbackText, catalog) {
+    return profile ? badge(profile, catalog) : el('span', 'profile-name-text', fallbackText || '');
+  }
+
+  // 태그 투표자 목록(postDetailSeries.js). profileIds 중 조회되지 않은(지워진) 프로필은
+  // 익명 수에 더한다.
+  function voterList(profileIds, anonymous, profiles, catalog) {
+    var node = el('div', 'profile-voters');
+    var hidden = anonymous || 0;
+    (profileIds || []).forEach(function (id) {
+      var profile = profiles && profiles[id];
+      if (profile) node.appendChild(badge(profile, catalog));
+      else hidden++;
+    });
+    if (hidden > 0) node.appendChild(el('span', 'profile-voters-anon', t('익명 {n}명', { n: hidden })));
+    if (!node.children.length) node.appendChild(el('span', 'profile-voters-empty', t('아직 투표한 사람이 없어요')));
+    return node;
+  }
+
   var popover = null;
   function open(profileId, anchor) {
     var s = store();
@@ -90,6 +110,8 @@
     avatar: avatar,
     badge: badge,
     card: card,
+    nameCell: nameCell,
+    voterList: voterList,
     open: open
   };
 })(window);

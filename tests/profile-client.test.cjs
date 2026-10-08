@@ -151,8 +151,34 @@ const PROFILE_UI_STRINGS = [
   '프로필을 삭제할까요? 지금 닉네임은 다른 사람이 쓸 수 있게 돼요.', '불러오는 중…',
   '이미 쓰이는 닉네임이에요', '쓸 수 없는 단어가 들어 있어요', '쓸 수 없는 닉네임 형식이에요',
   '닉네임은 1~12자로 정해 주세요', '자기소개는 40자까지 쓸 수 있어요', '{date}부터 닉네임을 바꿀 수 있어요',
-  '계정을 찾지 못했어요. 다시 로그인해 주세요', '잠시 후 다시 시도해 주세요'
+  '계정을 찾지 못했어요. 다시 로그인해 주세요', '잠시 후 다시 시도해 주세요',
+  '익명 {n}명', '아직 투표한 사람이 없어요', '끌올', '만든 사람', '투표한 사람 보기'
 ];
+
+test('voterList shows badges and anonymous count', () => {
+  const { window } = loadProfiles({ fetch: () => jsonRes({}) });
+  const list = window.ProfileCard.voterList(['a', 'gone'], 2, { a: { ...PROFILE, id: 'a' }, gone: null }, CATALOG);
+  assert.ok(list.className.split(' ').includes('profile-voters'));
+  const badges = [];
+  (function walk(el) { if (String(el.className).split(' ').includes('profile-badge') && el.tagName === 'BUTTON') badges.push(el); el.children.forEach(walk); })(list);
+  assert.equal(badges.length, 1);
+  assert.ok(allText(list).includes('익명 3명'));
+});
+
+test('voterList without anyone says no voters', () => {
+  const { window } = loadProfiles({ fetch: () => jsonRes({}) });
+  assert.equal(allText(window.ProfileCard.voterList([], 0, {}, CATALOG)), '아직 투표한 사람이 없어요');
+});
+
+test('nameCell falls back to text', () => {
+  const { window } = loadProfiles({ fetch: () => jsonRes({}) });
+  const text = window.ProfileCard.nameCell(null, '직접입력', CATALOG);
+  assert.equal(text.tagName, 'SPAN');
+  assert.equal(allText(text), '직접입력');
+  const chip = window.ProfileCard.nameCell(PROFILE, '무시', CATALOG);
+  assert.equal(chip.tagName, 'BUTTON');
+  assert.ok(allText(chip).includes('카구야'));
+});
 
 test('profile error codes map to readable messages', () => {
   const { window } = loadProfiles({ fetch: () => jsonRes({}) });

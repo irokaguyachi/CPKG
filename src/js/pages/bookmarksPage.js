@@ -627,6 +627,25 @@
   }
 
   // ---- 라이브러리 목록 모드 ----
+  // 만든 사람 프로필 칩(유저 프로필 2단계, profileCard.js). 같은 순간에 그린 카드들의
+  // 조회는 ProfileStore.fetchMany 가 한 번으로 묶는다. 프로필이 없거나 지워졌으면
+  // 아무것도 붙이지 않는다(익명).
+  function attachCreator(target, profileId, className) {
+    if (!profileId || !global.ProfileStore || !global.ProfileCard) return;
+    Promise.all([global.ProfileStore.fetchMany([profileId]), global.ProfileStore.catalog()]).then(function (r) {
+      var profile = r[0][profileId];
+      if (!profile || !target.isConnected) return;
+      var wrap = document.createElement('div');
+      wrap.className = className;
+      var label = document.createElement('span');
+      label.className = 'bkm-creator-label';
+      label.textContent = t('만든 사람');
+      wrap.appendChild(label);
+      wrap.appendChild(global.ProfileCard.badge(profile, r[1]));
+      target.appendChild(wrap);
+    });
+  }
+
   function renderLibraryList() {
     setTitle(t('북마크 라이브러리'));
     subEl.textContent = t('다른 사람들이 공개한 북마크를 둘러보세요');
@@ -662,6 +681,7 @@
       info.appendChild(sub);
 
       card.appendChild(info);
+      attachCreator(info, entry.profileId, 'bkm-creator');
 
       var count = document.createElement('p');
       count.className = 'bkm-row-count';
@@ -913,6 +933,7 @@
 
         setTitle(shared.name);
         titleH.textContent = shared.name;
+        attachCreator(header, shared.profileId, 'bkm-creator bkm-detail-creator');
 
         // 실제로 데이터에서 찾아진 항목만 대상으로 삼는다(원본이 사라진
         // 항목은 카드로 못 그리므로 개수에서도 빼야 숫자가 맞는다)

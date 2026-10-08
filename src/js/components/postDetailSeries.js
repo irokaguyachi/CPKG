@@ -277,7 +277,42 @@
       }
       if (!pickerListEl) return;
       pickerListEl.innerHTML = '';
-      sortedCatalog().forEach(function (tag) { pickerListEl.appendChild(createPickerRow(tag)); });
+      sortedCatalog().forEach(function (tag) {
+        pickerListEl.appendChild(createPickerRow(tag));
+        if (openVoters[tag] && (votes[tag] || 0) > 0) pickerListEl.appendChild(votersPanel(tag));
+      });
+    }
+
+    // 태그별 투표자(유저 프로필 2단계, worker 의 /tags/voters). "n표" 를 누르면 그 줄
+    // 아래에 펼친다. 목록은 투표할 때마다 다시 그려지므로 펼친 태그와 받아 온 결과를
+    // 따로 들고 있고, 투표한 태그의 결과는 버려 다음에 새로 받는다.
+    var openVoters = {};
+    var votersCache = {};
+    function loadVoters(tag) {
+      if (!votersCache[tag]) {
+        votersCache[tag] = postTagsJson('/tags/voters', { postId: postId, tagName: tag }).then(function (res) {
+          var ids = (res && res.profileIds) || [];
+          return Promise.all([global.ProfileStore.fetchMany(ids), global.ProfileStore.catalog()]).then(function (r) {
+            return { ids: ids, anonymous: (res && res.anonymous) || 0, profiles: r[0], catalog: r[1] };
+          });
+        });
+        votersCache[tag].catch(function () { delete votersCache[tag]; });
+      }
+      return votersCache[tag];
+    }
+
+    function votersPanel(tag) {
+      var panel = document.createElement('div');
+      panel.className = 'pds-tagpicker-voters';
+      if (!global.ProfileStore || !global.ProfileCard) return panel;
+      panel.textContent = t('불러오는 중…');
+      loadVoters(tag).then(function (v) {
+        panel.textContent = '';
+        panel.appendChild(global.ProfileCard.voterList(v.ids, v.anonymous, v.profiles, v.catalog));
+      }, function () {
+        panel.textContent = t('잠시 후 다시 시도해 주세요');
+      });
+      return panel;
     }
 
     function createPickerRow(tag) {
@@ -295,9 +330,18 @@
       name.textContent = tag;
       row.appendChild(name);
 
-      var count = document.createElement('span');
+      var count = document.createElement('button');
+      count.type = 'button';
       count.className = 'pds-tagpicker-row-count';
       count.textContent = t('{n}표', { n: votes[tag] || 0 });
+      count.disabled = !((votes[tag] || 0) > 0);
+      count.setAttribute('aria-expanded', String(!!openVoters[tag]));
+      count.setAttribute('aria-label', t('투표한 사람 보기') + ': ' + tag);
+      count.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openVoters[tag] = !openVoters[tag];
+        renderPicker();
+      });
       row.appendChild(count);
 
       var btn = document.createElement('button');
@@ -332,6 +376,7 @@
       }
 
       pending[tag] = true;
+      delete votersCache[tag];
       var hadVote = myTags.indexOf(tag) !== -1;
       applyVoteDelta(tag, hadVote ? -1 : 1, !hadVote);
       renderMainRow();
@@ -347,7 +392,11 @@
           if (tagPickerOverlayEl) renderPicker(tagPickerOverlayEl.querySelector('.pds-tagpicker-sub'));
           showTagError(locked ? LOCKED_MESSAGE : ((err && err.message) || t('투표에 실패했어요. 잠시 후 다시 시도해주세요.')));
         })
-        .then(function () { delete pending[tag]; });
+        .then(function () {
+          delete pending[tag];
+          delete votersCache[tag];
+          if (tagPickerOverlayEl && openVoters[tag]) renderPicker();
+        });
     }
 
     function applyVoteDelta(tag, delta, nowVoted) {
