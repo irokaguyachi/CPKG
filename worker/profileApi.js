@@ -89,11 +89,14 @@ async function ensureLink(env, profileId, personalCode, linkedAt) {
 // 게임 등록처럼 개인 코드로 연결 정보를 찾는다. 프로필이 없거나 실패하면 null.
 export async function profileLinkForCode(env, personalCode) {
   try {
-    var row = await env.TAGS_DB.prepare('SELECT profile_id, created_at FROM profiles WHERE owner_hash = ?')
+    var row = await env.TAGS_DB.prepare('SELECT profile_id, nickname, created_at FROM profiles WHERE owner_hash = ?')
       .bind(await ownerHash(personalCode)).first();
     if (!row) return null;
     await ensureLink(env, row.profile_id, personalCode, row.created_at);
-    return { profileId: row.profile_id, linkedAt: row.created_at, gameHash: await gameHashFor(row.profile_id) };
+    return {
+      profileId: row.profile_id, nickname: row.nickname, linkedAt: row.created_at,
+      gameHash: await gameHashFor(row.profile_id)
+    };
   } catch (e) {
     return null;
   }

@@ -193,6 +193,80 @@ test('index rebuild keeps profileId', withClock(async () => {
   assert.equal((await listRow(t, lib.code)).profileId, id);
 }));
 
+// ---- 게임 랭킹 ----
+const player = n => 'player-' + String(n).padStart(4, '0') + '-abcdefghijkl';
+async function play(t, playerId, scoreMs, extra) {
+  const start = await t.send('POST', '/game/start', { playerId });
+  assert.equal(start.status, 201, JSON.stringify(start.body));
+  clock.now += scoreMs + 2800;
+  const end = await t.send('POST', '/game/end', { playerId, runToken: start.body.runToken, scoreMs });
+  assert.equal(end.status, 200, JSON.stringify(end.body));
+  return t.send('POST', '/game/submit', { playerId, resultToken: end.body.resultToken, ...extra });
+}
+
+test('profile submissions merge across devices', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1));
+  const id = await t.makeProfile(code(1), '카구야');
+  const first = await play(t, player(1), 20000, { personalCode: code(1), nickname: '무시됨' });
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  const second = await play(t, player(2), 30000, { personalCode: code(1) });
+  assert.equal(second.status, 200, JSON.stringify(second.body));
+  assert.deepEqual(second.body.all, [{ rank: 1, nickname: '카구야', scoreMs: 30000, profileId: id }]);
+  assert.deepEqual(second.body.me.all, { rank: 1, scoreMs: 30000 });
+}));
+
+test('typed nicknames cannot copy a profile nickname', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1));
+  await t.makeProfile(code(1), 'Kaguya');
+  const res = await play(t, player(3), 10000, { nickname: 'kaguya' });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error, 'nickname taken');
+}));
+
+test('typed nicknames allow twelve characters', withClock(async () => {
+  const t = await setupDisplay();
+  const ok = await play(t, player(4), 10000, { nickname: '가'.repeat(12) });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.equal(ok.body.all[0].profileId, null);
+  const tooLong = await play(t, player(5), 10000, { nickname: '가'.repeat(13) });
+  assert.equal(tooLong.body.error, 'invalid nickname');
+}));
+
+test('banning a profile row blocks every device', withClock(async () => {
+  const t = await setupDisplay();
+  await t.account(code(1));
+  const id = await t.makeProfile(code(1));
+  assert.equal((await play(t, player(6), 10000, { personalCode: code(1) })).status, 200);
+  t.env.TAGS_DB.db.prepare('INSERT INTO game_bans (player_hash, reason, banned_at) VALUES (?, ?, ?)')
+    .run(hash('spacegame-profile:' + id), null, clock.now);
+  const res = await play(t, player(7), 20000, { personalCode: code(1) });
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, 'invalid nickname');
+}));
+
+test('ranking me prefers the profile row', withClock(async () => {
+  const t = await setupDisplay();
+  await play(t, player(8), 5000, { nickname: '브라우저' });
+  await t.account(code(1));
+  await t.makeProfile(code(1), '프로필');
+  await play(t, player(9), 25000, { personalCode: code(1) });
+  const withCode = await t.send('POST', '/game/ranking', { playerId: player(8), personalCode: code(1) });
+  assert.equal(withCode.status, 200);
+  assert.deepEqual(withCode.body.me.all, { rank: 1, scoreMs: 25000 });
+  const withoutCode = await t.send('POST', '/game/ranking', { playerId: player(8) });
+  assert.deepEqual(withoutCode.body.me.all, { rank: 2, scoreMs: 5000 });
+}));
+
+test('game works without profile tables', withClock(async () => {
+  const t = await setupDisplay(BASE_SCHEMAS);
+  await t.account(code(1));
+  const res = await play(t, player(10), 10000, { personalCode: code(1), nickname: '직접입력' });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.deepEqual(res.body.all, [{ rank: 1, nickname: '직접입력', scoreMs: 10000, profileId: null }]);
+}));
+
 test('tags/voters route is exposed by the site worker', () => {
   const worker = fs.readFileSync(path.join(root, 'src/_worker.js'), 'utf8');
   assert.ok(worker.includes("'/tags/voters'"));

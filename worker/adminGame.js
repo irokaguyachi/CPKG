@@ -31,19 +31,31 @@ async function playerRows(env, hash, period) {
 }
 
 // GET game/scores?period=all|weekly — 상위 100명. weekly 는 이번 주(한국 시간 월요일 기준).
+// 프로필로 등록한 줄(유저 프로필 2단계)은 profile_links.game_hash 로 알아본다.
+// 연결 테이블이 없으면 JOIN 없이 다시 읽는다.
 async function handleScores(request, env, ctx, session, url) {
   var period = url.searchParams.get('period') === 'weekly' ? gameWeekKey(Date.now()) : 'all';
-  var rows = (await env.TAGS_DB.prepare(
-    'SELECT s.player_hash, s.nickname, s.score_ms, s.achieved_at, b.player_hash IS NOT NULL AS banned ' +
-    'FROM game_scores s LEFT JOIN game_bans b ON b.player_hash = s.player_hash ' +
-    'WHERE s.period = ? ORDER BY s.score_ms DESC, s.achieved_at ASC LIMIT ?'
-  ).bind(period, SCORES_LIMIT).all()).results || [];
+  var select = function (withProfiles) {
+    return env.TAGS_DB.prepare(
+      'SELECT s.player_hash, s.nickname, s.score_ms, s.achieved_at, b.player_hash IS NOT NULL AS banned' +
+      (withProfiles ? ', l.profile_id ' : ' ') +
+      'FROM game_scores s LEFT JOIN game_bans b ON b.player_hash = s.player_hash ' +
+      (withProfiles ? 'LEFT JOIN profile_links l ON l.game_hash = s.player_hash ' : '') +
+      'WHERE s.period = ? ORDER BY s.score_ms DESC, s.achieved_at ASC LIMIT ?'
+    ).bind(period, SCORES_LIMIT).all();
+  };
+  var rows;
+  try {
+    rows = (await select(true)).results || [];
+  } catch (e) {
+    rows = (await select(false)).results || [];
+  }
   return json({
     period: period,
     items: rows.map(function (r) {
       return {
         playerHash: r.player_hash, playerShort: r.player_hash.slice(0, 8), nickname: r.nickname,
-        scoreMs: r.score_ms, achievedAt: r.achieved_at, banned: !!r.banned
+        scoreMs: r.score_ms, achievedAt: r.achieved_at, banned: !!r.banned, profileId: r.profile_id || null
       };
     })
   });
@@ -68,6 +80,14 @@ async function handleDelete(request, env, ctx, session) {
 }
 
 // POST game/rename { playerHash, nickname } — 모든 기간의 닉네임을 바꾼다.
+async function isProfileRow(env, hash) {
+  try {
+    return !!(await env.TAGS_DB.prepare('SELECT 1 FROM profile_links WHERE game_hash = ?').bind(hash).first());
+  } catch (e) {
+    return false;
+  }
+}
+
 async function handleRename(request, env, ctx, session) {
   var body = await readBody(request);
   if (body instanceof Response) return body;
@@ -76,6 +96,9 @@ async function handleRename(request, env, ctx, session) {
   if (!hash || nickname === null) return json({ error: 'invalid payload shape' }, 400);
   var rows = await playerRows(env, hash, 'all');
   if (!rows.length) return json({ error: 'not found' }, 404);
+  // 프로필 줄의 닉네임은 다음 등록 때 프로필 닉네임으로 다시 덮이므로 여기서 바꾸지 않는다
+  // (프로필 탭의 닉네임 초기화를 쓴다).
+  if (await isProfileRow(env, hash)) return json({ error: 'profile row' }, 400);
   var taken = await env.TAGS_DB.prepare(
     "SELECT 1 FROM game_scores WHERE period = 'all' AND nickname = ? COLLATE NOCASE AND player_hash <> ? LIMIT 1"
   ).bind(nickname, hash).first();

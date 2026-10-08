@@ -2,7 +2,7 @@ import { readJsonLimited } from './requestBody.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 import { readTagDefinitions } from './tagDocs.js';
 import { cleanNickname, bannedWordIn } from './nickname.js';
-import { PROFILE_PATHS, handleProfileRequest, profileIdForCode } from './profileApi.js';
+import { PROFILE_PATHS, handleProfileRequest, profileIdForCode, profileLinkForCode, profileIdByNicknameKey, nicknameKey } from './profileApi.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -699,7 +699,7 @@ const GAME_MIN_OVERHEAD_MS = 1000;
 const GAME_SLOW_RATIO = 1.1;
 const GAME_SLOW_SLACK_MS = 6000;
 const GAME_MAX_SCORE_MS = 3600000;
-const GAME_NICKNAME_MAX = 10;          // 글자(코드 포인트) 수 — spaceRanking.js 의 NICKNAME_MAX 와 맞춘다
+const GAME_NICKNAME_MAX = 12;          // 글자(코드 포인트) 수 — spaceRanking.js 의 NICKNAME_MAX 와 맞춘다
 const GAME_BOARD_SIZE = 10;
 const GAME_KST_OFFSET_MS = 9 * 3600000;
 
@@ -777,13 +777,26 @@ async function readGameToken(key, token, kind, playerHash) {
 
 // 전체·주간 상위 10명과(playerHash 가 있으면) 내 순위를 한 번의 batch 로 읽는다.
 // 점수가 같으면 먼저 세운 사람이 위다.
+// 순위 줄의 프로필(유저 프로필 2단계): 프로필로 등록한 줄은 player_hash 가
+// profile_links.game_hash 와 같다. 연결 테이블이 없으면 JOIN 없이 다시 읽는다.
 async function readGameRanking(env, playerHash, now) {
+  try {
+    return await readGameRankingRows(env, playerHash, now, true);
+  } catch (e) {
+    return readGameRankingRows(env, playerHash, now, false);
+  }
+}
+
+async function readGameRankingRows(env, playerHash, now, withProfiles) {
   var week = gameWeekKey(now);
   var periods = ['all', week];
   var statements = [];
   for (var i = 0; i < periods.length; i++) {
-    statements.push(env.TAGS_DB.prepare(
-      'SELECT nickname, score_ms FROM game_scores WHERE period = ? ORDER BY score_ms DESC, achieved_at ASC LIMIT ?'
+    statements.push(env.TAGS_DB.prepare(withProfiles
+      ? 'SELECT s.nickname, s.score_ms, l.profile_id FROM game_scores s ' +
+        'LEFT JOIN profile_links l ON l.game_hash = s.player_hash ' +
+        'WHERE s.period = ? ORDER BY s.score_ms DESC, s.achieved_at ASC LIMIT ?'
+      : 'SELECT nickname, score_ms FROM game_scores WHERE period = ? ORDER BY score_ms DESC, achieved_at ASC LIMIT ?'
     ).bind(periods[i], GAME_BOARD_SIZE));
     if (playerHash) {
       statements.push(env.TAGS_DB.prepare(
@@ -800,7 +813,7 @@ async function readGameRanking(env, playerHash, now) {
   ['all', 'weekly'].forEach(function (name, index) {
     var rows = results[index * step].results || [];
     boards[name] = rows.map(function (row, rank) {
-      return { rank: rank + 1, nickname: row.nickname, scoreMs: row.score_ms };
+      return { rank: rank + 1, nickname: row.nickname, scoreMs: row.score_ms, profileId: row.profile_id || null };
     });
     var mine = playerHash ? (results[index * step + 1].results || [])[0] : null;
     me[name] = mine ? { rank: mine.rank, scoreMs: mine.score_ms } : null;
@@ -811,13 +824,20 @@ async function readGameRanking(env, playerHash, now) {
 // 조회는 공개 정보라 레이트리밋을 걸지 않는다(/tags/get, /bump/get 과 같은
 // 방침). playerId 를 함께 보내면 내 순위도 알려준다 — URL 에 남지 않도록 POST.
 async function handleGameRanking(request, env) {
-  var body = await readJsonBody(request, 256);
+  var body = await readJsonBody(request, 512);
   if (body.error) return body.error;
   var playerHash = null;
   if (body.value && body.value.playerId != null) {
     var playerId = cleanGamePlayerId(body.value.playerId);
     if (playerId === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
     playerHash = await gamePlayerHash(playerId);
+  }
+  // 개인 코드가 오고 그 프로필로 등록한 기록이 있으면 "내 순위"는 프로필 줄로 본다.
+  if (body.value && body.value.personalCode != null) {
+    var personalCode = cleanPersonalCode(body.value.personalCode);
+    if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+    var link = await profileLinkForCode(env, personalCode);
+    if (link && (await gameRowExists(env, link.gameHash))) playerHash = link.gameHash;
   }
   try {
     return jsonResponse(request, await readGameRanking(env, playerHash, Date.now()));
@@ -882,14 +902,25 @@ async function handleGameEnd(request, env) {
   return jsonResponse(request, { resultToken: resultToken });
 }
 
+async function gameRowExists(env, hash) {
+  try {
+    return !!(await env.TAGS_DB.prepare('SELECT 1 FROM game_scores WHERE player_hash = ? LIMIT 1').bind(hash).first());
+  } catch (e) {
+    return false;
+  }
+}
+
 // 관리 페이지(worker/adminGame.js)가 차단한 플레이어이거나, 금지어가 들어간
 // 닉네임이면 막는다. 차단 사실은 따로 알리지 않고 일반 닉네임 거부와 같은
 // 응답을 쓴다. 관리 테이블(worker/admin_schema.sql)이 아직 없거나 조회가
 // 실패하면 막지 않는다 — 부가 제약이 랭킹 등록 자체를 막지 않도록.
-async function gameSubmitBlocked(env, playerHash, nickname) {
+// playerHashes 는 브라우저 ID 해시와(프로필로 등록하면) 프로필 줄 해시 — 어느 쪽이 차단돼도 막는다.
+async function gameSubmitBlocked(env, playerHashes, nickname) {
   try {
-    var banned = await env.TAGS_DB.prepare('SELECT 1 AS hit FROM game_bans WHERE player_hash = ?').bind(playerHash).first();
-    if (banned) return true;
+    for (var i = 0; i < playerHashes.length; i++) {
+      var banned = await env.TAGS_DB.prepare('SELECT 1 AS hit FROM game_bans WHERE player_hash = ?').bind(playerHashes[i]).first();
+      if (banned) return true;
+    }
   } catch (e) {
     return false;
   }
@@ -904,14 +935,26 @@ async function handleGameSubmit(request, env) {
   if (!(await checkLimit(env.RL_GAME_SUBMIT, clientIp(request)))) {
     return jsonResponse(request, { error: 'too many requests, try again later' }, 429);
   }
-  var body = await readJsonBody(request, 768);
+  var body = await readJsonBody(request, 1024);
   if (body.error) return body.error;
   var raw = body.value || {};
   var playerId = cleanGamePlayerId(raw.playerId);
   var resultToken = cleanGameToken(raw.resultToken);
   if (playerId === null || resultToken === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
-  var nickname = cleanGameNickname(raw.nickname);
+  var personalCode = null;
+  if (raw.personalCode != null) {
+    personalCode = cleanPersonalCode(raw.personalCode);
+    if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  }
+  // 프로필이 있으면 닉네임 입력 대신 프로필로 등록한다(유저 프로필 2단계). 기록 줄은
+  // 프로필마다 하나(game_hash)라 기기가 달라도 최고 기록이 합쳐진다.
+  var link = personalCode ? await profileLinkForCode(env, personalCode) : null;
+  var nickname = link ? link.nickname : cleanGameNickname(raw.nickname);
   if (nickname === null) return jsonResponse(request, { error: 'invalid nickname' }, 400);
+  // 직접 입력한 닉네임이 남의 프로필 닉네임이면 사칭이라 막는다.
+  if (!link && (await profileIdByNicknameKey(env, nicknameKey(nickname)))) {
+    return jsonResponse(request, { error: 'nickname taken' }, 409);
+  }
   var key = await gameTokenKey(env);
   if (!key) return jsonResponse(request, { error: 'ranking unavailable' }, 503);
 
@@ -923,16 +966,20 @@ async function handleGameSubmit(request, env) {
     return jsonResponse(request, { error: 'invalid run' }, 400);
   }
   var scoreMs = result.sc;
+  var rowHash = link ? link.gameHash : playerHash;
 
-  if (await gameSubmitBlocked(env, playerHash, nickname)) {
+  if (await gameSubmitBlocked(env, link ? [playerHash, rowHash] : [playerHash], nickname)) {
     return jsonResponse(request, { error: 'invalid nickname' }, 400);
   }
 
   try {
-    var taken = await env.TAGS_DB.prepare(
-      "SELECT 1 FROM game_scores WHERE period = 'all' AND nickname = ? COLLATE NOCASE AND player_hash <> ? LIMIT 1"
-    ).bind(nickname, playerHash).first();
-    if (taken) return jsonResponse(request, { error: 'nickname taken' }, 409);
+    // 프로필 닉네임은 프로필에서 이미 중복을 막으므로 게임 닉네임끼리만 비교한다.
+    if (!link) {
+      var taken = await env.TAGS_DB.prepare(
+        "SELECT 1 FROM game_scores WHERE period = 'all' AND nickname = ? COLLATE NOCASE AND player_hash <> ? LIMIT 1"
+      ).bind(nickname, playerHash).first();
+      if (taken) return jsonResponse(request, { error: 'nickname taken' }, 409);
+    }
 
     var consumed = await env.TAGS_DB.prepare(
       'INSERT OR IGNORE INTO game_runs (run_id, player_hash, started_at, used) VALUES (?, ?, ?, 1)'
@@ -947,12 +994,12 @@ async function handleGameSubmit(request, env) {
       'achieved_at = CASE WHEN excluded.score_ms > game_scores.score_ms THEN excluded.achieved_at ELSE game_scores.achieved_at END, ' +
       'score_ms = MAX(game_scores.score_ms, excluded.score_ms)';
     await env.TAGS_DB.batch([
-      env.TAGS_DB.prepare(upsert).bind('all', playerHash, nickname, scoreMs, result.e),
-      env.TAGS_DB.prepare(upsert).bind(gameWeekKey(result.e), playerHash, nickname, scoreMs, result.e),
+      env.TAGS_DB.prepare(upsert).bind('all', rowHash, nickname, scoreMs, result.e),
+      env.TAGS_DB.prepare(upsert).bind(gameWeekKey(result.e), rowHash, nickname, scoreMs, result.e),
       // 지난주 기록에도 바뀐 닉네임이 보이게 한다
-      env.TAGS_DB.prepare('UPDATE game_scores SET nickname = ? WHERE player_hash = ?').bind(nickname, playerHash)
+      env.TAGS_DB.prepare('UPDATE game_scores SET nickname = ? WHERE player_hash = ?').bind(nickname, rowHash)
     ]);
-    return jsonResponse(request, Object.assign({ ok: true }, await readGameRanking(env, playerHash, now)));
+    return jsonResponse(request, Object.assign({ ok: true }, await readGameRanking(env, rowHash, now)));
   } catch (e) {
     return jsonResponse(request, { error: 'ranking unavailable' }, 503);
   }

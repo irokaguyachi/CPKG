@@ -265,7 +265,7 @@ test('profileLinkForCode and profileIdByNicknameKey', async () => {
   await account(CODE_A);
   const id = (await save(CODE_A, { nickname: 'Kaguya' })).body.profile.id;
   const link = await profileApi.profileLinkForCode(env, CODE_A);
-  assert.deepEqual({ ...link }, { profileId: id, linkedAt: clock.now, gameHash: hash('spacegame-profile:' + id) });
+  assert.deepEqual({ ...link }, { profileId: id, nickname: 'Kaguya', linkedAt: clock.now, gameHash: hash('spacegame-profile:' + id) });
   assert.equal(await profileApi.gameHashFor(id), hash('spacegame-profile:' + id));
   assert.equal(await profileApi.profileLinkForCode(env, CODE_B), null);
   assert.equal(await profileApi.profileIdByNicknameKey(env, 'kaguya'), id);

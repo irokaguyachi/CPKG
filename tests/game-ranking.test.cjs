@@ -169,7 +169,7 @@ test('only the best score is kept but the newest nickname wins', async () => {
   const { play } = await setup();
   await play(player(1), 40000, '처음 이름');
   const res = await play(player(1), 20000, '새 이름');
-  assert.deepEqual(res.body.all, [{ rank: 1, nickname: '새 이름', scoreMs: 40000 }]);
+  assert.deepEqual(res.body.all, [{ rank: 1, nickname: '새 이름', scoreMs: 40000, profileId: null }]);
   assert.equal((await play(player(1), 50000, '새 이름')).body.all[0].scoreMs, 50000);
 });
 
@@ -181,7 +181,7 @@ test('nicknames are cleaned, length-limited and unique per player', async () => 
   assert.equal(taken.body.error, 'nickname taken');
   assert.equal((await play(player(2), 2000, 'ABCDEFGHIJ')).status, 200);
   assert.equal((await play(player(3), 2000, 'abcdefghij')).status, 409, 'case-insensitive');
-  assert.equal((await play(player(3), 2000, 'ABCDEFGHIJK')).body.error, 'invalid nickname');
+  assert.equal((await play(player(3), 2000, 'ABCDEFGHIJKLM')).body.error, 'invalid nickname');
   assert.equal((await play(player(3), 2000, '가나다라마바사아자차')).status, 200);
   assert.equal((await play(player(3), 2000, '\u200B ')).body.error, 'invalid nickname');
   assert.equal((await call('/game/start', { playerId: 'short' })).status, 400);

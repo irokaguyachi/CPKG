@@ -824,6 +824,22 @@ test('admin delete removes the link and logs it', async () => {
   assert.equal(detail.link.vote_hash, hash('tagvote:' + OTHER_CODE));
 });
 
+test('admin scores mark profile rows and refuse renaming them', async () => {
+  const t = await setupProfileAdmin();
+  const p = await t.make(OTHER_CODE, { nickname: '프로필러' });
+  const start = await t.pub('POST', '/game/start', { playerId: 'admin-profile-player-0001' });
+  clock.now += 12800;
+  const end = await t.pub('POST', '/game/end', { playerId: 'admin-profile-player-0001', runToken: start.body.runToken, scoreMs: 10000 });
+  const submit = await t.pub('POST', '/game/submit', { playerId: 'admin-profile-player-0001', resultToken: end.body.resultToken, personalCode: OTHER_CODE });
+  assert.equal(submit.status, 200, JSON.stringify(submit.body));
+  const scores = (await t.api('GET', 'game/scores?period=all')).body.items;
+  const row = scores.find(r => r.nickname === '프로필러');
+  assert.equal(row.profileId, p.id);
+  const rename = await t.api('POST', 'game/rename', { playerHash: row.playerHash, nickname: '바꿈' });
+  assert.equal(rename.status, 400);
+  assert.equal(rename.body.error, 'profile row');
+});
+
 test('unknown profile ids return 404', async () => {
   const t = await setupProfileAdmin();
   for (const route of ['profiles/reset-nickname', 'profiles/clear-bio', 'profiles/delete']) {
