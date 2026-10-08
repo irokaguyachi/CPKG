@@ -223,6 +223,58 @@ test('missing table returns 503', async () => {
   assert.equal((await send('GET', '/profiles?ids=abcdefghijkl')).status, 503);
 });
 
+// ---- 2단계: 활동 연결(profile_links) ----
+test('profile creation writes a link row', async () => {
+  const { env, account, save } = await setupProfiles();
+  await account(CODE_A);
+  const id = (await save(CODE_A)).body.profile.id;
+  const links = env.TAGS_DB.rows('SELECT * FROM profile_links');
+  assert.deepEqual(links, [{
+    profile_id: id, vote_hash: hash('tagvote:' + CODE_A), bump_hash: hash('bump:' + CODE_A),
+    game_hash: hash('spacegame-profile:' + id), linked_at: clock.now
+  }]);
+});
+
+test('me backfills a missing link for stage-1 profiles', async () => {
+  const { env, send, account, save } = await setupProfiles();
+  await account(CODE_A);
+  const createdAt = clock.now;
+  const id = (await save(CODE_A)).body.profile.id;
+  env.TAGS_DB.db.exec('DELETE FROM profile_links');
+  const saved = clock.now;
+  clock.now += 5 * DAY;
+  try {
+    assert.equal((await send('POST', '/profile/me', { personalCode: CODE_A })).status, 200);
+  } finally {
+    clock.now = saved;
+  }
+  const links = env.TAGS_DB.rows('SELECT profile_id, linked_at FROM profile_links');
+  assert.deepEqual(links, [{ profile_id: id, linked_at: createdAt }]);
+});
+
+test('deleting a profile removes its link', async () => {
+  const { env, send, account, save } = await setupProfiles();
+  await account(CODE_A);
+  await save(CODE_A);
+  await send('POST', '/profile/delete', { personalCode: CODE_A });
+  assert.deepEqual(env.TAGS_DB.rows('SELECT * FROM profile_links'), []);
+});
+
+test('profileLinkForCode and profileIdByNicknameKey', async () => {
+  const { env, account, save, profileApi } = await setupProfiles();
+  await account(CODE_A);
+  const id = (await save(CODE_A, { nickname: 'Kaguya' })).body.profile.id;
+  const link = await profileApi.profileLinkForCode(env, CODE_A);
+  assert.deepEqual({ ...link }, { profileId: id, linkedAt: clock.now, gameHash: hash('spacegame-profile:' + id) });
+  assert.equal(await profileApi.gameHashFor(id), hash('spacegame-profile:' + id));
+  assert.equal(await profileApi.profileLinkForCode(env, CODE_B), null);
+  assert.equal(await profileApi.profileIdByNicknameKey(env, 'kaguya'), id);
+  assert.equal(await profileApi.profileIdByNicknameKey(env, 'nobody'), null);
+  const bare = { TAGS_DB: new D1([]) };
+  assert.equal(await profileApi.profileLinkForCode(bare, CODE_A), null);
+  assert.equal(await profileApi.profileIdByNicknameKey(bare, 'kaguya'), null);
+});
+
 test('profile routes are exposed by the site worker', () => {
   const worker = fs.readFileSync(path.join(root, 'src/_worker.js'), 'utf8');
   for (const p of ['/profile/me', '/profile/save', '/profile/delete', '/profiles']) {

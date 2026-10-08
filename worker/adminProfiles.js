@@ -78,11 +78,18 @@ async function handleClearBio(request, env, ctx, session) {
   return json({ ok: true, profile: listItem(Object.assign({}, row, { bio: '', updated_at: now })) });
 }
 
+// 연결 행(profile_links)도 함께 지우고 기록에 남긴다. 연결 테이블이 없으면 프로필만 지운다.
 async function handleDelete(request, env, ctx, session) {
   var row = await readTarget(request, env);
   if (row instanceof Response) return row;
-  await updateWithLog(env, session, 'profile.delete', row,
-    'DELETE FROM profiles WHERE profile_id = ?', [row.profile_id]);
+  var link = null;
+  try {
+    link = await env.TAGS_DB.prepare('SELECT * FROM profile_links WHERE profile_id = ?').bind(row.profile_id).first();
+  } catch (e) {}
+  var statements = [env.TAGS_DB.prepare('DELETE FROM profiles WHERE profile_id = ?').bind(row.profile_id)];
+  if (link) statements.push(env.TAGS_DB.prepare('DELETE FROM profile_links WHERE profile_id = ?').bind(row.profile_id));
+  statements.push(logAction(env, session.actor, 'profile.delete', row.profile_id, { before: row, link: link }));
+  await env.TAGS_DB.batch(statements);
   return json({ ok: true });
 }
 

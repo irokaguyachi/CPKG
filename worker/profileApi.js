@@ -70,6 +70,45 @@ async function loadCatalog(request, env) {
   };
 }
 
+// ---- 2단계: 활동 연결(profile_links) ----
+export function gameHashFor(profileId) {
+  return sha256Hex('spacegame-profile:' + profileId);
+}
+
+// 연결 행을 만든다(이미 있으면 그대로). 해시에 개인 코드가 필요해서 본인 요청 때만 부른다.
+// 연결 테이블이 없거나 실패해도 프로필 기능은 막지 않는다 — 다음 /profile/me 때 다시 채운다.
+async function ensureLink(env, profileId, personalCode, linkedAt) {
+  try {
+    await env.TAGS_DB.prepare(
+      'INSERT OR IGNORE INTO profile_links (profile_id, vote_hash, bump_hash, game_hash, linked_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(profileId, await sha256Hex('tagvote:' + personalCode), await sha256Hex('bump:' + personalCode),
+      await gameHashFor(profileId), linkedAt).run();
+  } catch (e) {}
+}
+
+// 게임 등록처럼 개인 코드로 연결 정보를 찾는다. 프로필이 없거나 실패하면 null.
+export async function profileLinkForCode(env, personalCode) {
+  try {
+    var row = await env.TAGS_DB.prepare('SELECT profile_id, created_at FROM profiles WHERE owner_hash = ?')
+      .bind(await ownerHash(personalCode)).first();
+    if (!row) return null;
+    await ensureLink(env, row.profile_id, personalCode, row.created_at);
+    return { profileId: row.profile_id, linkedAt: row.created_at, gameHash: await gameHashFor(row.profile_id) };
+  } catch (e) {
+    return null;
+  }
+}
+
+// 게임 랭킹의 직접 입력 닉네임이 남의 프로필 닉네임과 같은지 본다. 없거나 실패하면 null.
+export async function profileIdByNicknameKey(env, key) {
+  try {
+    var row = await env.TAGS_DB.prepare('SELECT profile_id FROM profiles WHERE nickname_key = ?').bind(key).first();
+    return row ? row.profile_id : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // 2단계(투표·끌올 기록)에서 개인 코드로 프로필 ID 를 찾는다. 없거나 실패하면 null.
 export async function profileIdForCode(env, personalCode) {
   try {
@@ -98,6 +137,8 @@ async function handleMe(request, env, tools) {
   if (parsed.error) return parsed.error;
   var row = await env.TAGS_DB.prepare('SELECT * FROM profiles WHERE owner_hash = ?')
     .bind(await ownerHash(parsed.personalCode)).first();
+  // 1단계에서 만든 프로필은 연결 행이 없어서 여기서 채운다(linked_at = 프로필을 만든 시각).
+  if (row) await ensureLink(env, row.profile_id, parsed.personalCode, row.created_at);
   return tools.jsonResponse(request, { profile: row ? mineView(row) : null });
 }
 
@@ -170,17 +211,21 @@ async function handleSave(request, env, tools) {
     if (unique) return fail(unique, 409);
     throw e;
   }
+  await ensureLink(env, row.profile_id, parsed.personalCode, existing ? existing.created_at : now);
   return tools.jsonResponse(request, { profile: mineView(row) });
 }
 
 async function handleDelete(request, env, tools) {
   var parsed = await readProfileBody(request, env, tools, env.RL_USER_SYNC);
   if (parsed.error) return parsed.error;
-  var result = await env.TAGS_DB.prepare('DELETE FROM profiles WHERE owner_hash = ?')
-    .bind(await ownerHash(parsed.personalCode)).run();
-  if (!(result.meta && result.meta.changes > 0)) {
-    return tools.jsonResponse(request, { error: 'profile not found' }, 404);
-  }
+  var owner = await ownerHash(parsed.personalCode);
+  var target = await env.TAGS_DB.prepare('SELECT profile_id FROM profiles WHERE owner_hash = ?').bind(owner).first();
+  if (!target) return tools.jsonResponse(request, { error: 'profile not found' }, 404);
+  await env.TAGS_DB.prepare('DELETE FROM profiles WHERE owner_hash = ?').bind(owner).run();
+  // 연결 행을 지우면 그 사람의 활동이 다시 익명이 된다. 테이블이 없으면 지울 것도 없다.
+  try {
+    await env.TAGS_DB.prepare('DELETE FROM profile_links WHERE profile_id = ?').bind(target.profile_id).run();
+  } catch (e) {}
   return tools.jsonResponse(request, { ok: true });
 }
 

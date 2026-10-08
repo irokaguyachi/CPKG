@@ -814,6 +814,16 @@ test('admin clears bio and deletes profiles with logs', async () => {
   assert.equal(JSON.parse(logs[1].detail).before.profile_id, p.id);
 });
 
+test('admin delete removes the link and logs it', async () => {
+  const t = await setupProfileAdmin();
+  const p = await t.make(OTHER_CODE);
+  assert.equal(t.env.TAGS_DB.rows('SELECT * FROM profile_links').length, 1);
+  assert.equal((await t.api('POST', 'profiles/delete', { id: p.id })).status, 200);
+  assert.deepEqual(t.env.TAGS_DB.rows('SELECT * FROM profile_links'), []);
+  const detail = JSON.parse(t.profileActions()[0].detail);
+  assert.equal(detail.link.vote_hash, hash('tagvote:' + OTHER_CODE));
+});
+
 test('unknown profile ids return 404', async () => {
   const t = await setupProfileAdmin();
   for (const route of ['profiles/reset-nickname', 'profiles/clear-bio', 'profiles/delete']) {

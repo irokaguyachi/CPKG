@@ -23,3 +23,19 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- 관리 페이지 목록(최근 수정 순)에 쓴다.
 CREATE INDEX IF NOT EXISTS idx_profiles_updated ON profiles(updated_at DESC);
+
+-- 2단계(표시 연결, docs/superpowers/specs/2026-10-08-user-profile-display-design.md).
+-- 프로필 ID 와 활동 해시를 잇는다. 기존 tag_votes·bumps·game_scores 는 그대로 두고,
+-- 표시할 때 이 테이블과 JOIN 하되 활동 시각이 linked_at(= 프로필을 만든 시각) 이후인
+-- 것만 프로필로 본다 — 프로필을 만들기 전의 활동은 익명으로 남는다. 프로필을 지우면
+-- 이 행도 지워져 그 사람의 활동이 다시 익명이 된다.
+CREATE TABLE IF NOT EXISTS profile_links (
+  profile_id TEXT    PRIMARY KEY,   -- profiles.profile_id
+  vote_hash  TEXT    NOT NULL,      -- sha256('tagvote:' + personalCode) = tag_votes.voter_hash
+  bump_hash  TEXT    NOT NULL,      -- sha256('bump:' + personalCode)    = bumps.requester_hash
+  game_hash  TEXT    NOT NULL,      -- sha256('spacegame-profile:' + profile_id) = 프로필 랭킹 줄의 player_hash
+  linked_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_profile_links_vote ON profile_links(vote_hash);
+CREATE INDEX IF NOT EXISTS idx_profile_links_bump ON profile_links(bump_hash);
+CREATE INDEX IF NOT EXISTS idx_profile_links_game ON profile_links(game_hash);
