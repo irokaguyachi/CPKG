@@ -1,9 +1,7 @@
 (function () {
   var tipEl = document.getElementById('loader-tip-text');
-  var iconEl = document.getElementById('loader-icon');
   // versioned URL so the browser may cache these normally (see cdnConfig.js)
   var DATA = window.dataUrl || function (p) { return p; };
-  var fetchJson = window.fetchJsonCached || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
   if (tipEl) {
     fetch(DATA('../data/config/Tip.json'))
@@ -16,30 +14,10 @@
         var isFirstVisit = !localStorage.getItem('chokaguya_tipVisited');
         if (isFirstVisit) localStorage.setItem('chokaguya_tipVisited', '1');
 
-        // 로딩 화면 하나당 팁 하나 — __loaderShowIcon과 같은 원칙으로, 같은
-        // 로딩이 떠 있는 동안 계속 바뀌는 대신 로딩이 새로 발생할 때만 바뀐다.
+        // 로딩 화면 하나당 팁 하나 — 같은 로딩이 떠 있는 동안 계속 바뀌는
+        // 대신 로딩이 새로 발생할 때만 바뀐다.
         var text = isFirstVisit ? FIRST_VISIT_TIP : tips[Math.floor(Math.random() * tips.length)];
         typeText(tipEl, text, 500);
-      })
-      .catch(function () {});
-  }
-
-  if (iconEl) {
-    fetchJson('../data/config/LoadingIcons.json')
-      .then(function (files) {
-        if (!Array.isArray(files) || !files.length) return;
-        // shows one icon per loading occurrence (not a timed cycle); the
-        // index is persisted so a real page navigation later also advances
-        // it instead of always starting back at the first icon.
-        window.__loaderShowIcon = function () {
-          var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10);
-          var idx = ((counter % files.length) + files.length) % files.length;
-          // served from the origin, not R2 (see theme.js's isLocal exception
-          // for the same reasoning) — offlineSrc/loadingLogo/
-          var src = '../offlineSrc/loadingLogo/' + files[idx];
-          iconEl.style.backgroundImage = 'url("' + src + '")';
-        };
-        window.__loaderShowIcon();
       })
       .catch(function () {});
   }
@@ -72,7 +50,23 @@
   var wipeEl = document.getElementById('loader-wipe');
   var contentEl = document.getElementById('loader-content');
   var loaderEl = document.getElementById('loader');
+  var iconEl = document.getElementById('loader-icon');
   if (!wipeEl || !loaderEl) return;
+
+  // 전체 화면 로더 아이콘은 미러볼(mirrorBall.js)이다. 후시 GIF(LoadingIcons.json)는
+  // 미니 로딩(gridPage.js)에서만 쓴다. 로더가 실제로 뜰 때만 그리기 시작하고,
+  // 로더가 걷히면 멈춰서 뒤의 페이지가 쓸 프레임을 빼앗지 않는다.
+  var ball = null;
+  function startBall() {
+    if (ball || !iconEl || !window.MirrorBall) return;
+    var canvas = document.createElement('canvas');
+    canvas.className = 'loader-ball';
+    iconEl.appendChild(canvas);
+    ball = window.MirrorBall.mount(canvas);
+  }
+  function stopBall() {
+    if (ball) ball.stop();
+  }
 
   var INTRO_MS = 1300;
   var OUTRO_MS = 2200;
@@ -174,9 +168,7 @@
   // while the content fades in at the same time, so the two blend together
   // instead of one waiting for the other to finish.
   function playIntro() {
-    var counter = parseInt(localStorage.getItem('loaderIconCounter') || '0', 10) + 1;
-    localStorage.setItem('loaderIconCounter', counter);
-    if (window.__loaderShowIcon) window.__loaderShowIcon();
+    startBall();
 
     wipeEl.style.transitionDuration = INTRO_MS + 'ms, ' + INTRO_MS + 'ms, ' + INTRO_MS + 'ms';
     requestAnimationFrame(function () {
@@ -206,6 +198,8 @@
         loaderEl.classList.add('is-hidden');
         unlockScroll();
         markLoadingFinished();
+        // .loader 의 opacity 전환(0.5s)이 끝난 뒤 멈춘다
+        setTimeout(stopBall, 600);
       }, OUTRO_REVEAL_MS);
     });
   };

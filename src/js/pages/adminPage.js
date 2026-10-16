@@ -1074,9 +1074,13 @@
             dialog({ title: '자기소개 지우기', desc: '"' + p.bio + '"을(를) 지워요. 원문은 작업 기록에 남아요.', confirmLabel: '지우기' })
               .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'profiles/clear-bio', { id: p.id }); }, '자기소개를 지웠어요.'); });
           }) : null,
-          button('삭제', 'danger', function (btn) {
+          button('프로필 삭제', 'danger', function (btn) {
             dialog({ title: '프로필 삭제', desc: '"' + p.nickname + '" 프로필을 지워요. 원본은 작업 기록에 남아요.', confirmLabel: '삭제', danger: true, requireText: p.nickname })
               .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'profiles/delete', { id: p.id }); }, '프로필을 지웠어요.'); });
+          }),
+          button('계정 삭제', 'danger', function (btn) {
+            dialog({ title: '계정 삭제', desc: '이 프로필의 계정을 삭제할까요? 프로필, 랭킹 기록, 프로필로 게시한 공개 서재가 바로 지워지고, 서버에 저장된 북마크는 그 사람이 다음에 접속할 때 지워져요. 되돌릴 수 없어요.', confirmLabel: '계정 삭제', danger: true, requireText: p.nickname })
+              .then(function (ok) { if (ok) run(btn, function () { return api('POST', 'profiles/delete-account', { id: p.id }); }, '계정을 삭제했어요.'); });
           })
         ])];
       }), profileQuery ? '검색 결과가 없어요.' : '프로필이 없어요.'));

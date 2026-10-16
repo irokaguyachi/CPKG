@@ -1,9 +1,9 @@
 /**
  * ChoKaguya Auth Modal (로그인/회원가입)
- * - 개인 코드(src/js/core/bookmarkLibrary.js)를 "로그인" UX로 감싸는 모달.
- *   회원가입은 순수 로컬 동작(코드를 만들어 저장할 뿐, 서버 호출 없음)이고,
- *   로그인은 서버(/owner/lookup)에서 그 코드에 연결된 목록을 받아와 로컬로
- *   복원한다.
+ * - 유저가 정한 아이디로 로그인·가입하는 모달(UserData.loginWithId/signupWithId).
+ *   내부적으로는 서버가 아이디를 예전 개인 코드에 대응시켜 계정을 찾는다. 마감
+ *   (UserData.LOGIN_CODE_DEADLINE) 전에는 "기존 로그인 코드로 로그인" 경로가 남아 있고,
+ *   성공하면 src/js/components/loginIdModal.js 의 아이디 만들기 창으로 넘어간다.
  * - src/js/components/postDetailSeries.js 의 싱글턴 오버레이 패턴(document.body 에 한
  *   번만 append, 바깥클릭/Escape 로 닫힘, .is-open 토글)을 그대로 본떴다.
  * - Figma "개인 공간" 파일의 SignInFrame/SignUpFrame(node #2222) 디자인을
@@ -12,21 +12,16 @@
 (function (global) {
   var t = global.I18n.t;
   var overlayEl = null;
-  // 회원가입 확인 화면(발급된 개인 코드를 보여주는 단계)은 코드를 못 보고
-  // 나가버리면 되돌릴 수 없으니, 바깥 클릭/Escape/X 로 못 닫게 잠근다 —
-  // "확인" 버튼을 눌러야만 나갈 수 있다. 다른 화면(로그인 등)은 그대로
-  // 자유롭게 닫힌다.
-  var dismissible = true;
 
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
     overlayEl = document.createElement('div');
     overlayEl.className = 'auth-overlay';
     overlayEl.addEventListener('click', function (e) {
-      if (e.target === overlayEl && dismissible) close();
+      if (e.target === overlayEl) close();
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && dismissible) close();
+      if (e.key === 'Escape') close();
     });
     document.body.appendChild(overlayEl);
     return overlayEl;
@@ -76,22 +71,122 @@
     return btn;
   }
 
+  // ---- 아이디 입력 화면 공통 ----
+  // 로그인과 가입이 같은 모양(아이디 입력칸 + 제출 버튼 + 오류 줄)이라 한 곳에서 만든다.
+  // 입력칸은 autocomplete=username 으로 둬서 브라우저가 아이디를 기억해 준다.
+  function idForm(card, submitLabel, busyLabel, action, opts, presetError) {
+    var row = document.createElement('form');
+    row.className = 'auth-form-row';
+    var inputWrap = document.createElement('div');
+    inputWrap.className = 'auth-input-wrap';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'username';
+    input.className = 'auth-input';
+    input.placeholder = t('아이디 입력창');
+    input.autocomplete = 'username';
+    inputWrap.appendChild(input);
+    var submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'auth-btn';
+    submitBtn.textContent = submitLabel;
+    row.appendChild(inputWrap);
+    row.appendChild(submitBtn);
+    card.appendChild(row);
+
+    var errorEl = el('p', 'auth-error');
+    errorEl.hidden = true;
+    card.appendChild(errorEl);
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+    }
+    if (presetError) showError(presetError);
+
+    row.addEventListener('submit', function (e) {
+      e.preventDefault();
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = busyLabel;
+      action(input.value).then(function (code) {
+        close();
+        if (opts.onSuccess) opts.onSuccess(code);
+      }, function (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitLabel;
+        showError((err && err.message) || t('로그인에 실패했어요.'));
+      });
+    });
+    return input;
+  }
+
+  function linkButton(label, onClick) {
+    var link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'auth-switch-link';
+    link.textContent = label;
+    link.addEventListener('click', onClick);
+    return link;
+  }
+
   // ---- SignIn ----
-  // presetError: renderSignUp 이 가입 요청 자체가 막혀서(IP 하루 한도 등)
-  // 되돌아올 때 바로 보여줄 에러 메시지.
   function renderSignIn(card, opts, presetError) {
-    dismissible = true;
     card.innerHTML = '';
     card.appendChild(closeButton());
     card.appendChild(el('h2', 'auth-title', t('로그인')));
 
     if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
 
-    // 개인 코드를 비밀번호 필드로 취급 — type=password + autocomplete=
-    // current-password 로 감싸야 크롬 등 브라우저 비밀번호 관리자가 로그인
-    // 성공 시 "저장할까요?" 배너를 띄우고, 다음 방문부터 자동완성으로
-    // 채워준다(폼 없이 input 단독이면 인식률이 떨어진다). 기본은 가려져
-    // 있지만 지금 친 코드가 맞는지 확인할 수 있게 눈 아이콘을 붙였다.
+    var input = idForm(card, t('로그인'), t('확인하는 중...'), function (id) {
+      return global.UserData.loginWithId(id);
+    }, opts, presetError);
+
+    var switchRow = el('p', 'auth-switch', t('계정이 없으신가요?') + ' ');
+    switchRow.appendChild(linkButton(t('새로 만들기'), function () { renderSignUp(card, opts); }));
+    card.appendChild(switchRow);
+
+    // 마감 전에만 — 예전 20자리 코드로 들어와 아이디를 만들 수 있는 마지막 통로
+    if (global.UserData.isBeforeLoginCodeDeadline()) {
+      var legacyRow = el('p', 'auth-switch');
+      legacyRow.appendChild(linkButton(t('기존 로그인 코드로 로그인'), function () { renderCodeSignIn(card, opts); }));
+      card.appendChild(legacyRow);
+    }
+
+    input.focus();
+  }
+
+  // ---- SignUp ----
+  // 아이디만 정하면 곧바로 로그인된다(20자리 코드 확인 화면은 없다). 서버 가입이 실패하면
+  // (중복·형식 오류·IP 한도) 같은 화면에서 오류만 보여 준다.
+  function renderSignUp(card, opts) {
+    card.innerHTML = '';
+    card.appendChild(closeButton());
+    card.appendChild(el('h2', 'auth-title', t('새로 만들기')));
+    if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
+    card.appendChild(el('p', 'auth-desc', t('영문 소문자, 숫자, _ 로 4~20자')));
+
+    var input = idForm(card, t('가입'), t('확인하는 중...'), function (id) {
+      return global.UserData.signupWithId(id);
+    }, opts);
+
+    var switchRow = el('p', 'auth-switch', t('이미 계정이 있으신가요?') + ' ');
+    switchRow.appendChild(linkButton(t('아이디로 로그인'), function () { renderSignIn(card, opts); }));
+    card.appendChild(switchRow);
+
+    input.focus();
+  }
+
+  // ---- 예전 로그인 코드로 로그인 (마감 전까지) ----
+  // 성공하면 곧바로 아이디 만들기 창으로 넘어간다.
+  function renderCodeSignIn(card, opts) {
+    card.innerHTML = '';
+    card.appendChild(closeButton());
+    card.appendChild(el('h2', 'auth-title', t('기존 로그인 코드로 로그인')));
+
+    // 개인 코드를 비밀번호 필드로 취급 — type=password + autocomplete=current-password
+    // 로 감싸야 브라우저 비밀번호 관리자가 저장·자동완성을 해 준다. 눈 아이콘으로
+    // 지금 친 코드를 확인할 수 있다.
     var row = document.createElement('form');
     row.className = 'auth-form-row';
     var inputWrap = document.createElement('div');
@@ -121,9 +216,8 @@
       errorEl.hidden = false;
     }
 
-    if (presetError) showError(presetError);
-
-    function submit() {
+    row.addEventListener('submit', function (e) {
+      e.preventDefault();
       var raw = input.value;
       var normalized = global.BookmarkLibrary.normalizePersonalCode(raw);
       if (normalized.length < 16) {
@@ -134,12 +228,11 @@
       submitBtn.disabled = true;
       submitBtn.textContent = t('확인하는 중...');
 
-      // 서버에 계정이 있으면 북마크가 0개여도 로그인 성공이다. 예전엔 공개한
-      // 게시물 목록이 비어 있으면 실패로 돌렸는데, 그게 갓 가입한 사람이 다른
-      // 기기에서 절대 로그인하지 못하던 원인이었다.
+      // 서버에 계정이 있으면 북마크가 0개여도 로그인 성공이다.
       global.UserData.login(raw)
         .then(function () {
           close();
+          if (global.LoginIdModal) global.LoginIdModal.open({ mode: 'create' });
           if (opts.onSuccess) opts.onSuccess(normalized);
         })
         .catch(function (err) {
@@ -147,101 +240,13 @@
           submitBtn.textContent = t('로그인');
           showError(err.message || t('로그인에 실패했어요.'));
         });
-    }
-
-    row.addEventListener('submit', function (e) {
-      e.preventDefault();
-      submit();
     });
 
-    var switchRow = el('p', 'auth-switch', t('로그인 코드가 없으신가요?') + ' ');
-    var switchLink = document.createElement('button');
-    switchLink.type = 'button';
-    switchLink.className = 'auth-switch-link';
-    switchLink.textContent = t('새로 발급받으세요!');
-    switchLink.addEventListener('click', function () { renderSignUp(card, opts); });
-    switchRow.appendChild(switchLink);
+    var switchRow = el('p', 'auth-switch');
+    switchRow.appendChild(linkButton(t('아이디로 로그인'), function () { renderSignIn(card, opts); }));
     card.appendChild(switchRow);
 
     input.focus();
-  }
-
-  // ---- SignUp ----
-  // 잠긴 코드 확인 화면(확인 버튼으로만 나갈 수 있음)은 서버 가입이 실제로
-  // 성공했을 때만 보여준다. 그 전에 먼저 가입을 시도해보는 이유는, IP 하루
-  // 1회 한도(worker/favoritesShareWorker.js 의 user-signup 버킷)에 이미
-  // 걸려 있으면 "확인"을 눌러도 100% 실패할 잠긴 화면에 사용자를 가두게
-  // 되기 때문이다 — 그 경우엔 코드 화면 자체로 넘어가지 않고 로그인
-  // 화면으로 되돌아가 에러만 보여준다.
-  function renderSignUp(card, opts) {
-    dismissible = true; // 가입 시도 중에는 자유롭게 닫을 수 있다
-    card.innerHTML = '';
-    card.appendChild(closeButton());
-    card.appendChild(el('h2', 'auth-title is-small', t('계정을 만드는 중...')));
-    card.appendChild(el('p', 'auth-desc', t('잠시만 기다려주세요.')));
-
-    var code = global.BookmarkLibrary.issueNewPersonalCode();
-
-    global.UserData.signup(code)
-      .then(function () {
-        renderSignUpCode(card, opts, code);
-      })
-      .catch(function (err) {
-        renderSignIn(card, opts, err.message || t('계정을 만들지 못했어요. 인터넷 연결을 확인해주세요.'));
-      });
-  }
-
-  // 서버 가입이 끝난 뒤에만 뜨는, "확인"을 눌러야만 나갈 수 있는 화면.
-  function renderSignUpCode(card, opts, code) {
-    // 방금 발급된 코드는 이 화면을 벗어나면 다시 볼 수 없다 — 실수로
-    // 바깥을 클릭하거나 Escape 를 누르거나 X 를 눌러서 코드를 못 본 채
-    // 나가버리는 일이 없도록, "확인" 버튼을 눌러야만 닫히게 한다.
-    dismissible = false;
-    card.innerHTML = '';
-    card.appendChild(el('h2', 'auth-title is-small', t('잊어버리지 마세요!')));
-    card.appendChild(el('p', 'auth-desc', t('해당 코드를 잃어버릴시 앞으로 로그인이 힘들수도 있으니 미리 다른곳에 해당 코드를 적어두세요')));
-
-    if (opts.reason) card.appendChild(el('p', 'auth-reason', opts.reason));
-
-    // 코드 표시칸을 진짜 type=password 입력창으로 만들어서 "확인"을 누르는
-    // 순간(=폼 제출)에 브라우저 비밀번호 관리자가 이 코드를 저장 후보로
-    // 인식하게 한다 — 그래야 로그인 화면(renderSignIn)의 자동완성과 같은
-    // 코드가 곧바로 연결된다. 기본은 가려져 있고, 적어두려면 눈 아이콘으로
-    // 평문 전환해서 복사하면 된다(클릭하면 select()로 전체 선택도 된다).
-    var form = document.createElement('form');
-    form.className = 'auth-form-row';
-    var codeWrap = document.createElement('div');
-    codeWrap.className = 'auth-code-wrap';
-    var codeField = document.createElement('input');
-    codeField.type = 'password';
-    codeField.name = 'password';
-    codeField.autocomplete = 'new-password';
-    codeField.readOnly = true;
-    codeField.className = 'auth-input auth-code-display';
-    codeField.value = global.BookmarkLibrary.formatPersonalCodeForDisplay(code);
-    codeField.addEventListener('click', function () { codeField.select(); });
-    codeWrap.appendChild(codeField);
-    codeWrap.appendChild(createRevealToggle(codeField));
-    form.appendChild(codeWrap);
-    card.appendChild(form);
-
-    var confirmBtn = document.createElement('button');
-    confirmBtn.type = 'submit';
-    confirmBtn.className = 'auth-btn';
-    confirmBtn.textContent = t('확인');
-    form.appendChild(confirmBtn);
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      // 서버 가입과 로컬 코드 채택은 이미 UserData.signup() 이 끝냈다 —
-      // 여기서는 닫기만 하면 된다.
-      close();
-      if (opts.onSuccess) opts.onSuccess(code);
-    });
-
-    // "이미 코드가 있으신가요? 로그인하기" 링크는 일부러 안 넣는다 — 이
-    // 화면은 확인 버튼으로만 나가야 하므로, 로그인 화면으로 새는 경로도
-    // 열어두면 안 된다.
   }
 
   function openWith(renderFn, opts) {
@@ -268,11 +273,10 @@
   // 로그인이 필요한 동작의 공통 관문 — 이미 로그인돼 있으면 곧바로
   // 실행하고, 아니면 모달을 띄운 뒤 완료 시점에 이어서 실행한다.
   //
-  // 반드시 로그인 화면을 먼저 보여준다. 회원가입 화면을 먼저 띄우면 새 코드가
-  // 곧바로 눈앞에 뜨는데, 이미 계정이 있는 사람(다른 기기에서 왔거나 로그아웃
-  // 상태인 사람)이 그걸 그대로 확정해 버리면 쓰지도 않을 계정이 서버에 하나 더
-  // 생기고, 원래 쓰던 북마크와도 갈라진다. 코드가 없는 사람은 로그인 화면의
-  // "새로 발급받으세요!" 링크로 넘어가면 되고, 그때 opts 도 그대로 따라간다.
+  // 반드시 로그인 화면을 먼저 보여준다. 이미 계정이 있는 사람(다른 기기에서 왔거나
+  // 로그아웃 상태인 사람)이 가입 화면에서 새 계정을 만들어 버리면 원래 쓰던 북마크와
+  // 갈라진다. 계정이 없는 사람은 로그인 화면의 "새로 만들기" 링크로 넘어가면 되고,
+  // 그때 opts 도 그대로 따라간다.
   function requireLogin(opts) {
     opts = opts || {};
     if (global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn()) {

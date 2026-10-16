@@ -53,11 +53,32 @@
 }
 
 .loader-icon {
+  position: relative;
   width: 139px;
   height: 139px;
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
+}
+/* 미러볼 뒤의 은은한 후광. 미러볼(지름 약 126px)보다 넓게 깔고, 볼 가장자리
+   바깥부터 서서히 사라지게 해서 볼 테두리 밖으로만 빛이 번져 보이게 한다. */
+.loader-icon::before {
+  content: "";
+  position: absolute;
+  inset: -55px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    rgba(214, 238, 255, 0.34) 0%,
+    rgba(214, 238, 255, 0.24) 50%,
+    rgba(214, 238, 255, 0.09) 72%,
+    rgba(214, 238, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+/* loading.js 가 넣는 미러볼 캔버스(mirrorBall.js) — 픽셀 크기는 스크립트가 dpr 에 맞춰 잡는다 */
+.loader-ball {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .loader-loading-text {

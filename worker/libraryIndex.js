@@ -64,17 +64,38 @@ export async function readLibraryIndex(env) {
 }
 
 export async function updateLibraryIndex(env, code, record) {
+  return rewriteLibraryIndex(env, items => {
+    items = items.filter(row => row.code !== code);
+    if (record) items.push({
+      code, name: record.name, itemCount: record.items.length,
+      createdAt: record.createdAt || record.updatedAt, updatedAt: record.updatedAt,
+      profileId: record.profileId || null
+    });
+    return items;
+  });
+}
+
+// 여러 서재를 색인에서 한 번에 뺀다(마감 뒤 자동 정리가 한 틱에 지운 서재들).
+// updateLibraryIndex 와 같은 ETag CAS 로, 색인을 서재마다 다시 쓰지 않고 한 번만 쓴다.
+export async function removeFromLibraryIndex(env, codes) {
+  if (!codes || !codes.length) return;
+  const drop = new Set(codes);
+  return rewriteLibraryIndex(env, items => {
+    const kept = items.filter(row => !drop.has(row.code));
+    return kept.length === items.length ? null : kept;
+  });
+}
+
+// change(items) → 새 items(바뀐 것이 없으면 null — 쓰지 않는다). 읽은 색인이 그대로일 때만
+// 쓰고(etagMatches), 아니면 다시 읽는다.
+async function rewriteLibraryIndex(env, change) {
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       const object = await env.FAVORITES_BUCKET.get(INDEX_KEY);
       if (!object) return; // The cron will bootstrap from the source objects.
       const index = await object.json();
-      const items = index.items.filter(row => row.code !== code);
-      if (record) items.push({
-        code, name: record.name, itemCount: record.items.length,
-        createdAt: record.createdAt || record.updatedAt, updatedAt: record.updatedAt,
-        profileId: record.profileId || null
-      });
+      const items = change(index.items);
+      if (!items) return;
       if (await env.FAVORITES_BUCKET.put(INDEX_KEY, JSON.stringify({
         items, generatedAt: Date.now()
       }), {

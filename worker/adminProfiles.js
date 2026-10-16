@@ -3,9 +3,11 @@
 //   POST /profiles/reset-nickname   {id} 닉네임을 `유저` + 공개 ID 앞 6자로, 변경 간격 제한 해제
 //   POST /profiles/clear-bio        {id}
 //   POST /profiles/delete           {id}
+//   POST /profiles/delete-account   {id} 계정 삭제(프로필·서재·랭킹 줄 + 삭제 표식)
 // 바꾸는 작업은 같은 batch 로 admin_actions 에 남기고 detail.before 에 바뀌기 전 행을 담는다.
 import { json, readBody, logAction } from './adminCommon.js';
 import { nicknameKey, gameHashFor } from './profileApi.js';
+import { purgeByProfile } from './accountDelete.js';
 
 var LIST_LIMIT = 50;
 var QUERY_MAX = 40;
@@ -101,9 +103,31 @@ async function handleDelete(request, env, ctx, session) {
   return json({ ok: true });
 }
 
+// 계정 삭제: 프로필에서 닿는 데이터를 지우고 삭제 표식(pending)을 남긴다. 계정 본체는 그 코드의
+// 다음 요청이 마저 지운다. R2 와 D1 은 한 트랜잭션이 아니라서, 지운 뒤 기록이 실패하면 warning 을 싣는다.
+async function handleDeleteAccount(request, env, ctx, session) {
+  var row = await readTarget(request, env);
+  if (row instanceof Response) return row;
+  var result;
+  try {
+    result = await purgeByProfile(env, row);
+  } catch (e) {
+    console.error('account delete failed', e && e.message);
+    return json({ error: 'account delete unavailable' }, 503);
+  }
+  try {
+    await logAction(env, session.actor, 'profile.delete-account', row.profile_id,
+      { before: row, link: result.link, libraryCodes: result.libraryCodes }).run();
+  } catch (e) {
+    return json({ ok: true, warning: 'deleted, but the action log could not be written' });
+  }
+  return json({ ok: true });
+}
+
 export var profileRoutes = {
   'GET /profiles': handleList,
   'POST /profiles/reset-nickname': handleResetNickname,
   'POST /profiles/clear-bio': handleClearBio,
-  'POST /profiles/delete': handleDelete
+  'POST /profiles/delete': handleDelete,
+  'POST /profiles/delete-account': handleDeleteAccount
 };

@@ -33,6 +33,7 @@ import backend from '../worker/favoritesShareWorker.js';
 import statsApi from '../worker/statsApi.js';
 import adminApi, { serveAdminGate } from '../worker/adminApi.js';
 import { refreshLibraryIndex } from '../worker/libraryIndex.js';
+import { runLoginCodeSweep } from '../worker/loginCodeSweep.js';
 import { PresenceDO } from '../worker/presenceDO.js';
 import { readJsonLimited } from '../worker/requestBody.js';
 import { recordTagSnapshot } from '../worker/tagSnapshot.js';
@@ -45,7 +46,7 @@ export { PresenceDO };
 var OLD_DOMAIN = 'ckpg.cloud';
 var NEW_DOMAIN = 'cpkg.cloud';
 
-var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/voters', '/tags/snapshot', '/tags/official', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit', '/profile/me', '/profile/save', '/profile/delete', '/profiles'];
+var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/user/delete', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/voters', '/tags/snapshot', '/tags/official', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit', '/profile/me', '/profile/save', '/profile/delete', '/profiles', '/user/login', '/login-id/set', '/login-id/me'];
 
 function isApiPath(pathname) {
   if (API_EXACT_PATHS.indexOf(pathname) !== -1) return true;
@@ -263,8 +264,20 @@ export default {
     ctx.waitUntil(refreshLibraryIndex(env).catch(function (error) {
       console.error('library index refresh failed', error.message);
     }));
+    var busyMinute = new Date(event.scheduledTime).getUTCMinutes() % 5 === 0;
+    // 로그인 코드 마감 뒤 아이디 없는 계정 정리(worker/loginCodeSweep.js). 마감 전이거나
+    // ACCOUNT_SWEEP_ENABLED 가 없는 환경(dev)에서는 D1 도 읽지 않고 바로 끝난다.
+    // 아래 D1 작업들이 도는 5의 배수 분에는 건너뛴다(호출 한 번의 D1 쿼리 한도를 나눠 쓰므로).
+    // 따로 waitUntil + catch 로 둬서 정리가 실패해도 다른 작업은 영향받지 않는다.
+    if (!busyMinute) {
+      ctx.waitUntil(Promise.resolve().then(function () {
+        return runLoginCodeSweep(env, Date.now());
+      }).catch(function (e) {
+        console.error('login code sweep failed', e && e.message);
+      }));
+    }
     // 태그 집계는 매분 할 필요가 없어 5의 배수 분에만 돌려 D1 읽기를 아낀다.
-    if (new Date(event.scheduledTime).getUTCMinutes() % 5 === 0) {
+    if (busyMinute) {
       ctx.waitUntil(recordTagSnapshot(env));
       ctx.waitUntil(cleanupBumps(env));
       ctx.waitUntil(cleanupGameRanking(env));

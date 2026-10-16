@@ -87,9 +87,13 @@ class Bucket {
     this.objects.set(key, value);
     return value;
   }
-  async delete(key) { this.objects.delete(key); }
-  async list({ prefix, cursor, limit }) {
-    const rows = [...this.objects.values()].filter(row => row.key.startsWith(prefix)).sort((a, b) => a.key < b.key ? -1 : 1);
+  // R2 처럼 키 하나 또는 키 배열을 받는다.
+  async delete(keys) { for (const key of [].concat(keys)) this.objects.delete(key); }
+  // startAfter: R2 처럼 이 키 다음부터(이 키 제외) 나열한다.
+  async list({ prefix, cursor, limit, startAfter }) {
+    const rows = [...this.objects.values()]
+      .filter(row => row.key.startsWith(prefix) && (startAfter === undefined || row.key > startAfter))
+      .sort((a, b) => a.key < b.key ? -1 : 1);
     const offset = Number(cursor) || 0;
     const end = offset + limit;
     return { objects: rows.slice(offset, end), truncated: end < rows.length, cursor: String(end) };

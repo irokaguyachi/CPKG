@@ -108,6 +108,15 @@
   transform: translateX(3px);
 }
 
+/* Special thanks 링크 아래에 붙는 작은 감사 문구 */
+.site-footer-thanks-note {
+  margin: -4px 0 16px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--footer-text);
+  opacity: 0.8;
+}
+
 .site-footer-contact {
   margin: 0;
   font-size: 13px;

@@ -111,6 +111,8 @@
   // 로그인과 editToken 소유권은 서로 다른 층이라 생기는 당연한 결과).
   function logout() {
     try { localStorage.removeItem(PERSONAL_CODE_KEY); } catch (e) {}
+    // 기억해 둔 로그인 아이디(userData.js)도 함께 지운다 — 다음 사람에게 남지 않게
+    try { localStorage.removeItem('chokaguya_login_id'); } catch (e) {}
     dispatchAuthChange(false);
   }
 
@@ -193,6 +195,14 @@
       if (res.status === 403) throw httpError(t('이 북마크를 수정할 권한이 없어요 (이 브라우저와 연결되어 있지 않아요).'), 403);
       if (res.status === 404) throw httpError(t('존재하지 않거나 이미 삭제된 북마크예요.'), 404);
       // 관리 페이지에서 숨긴 공개 서재(worker/adminLibrary.js) — 주인 데이터는 그대로다.
+      if (res.status === 410) {
+        // 삭제된 계정이면 로그아웃한다 (숨겨진 서재의 {error:'hidden'} 은 해당 없음)
+        var ud = global.UserData;
+        if (ud && ud.isAccountDeletedBody && ud.isAccountDeletedBody(data)) {
+          ud.handleAccountDeleted();
+          throw httpError(t('삭제된 계정이라 로그아웃됐어요.'), 410);
+        }
+      }
       if (res.status === 410) throw httpError(t('관리자에 의해 숨겨진 서재예요.'), 410);
       throw httpError((data && data.error && t(data.error)) || t('요청에 실패했어요 ({code})', { code: res.status }), res.status);
     });

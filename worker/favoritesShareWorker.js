@@ -1,7 +1,11 @@
 import { readJsonLimited } from './requestBody.js';
+import { userStoreKey, ownerIndexKey, ownerHashFor } from './accountKeys.js';
+import { checkDeleted, purgeByCode } from './accountDelete.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 import { readTagDefinitions } from './tagDocs.js';
 import { cleanNickname, bannedWordIn } from './nickname.js';
+import { LOGIN_ID_PATHS, handleLoginIdRequest, insertLoginId, loginIdForCode } from './loginIdApi.js';
+import { LOGIN_CODE_DEADLINE, normalizeLoginId } from './loginIdConfig.js';
 import { PROFILE_PATHS, handleProfileRequest, profileIdForCode, profileLinkForCode, profileIdByNicknameKey, nicknameKey } from './profileApi.js';
 /**
  * ChoKaguya Favorites Share Worker
@@ -1115,19 +1119,7 @@ function clientIp(request) {
 }
 
 // ---- 개인 복구 코드 ----
-// code(레코드 자신의 공개 코드)를 해시에 함께 섞어서, 같은 사람이 올린
-// 북마크 두 개라도 ownerHash 값이 서로 달라지게 한다 — 공개 버킷을 통째로
-// 긁어봐도 이 값들만으로는 "같은 사람 것"이라는 상관관계가 드러나지 않는다.
-async function ownerHashFor(personalCode, code) {
-  return sha256Hex('owner:' + code + ':' + personalCode);
-}
-
-// 개인 코드 → 소유한 공개 코드 목록을 찾기 위한 인덱스 오브젝트 키.
-// R2 list()는 프리픽스로만 훑을 수 있고 임의 필드로 조회할 수 없어서,
-// "이 개인 코드가 어떤 code들을 소유하는지"를 이 인덱스 오브젝트가 대신한다.
-async function ownerIndexKey(personalCode) {
-  return 'owners/' + (await sha256Hex('owner-index:' + personalCode)) + '.json';
-}
+// ownerHashFor / ownerIndexKey / userStoreKey 는 accountKeys.js 에 있다(계정 삭제와 공용).
 
 function cleanPersonalCode(raw) {
   if (typeof raw !== 'string') return null;
@@ -1342,6 +1334,17 @@ function libraryMetadata(record) {
   };
 }
 
+// 삭제된 계정의 개인 코드면 410 응답을, 아니면 null 을 돌려준다. 표식 테이블이 없거나
+// D1 이 실패하면 검사를 건너뛴다(checkDeleted 가 null). 이어 지우던 중이면 마저 지운다.
+async function deletedAccountResponse(request, env, personalCode) {
+  var mark = await checkDeleted(env, personalCode);
+  if (!mark) return null;
+  // 표식이 있으면 늘 한 번 더 정리한다 — 표식 직전에 가드를 통과한 요청이 남긴 것(서재 게시 등)도 지운다.
+  // purgeByCode 는 처음 deleted_by 를 유지하고 끝나면 pending=0 으로 맞춘다.
+  try { await purgeByCode(env, personalCode, 'admin'); } catch (e) { /* 지우기가 실패해도 410 은 그대로 */ }
+  return jsonResponse(request, { error: 'account deleted' }, 410);
+}
+
 async function handleLibraryCreate(request, env) {
   var ip = clientIp(request);
   if (!(await checkLimit(env.RL_LIB_WRITE, ip))) {
@@ -1359,6 +1362,8 @@ async function handleLibraryCreate(request, env) {
   // owner-index에 안 걸리므로 owner-lookup의 순차 R2 호출 문제와 무관해
   // 여기서 막지 않는다.
   if (clean.personalCode) {
+    var goneCreate = await deletedAccountResponse(request, env, clean.personalCode);
+    if (goneCreate) return goneCreate;
     if (!(await env.FAVORITES_BUCKET.head(await userStoreKey(clean.personalCode)))) {
       return jsonResponse(request, { error: 'account not found' }, 401);
     }
@@ -1509,6 +1514,11 @@ async function handleLibraryUpdate(code, request, env) {
   var clean = validateLibraryUpdate(body.value);
   if (!clean) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
 
+  if (clean.personalCode) {
+    var goneUpdate = await deletedAccountResponse(request, env, clean.personalCode);
+    if (goneUpdate) return goneUpdate;
+  }
+
   var authorized = await verifyLibraryAuth(record, code, clean);
   if (!authorized) {
     return jsonResponse(request, { error: 'invalid edit token' }, 403);
@@ -1597,6 +1607,8 @@ async function handleLibraryClaimOwner(code, request, env) {
   }
   var personalCode = cleanPersonalCode(body.value.personalCode);
   if (personalCode === null) return jsonResponse(request, { error: 'invalid payload shape' }, 400);
+  var goneClaim = await deletedAccountResponse(request, env, personalCode);
+  if (goneClaim) return goneClaim;
   if (!(await env.FAVORITES_BUCKET.head(await userStoreKey(personalCode)))) {
     return jsonResponse(request, { error: 'account not found' }, 401);
   }
@@ -1619,10 +1631,14 @@ async function handleLibraryClaimOwner(code, request, env) {
   // updatedAt도 건드리지 않는다(연결 자체는 "수정"이 아니므로 목록 정렬
   // 순서에 영향을 주면 안 된다).
   record.ownerHash = await ownerHashFor(personalCode, code);
+  // 주인이 바뀌었으니 프로필도 새 주인 것으로 맞춘다(프로필이 없으면 빠진다).
+  // 옛 주인의 프로필이 남으면 그 계정을 지울 때 새 주인의 서재가 함께 지워진다.
+  record.profileId = await profileIdForCode(env, personalCode);
   await env.FAVORITES_BUCKET.put('library/' + code + '.json', JSON.stringify(record), {
     httpMetadata: { contentType: 'application/json' },
     customMetadata: libraryMetadata(record)
   });
+  await updateLibraryIndex(env, code, record);
   await addToOwnerIndex(env, personalCode, code);
 
   return jsonResponse(request, { ok: true });
@@ -1681,14 +1697,8 @@ async function handleOwnerLookup(request, env) {
 }
 
 // ---- 유저 계정 스토어 ----
-// 공개 라이브러리와 완전히 분리된 프라이빗 저장소. 키가 개인 코드의 해시라
-// 버킷이 공개 읽기 가능해도 키를 모르면 닿을 수 없다. owner-index 와는 해시
-// prefix 가 달라서(user-v2: vs owner-index:) 같은 개인 코드라도 두 키가
-// 전혀 다른 값이 된다 — 마이그레이션할 땐 양쪽을 따로 계산해야 한다.
-async function userStoreKey(personalCode) {
-  return 'user/' + (await sha256Hex('user-v2:' + personalCode)) + '.json';
-}
-
+// 공개 라이브러리와 완전히 분리된 프라이빗 저장소. 키(userStoreKey, accountKeys.js)가
+// 개인 코드의 해시라 버킷이 공개 읽기 가능해도 키를 모르면 닿을 수 없다.
 function emptyUserData() {
   return { version: USER_DATA_VERSION, bookmarks: [], deletedBookmarks: [] };
 }
@@ -1811,12 +1821,30 @@ async function handleUserSignup(request, env) {
 
   var parsed = await readUserBody(request, env, null);
   if (parsed.error) return parsed.error;
+  // 아이디는 선택. 보냈다면 형식부터 검사한다(소문자로 바꾼 값을 저장).
+  var loginId = null;
+  var rawLoginId = parsed.raw && parsed.raw.loginId;
+  if (rawLoginId !== undefined && rawLoginId !== null) {
+    loginId = normalizeLoginId(rawLoginId);
+    if (loginId === null) return jsonResponse(request, { error: 'invalid login id' }, 400);
+  }
+  var goneSignup = await deletedAccountResponse(request, env, parsed.personalCode);
+  if (goneSignup) return goneSignup;
 
   var key = await userStoreKey(parsed.personalCode);
   var existing = await env.FAVORITES_BUCKET.head(key);
   if (existing) {
     var meta = existing.customMetadata || {};
-    return jsonResponse(request, { ok: true, existed: true, syncVersion: parseInt(meta.syncVersion || '1', 10) || 1 });
+    // 이미 있는 계정에는 보낸 아이디를 붙이지 않는다. 실제로 걸린 아이디(없거나 못 읽으면 null)를 알려 준다.
+    return jsonResponse(request, {
+      ok: true, existed: true, syncVersion: parseInt(meta.syncVersion || '1', 10) || 1,
+      loginId: await loginIdOrNull(env, parsed.personalCode)
+    });
+  }
+
+  // 마감 뒤에는 코드만으로 새 계정을 만들 수 없다(옛 브라우저의 자동 재가입 방지). 아이디 가입은 계속 된다.
+  if (loginId === null && Date.now() >= LOGIN_CODE_DEADLINE) {
+    return jsonResponse(request, { error: 'account deleted' }, 410);
   }
 
   try {
@@ -1828,17 +1856,46 @@ async function handleUserSignup(request, env) {
   }
 
   var now = Date.now();
+  // 아이디를 먼저 잡는다(UNIQUE 로 중복 판정). 계정 본체가 안 만들어지면 아래에서 이 행을 되돌린다.
+  if (loginId !== null) {
+    try {
+      if ((await insertLoginId(env, loginId, parsed.personalCode, now)) === 'taken') {
+        return jsonResponse(request, { error: 'login id taken' }, 409);
+      }
+    } catch (error) {
+      console.error('login id signup failed', error && error.message);
+      return jsonResponse(request, { error: 'login id unavailable' }, 503);
+    }
+  }
+  var releaseLoginId = async function () {
+    if (loginId === null) return;
+    try {
+      await env.TAGS_DB.prepare('DELETE FROM login_ids WHERE id_key = ? AND personal_code = ?')
+        .bind(loginId, parsed.personalCode).run();
+    } catch (error) {
+      console.error('login id rollback failed', error && error.message);
+    }
+  };
+
   var record = { v: 1, createdAt: now, updatedAt: now, syncVersion: 1, data: emptyUserData() };
   // etagDoesNotMatch:'*' = "없을 때만 만들어라". 두 기기가 같은 코드로 동시에
   // 가입을 눌러도 한쪽만 성공하고, 진 쪽은 이미 있는 계정을 그대로 쓰면 된다.
-  var written = await env.FAVORITES_BUCKET.put(
-    key, JSON.stringify(record),
-    Object.assign({ onlyIf: { etagDoesNotMatch: '*' } }, userStorePutOptions(record))
-  );
-  if (!written) return jsonResponse(request, { ok: true, existed: true, syncVersion: 1 });
+  var written;
+  try {
+    written = await env.FAVORITES_BUCKET.put(
+      key, JSON.stringify(record),
+      Object.assign({ onlyIf: { etagDoesNotMatch: '*' } }, userStorePutOptions(record))
+    );
+  } catch (error) {
+    await releaseLoginId();
+    throw error;
+  }
+  if (!written) {
+    await releaseLoginId();
+    return jsonResponse(request, { ok: true, existed: true, syncVersion: 1, loginId: await loginIdOrNull(env, parsed.personalCode) });
+  }
 
-
-  return jsonResponse(request, { ok: true, createdAt: now, syncVersion: 1 }, 201);
+  return jsonResponse(request, { ok: true, createdAt: now, syncVersion: 1, loginId: loginId }, 201);
 }
 
 // 구버전 개인 코드 사용자를 위한 1회성 통합. 예전엔 "공개한 북마크"만 서버에
@@ -1896,16 +1953,35 @@ async function migrateFromOwnerIndex(env, personalCode, userKey) {
   return record;
 }
 
+// 조회 응답에 덧붙이는 아이디. 테이블이 없거나 D1 이 실패해도 조회 자체는 막지 않는다.
+async function loginIdOrNull(env, personalCode) {
+  try {
+    var mine = await loginIdForCode(env, personalCode);
+    return mine ? mine.loginId : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function handleUserGet(request, env) {
   var parsed = await readUserBody(request, env, env.RL_USER_AUTH);
   if (parsed.error) return parsed.error;
+  var goneGet = await deletedAccountResponse(request, env, parsed.personalCode);
+  if (goneGet) return goneGet;
 
   var key = await userStoreKey(parsed.personalCode);
   var object = await env.FAVORITES_BUCKET.get(key);
-  if (object) return jsonResponse(request, { userStore: await object.json() });
+  if (object) return jsonResponse(request, { userStore: await object.json(), loginId: await loginIdOrNull(env, parsed.personalCode) });
+
+  // 마감 뒤에는 아이디 없는 코드의 소유 색인으로 계정을 다시 만들지 않는다 — 자동 정리가 본체를
+  // 지운 뒤 소유 색인을 지우기 전 사이에 조회가 오면 아이디 없는 계정이 되살아난다.
+  // 아이디 표를 못 읽어도 되살리지 않는다(덜 만드는 쪽).
+  if (Date.now() >= LOGIN_CODE_DEADLINE && !(await loginIdOrNull(env, parsed.personalCode))) {
+    return jsonResponse(request, { error: 'account not found' }, 404);
+  }
 
   var migrated = await migrateFromOwnerIndex(env, parsed.personalCode, key);
-  if (migrated) return jsonResponse(request, { userStore: migrated, migrated: true });
+  if (migrated) return jsonResponse(request, { userStore: migrated, migrated: true, loginId: await loginIdOrNull(env, parsed.personalCode) });
 
   return jsonResponse(request, { error: 'account not found' }, 404);
 }
@@ -1931,6 +2007,8 @@ async function handleUserHead(request, env) {
 async function handleUserSync(request, env) {
   var parsed = await readUserBody(request, env, env.RL_USER_SYNC);
   if (parsed.error) return parsed.error;
+  var goneSync = await deletedAccountResponse(request, env, parsed.personalCode);
+  if (goneSync) return goneSync;
 
   var raw = parsed.raw;
   var data = cleanUserData(raw && raw.data);
@@ -1976,10 +2054,36 @@ async function handleUserSync(request, env) {
   }, 409);
 }
 
+// 계정 삭제. 계정 본체도 삭제 표식도 없으면 404, 표식만 남은 재시도는 이어서 마저 지운다.
+async function handleUserDelete(request, env) {
+  var parsed = await readUserBody(request, env, env.RL_USER_SYNC);
+  if (parsed.error) return parsed.error;
+
+  var head = await env.FAVORITES_BUCKET.head(await userStoreKey(parsed.personalCode));
+  if (!head && !(await checkDeleted(env, parsed.personalCode))) {
+    return jsonResponse(request, { error: 'account not found' }, 404);
+  }
+  try {
+    await purgeByCode(env, parsed.personalCode, 'self');
+  } catch (e) {
+    console.error('account delete failed', e && e.message);
+    return jsonResponse(request, { error: 'account delete unavailable' }, 503);
+  }
+  return jsonResponse(request, { ok: true });
+}
+
 // 프로필 API(profileApi.js)가 쓰는 공용 함수. 저쪽에서 이 파일을 import 하면 순환이 생겨서 넘겨준다.
 var PROFILE_TOOLS = {
   jsonResponse: jsonResponse, checkLimit: checkLimit, clientIp: clientIp,
-  readJsonBody: readJsonBody, cleanPersonalCode: cleanPersonalCode, userStoreKey: userStoreKey
+  readJsonBody: readJsonBody, cleanPersonalCode: cleanPersonalCode, userStoreKey: userStoreKey,
+  deletedAccountResponse: deletedAccountResponse
+};
+
+// 아이디 로그인 API(loginIdApi.js)도 같은 방식으로 도구를 받는다.
+var LOGIN_ID_TOOLS = {
+  jsonResponse: jsonResponse, checkLimit: checkLimit, clientIp: clientIp,
+  readJsonBody: readJsonBody, cleanPersonalCode: cleanPersonalCode,
+  deletedAccountResponse: deletedAccountResponse
 };
 
 // 라우팅 본체. 예외 처리는 아래 fetch() 가 한 겹 감싸서 담당한다.
@@ -2006,6 +2110,9 @@ async function route(request, env) {
   }
   if (url.pathname === '/user/get' && request.method === 'POST') {
     return handleUserGet(request, env);
+  }
+  if (url.pathname === '/user/delete' && request.method === 'POST') {
+    return handleUserDelete(request, env);
   }
   if (url.pathname === '/user/head' && request.method === 'POST') {
     return handleUserHead(request, env);
@@ -2054,6 +2161,9 @@ async function route(request, env) {
   }
   if (PROFILE_PATHS.indexOf(url.pathname) !== -1) {
     return handleProfileRequest(request, env, PROFILE_TOOLS);
+  }
+  if (LOGIN_ID_PATHS.indexOf(url.pathname) !== -1) {
+    return handleLoginIdRequest(request, env, LOGIN_ID_TOOLS);
   }
   if (url.pathname.indexOf('/library/') === 0) {
     var libRest = url.pathname.slice('/library/'.length);

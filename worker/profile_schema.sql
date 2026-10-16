@@ -39,3 +39,12 @@ CREATE TABLE IF NOT EXISTS profile_links (
 CREATE INDEX IF NOT EXISTS idx_profile_links_vote ON profile_links(vote_hash);
 CREATE INDEX IF NOT EXISTS idx_profile_links_bump ON profile_links(bump_hash);
 CREATE INDEX IF NOT EXISTS idx_profile_links_game ON profile_links(game_hash);
+
+-- 계정 삭제 표식(docs/superpowers/specs/2026-10-16-account-delete-design.md).
+-- 지운 개인 코드로 다시 가입·동기화하지 못하게 막는다. 개인 코드 자체는 저장하지 않는다.
+CREATE TABLE IF NOT EXISTS deleted_accounts (
+  owner_hash TEXT    PRIMARY KEY,   -- sha256('profile:' + personalCode) = profiles.owner_hash
+  deleted_at INTEGER NOT NULL,
+  deleted_by TEXT    NOT NULL,      -- 'self' | 'admin'
+  pending    INTEGER NOT NULL       -- 1 = 계정 본체를 아직 못 지움(관리자 삭제)
+);

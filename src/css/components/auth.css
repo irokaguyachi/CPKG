@@ -215,3 +215,27 @@
 .auth-version-tag:hover {
   color: rgba(0, 0, 0, 0.65);
 }
+
+/* 코드만 있는 계정에게 보이는 아이디 만들기 안내 (src/js/components/loginIdModal.js) —
+   .auth-reason 의 색(라이트/다크)을 그대로 쓰고 배치만 잡는다. */
+.login-id-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.login-id-notice[hidden] {
+  display: none;
+}
+.login-id-notice-text {
+  margin: 0;
+}
+.settings-login-id-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  word-break: break-all;
+}

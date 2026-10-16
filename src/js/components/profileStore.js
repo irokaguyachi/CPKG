@@ -83,6 +83,17 @@
     });
   }
 
+  // 삭제된 계정이라는 410 이면 로그아웃시킨다. UserData 는 로드 순서가 페이지마다
+  // 달라 호출 시점에 찾는다.
+  function checkDeleted(r) {
+    var ud = global.UserData;
+    if (r && r.status === 410 && ud && ud.isAccountDeletedBody && ud.isAccountDeletedBody(r.data)) {
+      ud.handleAccountDeleted();
+      return true;
+    }
+    return false;
+  }
+
   function failure(data) {
     var err = new Error((data && data.error) || 'network');
     err.code = (data && data.error) || 'network';
@@ -99,6 +110,7 @@
     }
     return postJson('/profile/me', { personalCode: code }).then(function (r) {
       if (seq !== mineSeq || personalCode() !== code) return mine;
+      if (checkDeleted(r)) return mine;
       if (r.ok) setMine(r.data.profile || null);
       else markFailure();
       return mine;
@@ -115,7 +127,10 @@
       personalCode: code, nickname: fields.nickname, icon: fields.icon, color: fields.color, bio: fields.bio
     };
     return postJson('/profile/save', body).then(function (r) {
-      if (!r.ok) throw failure(r.data);
+      if (!r.ok) {
+        checkDeleted(r);
+        throw failure(r.data);
+      }
       mineSeq++;
       setMine(r.data.profile);
       return mine;

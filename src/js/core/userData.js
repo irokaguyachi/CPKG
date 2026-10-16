@@ -31,6 +31,17 @@
   var SIGNUP_URL = WORKER_BASE + '/user/signup';
   var GET_URL = WORKER_BASE + '/user/get';
   var SYNC_URL = WORKER_BASE + '/user/sync';
+  var DELETE_URL = WORKER_BASE + '/user/delete';
+  var LOGIN_URL = WORKER_BASE + '/user/login';
+  var LOGIN_ID_SET_URL = WORKER_BASE + '/login-id/set';
+  var LOGIN_ID_ME_URL = WORKER_BASE + '/login-id/me';
+  // 기억해 둔 로그인 아이디 { code, loginId, changeableAt } — logout() 이 지운다
+  var LOGIN_ID_KEY = 'chokaguya_login_id';
+  // 서버(worker/loginIdConfig.js)와 같은 값 — 2026-11-01 00:00 KST
+  var LOGIN_CODE_DEADLINE = Date.UTC(2026, 9, 31, 15, 0, 0);
+  var LOGIN_ID_PATTERN = /^[a-z0-9_]{4,20}$/;
+  // 삭제된 계정 안내 alert 을 이 탭에서 이미 띄웠는지 (탭당 한 번만)
+  var DELETED_ALERT_KEY = 'chokaguya_deleted_alerted';
 
   var SYNC_VERSION_KEY = 'chokaguya_sync_version';
   var LAST_SYNC_AT_KEY = 'chokaguya_last_sync_at';
@@ -94,10 +105,44 @@
     });
   }
 
+  // 서버가 계정이 삭제됐다고 알리는 410 본문. 숨겨진 서재의 410 {error:'hidden'} 과
+  // 구별해야 하므로 상태 코드만으로 판단하지 않는다.
+  function isAccountDeletedBody(data) {
+    return !!(data && data.error === 'account deleted');
+  }
+
+  // 삭제된 계정으로 요청이 들어왔을 때 — 이 브라우저를 로그아웃시키고 탭당
+  // 한 번만 알린다. bookmarkLibrary.js·profileStore.js 도 이 함수를 부른다.
+  var deletedAlerted = false;
+  function handleAccountDeleted() {
+    var l = lib();
+    if (l && l.logout) l.logout();
+    var already = deletedAlerted;
+    try { if (global.sessionStorage.getItem(DELETED_ALERT_KEY)) already = true; } catch (e) {}
+    if (already) return;
+    deletedAlerted = true;
+    try { global.sessionStorage.setItem(DELETED_ALERT_KEY, '1'); } catch (e) {}
+    try { global.alert(t('삭제된 계정이라 로그아웃됐어요.')); } catch (e) {}
+  }
+
+  // 응답이 410 {error:'account deleted'} 이면 로그아웃하고 표시를 단 오류로 reject.
+  // 그 밖의 응답은 null (호출부가 계속 처리).
+  function rejectIfDeleted(res) {
+    if (res.status !== 410) return Promise.resolve(null);
+    return res.json().catch(function () { return {}; }).then(function (data) {
+      if (!isAccountDeletedBody(data)) return null;
+      handleAccountDeleted();
+      var err = new Error(messageForStatus(410));
+      err.accountDeleted = true;
+      return err;
+    });
+  }
+
   function messageForStatus(code) {
     if (code === 429) return t('요청이 너무 잦아요. 잠시 후 다시 시도해주세요.');
     if (code === 404) return t('이 코드로 만들어진 계정을 찾을 수 없어요. 코드를 다시 확인해주세요.');
     if (code === 400) return t('코드 형식이 올바르지 않아요.');
+    if (code === 410) return t('삭제된 계정의 코드예요.');
     return t('서버와 통신하지 못했어요 ({code})', { code: code });
   }
 
@@ -329,13 +374,24 @@
       if (res.status === 404) {
         // 로그인은 돼 있는데 서버 계정이 없다(구버전 코드) — 만들고 다시 올린다
         return postJson(SIGNUP_URL, { personalCode: code }).then(function (signupRes) {
-          if (!signupRes.ok) throw new Error(messageForStatus(signupRes.status));
-          setSyncVersion(1);
-          pendingPush = true;
+          if (signupRes.ok) {
+            setSyncVersion(1);
+            pendingPush = true;
+            return;
+          }
+          // 삭제된 계정이면 다시 만들지 않고 로그아웃한다
+          return rejectIfDeleted(signupRes).then(function (err) {
+            throw err || new Error(messageForStatus(signupRes.status));
+          });
         });
       }
-      throw new Error(messageForStatus(res.status));
-    }).catch(function () {
+      // 삭제된 계정이면 재가입 시도 없이 로그아웃한다
+      return rejectIfDeleted(res).then(function (err) {
+        throw err || new Error(messageForStatus(res.status));
+      });
+    }).catch(function (err) {
+      // 로그아웃은 auth-change 가 이미 상태를 정리했다
+      if (err && err.accountDeleted) { pendingPush = false; return; }
       setStatus(global.navigator && global.navigator.onLine === false ? 'offline' : 'error');
     }).then(function () {
       inFlight = false;
@@ -362,6 +418,21 @@
 
   // ---- 공개 진입점 ----
 
+  // 서버에 계정이 생긴 걸 확인한 뒤에야 로컬에 코드를 저장한다 —
+  // 순서가 반대면 "가입은 됐는데 다른 기기에선 로그인 안 되는" 상태가 된다
+  function finishSignup(code, data) {
+    lib().adoptPersonalCode(code);
+    setSyncVersion(data.syncVersion || 1);
+    // 이 브라우저에 이미 있던 북마크는 동기화 버튼을 눌러야 새 계정에
+    // 올라간다 — 자동으로 올리지 않는다.
+    if (store() && store().getRawStore().bookmarks.length) {
+      dirty = true;
+      setStatus('pending');
+    } else {
+      setStatus('synced');
+    }
+  }
+
   function signup(rawCode) {
     var l = lib();
     var code = l.normalizePersonalCode(rawCode);
@@ -369,18 +440,7 @@
       if (!res.ok) return failWith(res);
       return res.json();
     }).then(function (data) {
-      // 서버에 계정이 생긴 걸 확인한 뒤에야 로컬에 코드를 저장한다 —
-      // 순서가 반대면 "가입은 됐는데 다른 기기에선 로그인 안 되는" 상태가 된다
-      l.adoptPersonalCode(code);
-      setSyncVersion(data.syncVersion || 1);
-      // 이 브라우저에 이미 있던 북마크는 동기화 버튼을 눌러야 새 계정에
-      // 올라간다 — 자동으로 올리지 않는다.
-      if (store() && store().getRawStore().bookmarks.length) {
-        dirty = true;
-        setStatus('pending');
-      } else {
-        setStatus('synced');
-      }
+      finishSignup(code, data);
       return code;
     });
   }
@@ -408,6 +468,147 @@
         setStatus('synced');
       }
       return code;
+    });
+  }
+
+  // ---- 로그인 아이디 ----
+
+  function isBeforeLoginCodeDeadline() {
+    return Date.now() < LOGIN_CODE_DEADLINE;
+  }
+
+  function loginIdFormatMessage() {
+    return t('영문 소문자, 숫자, _ 로 4~20자로 입력해 주세요.');
+  }
+
+  // 서버와 같은 규칙(trim 후 소문자)으로 미리 걸러 낸다. 서버로는 원문을 보내고
+  // 정규화는 서버가 한다.
+  function isValidLoginId(raw) {
+    return LOGIN_ID_PATTERN.test(String(raw == null ? '' : raw).trim().toLowerCase());
+  }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  // 날짜 순서·단위는 언어마다 달라서 번역 틀로 만든다(loginIdModal.js 의 formatTime 과 같은 틀).
+  function formatRetryTime(ms) {
+    var d = new Date(ms);
+    return t('{month}월 {day}일 {hh}:{mm}', {
+      month: d.getMonth() + 1, day: d.getDate(), hh: pad2(d.getHours()), mm: pad2(d.getMinutes())
+    });
+  }
+
+  function readRemembered() {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(LOGIN_ID_KEY) || 'null');
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function dispatchLoginIdChange(loginId) {
+    try {
+      global.dispatchEvent(new CustomEvent('chokaguya:login-id-change', { detail: { loginId: loginId } }));
+    } catch (e) {}
+  }
+
+  function rememberLoginId(code, loginId, changeableAt) {
+    try {
+      localStorage.setItem(LOGIN_ID_KEY, JSON.stringify({ code: code, loginId: loginId, changeableAt: changeableAt || 0 }));
+    } catch (e) {}
+    dispatchLoginIdChange(loginId);
+  }
+
+  // 아이디 API 오류 → Error. 410(계정 삭제)은 로그아웃까지 하고 accountDeleted 표시를 단다.
+  // kind: 'login' | 'signup' | 'set' | 'me' — 404·429 의 뜻이 호출마다 다르다.
+  function loginIdFailure(res, kind) {
+    return rejectIfDeleted(res).then(function (deletedErr) {
+      if (deletedErr) return deletedErr;
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        var s = res.status;
+        // 409 는 두 가지다: 남이 쓰는 아이디(taken), 읽은 뒤 다른 곳에서 먼저 바뀜(changed)
+        if (s === 409 && body && body.error === 'login id changed') {
+          return new Error(t('다른 곳에서 아이디가 바뀌었어요. 다시 시도해 주세요.'));
+        }
+        if (s === 409) return new Error(t('이미 쓰이고 있는 아이디예요.'));
+        if (s === 400 && body && body.error === 'invalid login id') return new Error(loginIdFormatMessage());
+        if (s === 404 && kind === 'login') return new Error(t('없는 아이디예요.'));
+        if (s === 429 && kind === 'set' && body && body.retryAt) {
+          return new Error(t('{time} 이후에 다시 바꿀 수 있어요.', { time: formatRetryTime(body.retryAt) }));
+        }
+        return new Error(messageForStatus(s));
+      });
+    }).then(function (err) { throw err; });
+  }
+
+  function loginWithId(rawId) {
+    if (!isValidLoginId(rawId)) return Promise.reject(new Error(loginIdFormatMessage()));
+    var loginId = String(rawId).trim();
+    return postJson(LOGIN_URL, { loginId: loginId }).then(function (res) {
+      if (!res.ok) return loginIdFailure(res, 'login');
+      return res.json();
+    }).then(function (data) {
+      return login(data.personalCode).then(function (code) {
+        // 변경 가능 시각은 /login-id/me 로 확인해야 알 수 있다 — 0 으로 두면 서버가 429 로 막아 준다
+        rememberLoginId(code, data.loginId || loginId.toLowerCase(), 0);
+        return code;
+      });
+    });
+  }
+
+  // 가입 도중 실패해도 같은 코드를 다시 쓴다 — 서버의 IP 일일 가입 한도가
+  // 코드 해시 기준이라, 재시도마다 새 코드를 만들면 한도만 소진된다.
+  // 가입에 성공하면 비운다.
+  var pendingSignupCode = null;
+
+  function signupWithId(rawId) {
+    if (!isValidLoginId(rawId)) return Promise.reject(new Error(loginIdFormatMessage()));
+    var l = lib();
+    var loginId = String(rawId).trim();
+    if (!pendingSignupCode) pendingSignupCode = l.issueNewPersonalCode();
+    var code = pendingSignupCode;
+    return postJson(SIGNUP_URL, { personalCode: code, loginId: loginId }).then(function (res) {
+      if (!res.ok) return loginIdFailure(res, 'signup');
+      return res.json();
+    }).then(function (data) {
+      pendingSignupCode = null;
+      finishSignup(code, data);
+      // 서버가 알려 준 아이디만 기억한다. 이미 있던 계정(existed)이면 보낸 아이디가 붙지 않았을 수
+      // 있으므로 입력값을 기억하면 안 된다 — 없으면 getLoginId 가 나중에 서버에 다시 묻는다.
+      if (data.loginId) rememberLoginId(code, data.loginId, 0);
+      return code;
+    });
+  }
+
+  // opts.fresh: 기억해 둔 값을 건너뛰고 서버에 다시 묻는다(쿨타임 잠금을 정확히 보여줄 때).
+  function getLoginId(opts) {
+    var code = personalCode();
+    if (!code) return Promise.resolve({ loginId: null, changeableAt: 0 });
+    var saved = readRemembered();
+    if (!(opts && opts.fresh) && saved && saved.code === code && saved.loginId) {
+      return Promise.resolve({ loginId: saved.loginId, changeableAt: saved.changeableAt || 0 });
+    }
+    return postJson(LOGIN_ID_ME_URL, { personalCode: code }).then(function (res) {
+      if (!res.ok) return loginIdFailure(res, 'me');
+      return res.json();
+    }).then(function (data) {
+      var result = { loginId: data.loginId || null, changeableAt: data.changeableAt || 0 };
+      // 아직 아이디가 없으면 기억하지 않는다 — 곧 정할 것이므로 다음에 다시 물어야 한다
+      if (result.loginId) rememberLoginId(code, result.loginId, result.changeableAt);
+      return result;
+    });
+  }
+
+  function setLoginId(rawId) {
+    if (!isValidLoginId(rawId)) return Promise.reject(new Error(loginIdFormatMessage()));
+    var code = personalCode();
+    if (!code) return Promise.reject(new Error(messageForStatus(404)));
+    return postJson(LOGIN_ID_SET_URL, { personalCode: code, loginId: String(rawId).trim() }).then(function (res) {
+      if (!res.ok) return loginIdFailure(res, 'set');
+      return res.json();
+    }).then(function (data) {
+      rememberLoginId(code, data.loginId, data.changeableAt);
+      return { loginId: data.loginId, changeableAt: data.changeableAt };
     });
   }
 
@@ -469,8 +670,8 @@
     var code = personalCode();
     setStatus('syncing');
     return postJson(GET_URL, { personalCode: code }).then(function (res) {
-      if (!res.ok) return failWith(res);
-      return res.json();
+      if (res.ok) return res.json();
+      return rejectIfDeleted(res).then(function (err) { return err ? Promise.reject(err) : failWith(res); });
     }).then(function (data) {
       var remoteData = realignMigratedIds(data.userStore.data);
       applyingRemote = true;
@@ -489,10 +690,33 @@
       markSynced();
       setStatus('synced');
       return { ok: true };
-    }).catch(function () {
+    }).catch(function (err) {
+      if (err && err.accountDeleted) return { ok: false, reason: 'deleted' };
       setStatus(global.navigator && global.navigator.onLine === false ? 'offline' : 'error');
       return { ok: false, reason: 'error' };
     });
+  }
+
+  // 계정 삭제 — 서버에서 지우고 이 브라우저도 로그아웃한다.
+  function deleteAccount() {
+    var code = personalCode();
+    var failed = function () { return new Error(t('지금은 계정을 삭제할 수 없어요.')); };
+    if (!code) return Promise.reject(failed());
+    return postJson(DELETE_URL, { personalCode: code }).then(function (res) {
+      if (res.ok) {
+        var l = lib();
+        if (l && l.logout) l.logout();
+        return;
+      }
+      // 404: 서버에 지울 계정이 없다(서버 저장소가 없는 옛 로그인 등) — 로그인만 풀면 된다
+      if (res.status === 404) {
+        var l2 = lib();
+        if (l2 && l2.logout) l2.logout();
+        return;
+      }
+      if (res.status === 429) throw new Error(t('요청이 너무 잦아요. 잠시 후 다시 시도해주세요.'));
+      throw failed();
+    }, function () { throw failed(); });
   }
 
   // ---- 이벤트 배선 ----
@@ -537,6 +761,15 @@
     saveToServer: saveToServer,
     loadFromServer: loadFromServer,
     getStatus: function () { return status; },
-    mergeStores: mergeStores
+    mergeStores: mergeStores,
+    isAccountDeletedBody: isAccountDeletedBody,
+    handleAccountDeleted: handleAccountDeleted,
+    deleteAccount: deleteAccount,
+    LOGIN_CODE_DEADLINE: LOGIN_CODE_DEADLINE,
+    isBeforeLoginCodeDeadline: isBeforeLoginCodeDeadline,
+    loginWithId: loginWithId,
+    signupWithId: signupWithId,
+    getLoginId: getLoginId,
+    setLoginId: setLoginId
   };
 })(window);

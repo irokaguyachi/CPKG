@@ -140,6 +140,8 @@ async function readProfileBody(request, env, tools, limiter) {
 async function handleMe(request, env, tools) {
   var parsed = await readProfileBody(request, env, tools, env.RL_USER_AUTH);
   if (parsed.error) return parsed.error;
+  var goneMe = await tools.deletedAccountResponse(request, env, parsed.personalCode);
+  if (goneMe) return goneMe;
   var row = await env.TAGS_DB.prepare('SELECT * FROM profiles WHERE owner_hash = ?')
     .bind(await ownerHash(parsed.personalCode)).first();
   // 1단계에서 만든 프로필은 연결 행이 없어서 여기서 채운다(linked_at = 프로필을 만든 시각).
@@ -156,6 +158,8 @@ function uniqueError(e) {
 async function handleSave(request, env, tools) {
   var parsed = await readProfileBody(request, env, tools, env.RL_USER_SYNC);
   if (parsed.error) return parsed.error;
+  var goneSave = await tools.deletedAccountResponse(request, env, parsed.personalCode);
+  if (goneSave) return goneSave;
   var raw = parsed.raw;
   var fail = function (error, status, extra) {
     return tools.jsonResponse(request, Object.assign({ error: error }, extra || {}), status || 400);

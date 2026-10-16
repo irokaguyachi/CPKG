@@ -343,6 +343,8 @@
   // 내용은 src/js/components/profileEditor.js 가 그린다(계정 탭을 auth.js 에 맡기는 것과 같다).
   function renderProfilePane(pane) {
     pane.appendChild(el('h3', 'settings-pane-title', t('프로필')));
+    // 코드만 있는 계정이고 마감 전이면 맨 위에 안내 문구 + [아이디 만들기] (아니면 스스로 숨는다)
+    if (global.LoginIdModal && global.BookmarkLibrary && global.BookmarkLibrary.isLoggedIn()) global.LoginIdModal.mountNotice(pane);
     var container = el('div', 'profile-editor');
     pane.appendChild(container);
     if (global.ProfileEditor) global.ProfileEditor.render(container);

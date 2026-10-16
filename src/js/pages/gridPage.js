@@ -134,9 +134,9 @@
     var fetchPageData = global.fetchPageData || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
     var fetchJson = global.fetchJsonCached || function (p) { return fetch(DATA(p)).then(function (r) { return r.json(); }); };
 
-    // MiniLoading (Figma #2183:2) reuses the same mascot gifs as the full-page
-    // loader — pick a random one per sentinel instead of the counter-based
-    // rotation loading.js uses for the intro screen
+    // MiniLoading (Figma #2183:2) shows a random 후시 mascot gif per sentinel.
+    // The full-page loader uses the mirror ball (mirrorBall.js) instead, so
+    // these gifs are only used here.
     var miniLoadingIcons = [];
     fetchJson('../data/config/LoadingIcons.json')
       .then(function (files) { if (Array.isArray(files)) miniLoadingIcons = files; })

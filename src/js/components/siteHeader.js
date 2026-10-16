@@ -98,12 +98,15 @@
     return global.AuthUI && global.AuthUI.syncStateLabel ? global.AuthUI.syncStateLabel(state) : state;
   }
 
-  // 20자리 개인 코드는 메뉴에 그대로 노출하지 않는다 — 앞 다섯 자리만 보여
-  // 어느 계정인지 알아볼 수 있게 하고, 전체 코드는 설정창 계정 탭에서 본다.
-  function maskedCode() {
-    var code = (global.BookmarkLibrary && global.BookmarkLibrary.getPersonalCode()) || '';
-    if (!code) return '';
-    return code.slice(0, 5) + '-•••••-•••••-•••••';
+  // 메뉴 부제에는 로그인 아이디를 가려서 보여 준다(코드만 있는 계정은 "아이디 없음").
+  // 아이디가 곧 로그인 열쇠라 화면 공유·캡처에 다 드러나지 않게 앞 두 글자만 남긴다
+  // (전체 아이디는 설정창 계정 탭에서만). 아이디는 서버에 물어야 알 수 있으므로
+  // (loginIdModal.js 가 페이지당 한 번만 묻고 공유한다) 자리를 먼저 그리고 답이 오면 채운다.
+  function fillLoginIdLabel(subEl) {
+    if (!global.LoginIdModal) { subEl.textContent = t('아이디 없음'); return; }
+    global.LoginIdModal.getStatus().then(function (status) {
+      subEl.textContent = status.loginId ? global.LoginIdModal.maskLoginId(status.loginId) : t('아이디 없음');
+    });
   }
 
   function makeAvatar(loggedIn) {
@@ -189,9 +192,13 @@
     var headText = el('div', 'site-profile-head-text');
     var profile = myProfile();
     headText.appendChild(el('p', 'site-profile-title', profile ? profile.nickname : (loggedIn ? t('로그인됨') : t('로그인하지 않았어요'))));
-    headText.appendChild(el('p', 'site-profile-sub', loggedIn ? maskedCode() : t('게스트')));
+    var subEl = el('p', 'site-profile-sub', loggedIn ? '' : t('게스트'));
+    if (loggedIn) fillLoginIdLabel(subEl);
+    headText.appendChild(subEl);
     head.appendChild(headText);
     menu.appendChild(head);
+    // 코드만 있는 계정이고 마감 전이면 안내 문구 + [아이디 만들기] (아니면 스스로 숨는다)
+    if (loggedIn && global.LoginIdModal) global.LoginIdModal.mountNotice(menu);
 
     if (!loggedIn) {
       menu.appendChild(el('p', 'site-profile-desc', t('로그인하면 북마크를 다른 기기와 동기화할 수 있어요.')));
@@ -233,7 +240,7 @@
         closeProfileMenu();
         if (global.SettingsModal) global.SettingsModal.open('profile');
       }));
-      links.appendChild(menuLink(ICONS.key, t('개인 코드 보기'), function () {
+      links.appendChild(menuLink(ICONS.key, t('아이디 보기'), function () {
         closeProfileMenu();
         if (global.SettingsModal) global.SettingsModal.open('account');
       }));
@@ -284,6 +291,8 @@
   global.addEventListener('chokaguya:auth-change', onAccountChange);
   global.addEventListener('chokaguya:sync-state', onAccountChange);
   global.addEventListener('chokaguya:profile-change', onAccountChange);
+  // 아이디를 만들거나 바꾸면 부제와 안내를 다시 그린다(로그아웃은 auth-change 가 이미 맡는다)
+  global.addEventListener('chokaguya:login-id-change', onAccountChange);
 
   // ── 통합 검색 ──────────────────────────────────────────────────────────
   var searchWrap = headerEl.querySelector('.site-search');

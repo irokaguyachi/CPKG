@@ -210,6 +210,11 @@ TURNSTILE_SITEKEY = ""
 # 미니게임 랭킹 토큰 서명 키(GAME_TOKEN_SECRET)는 시크릿이라 여기 두지 않는다.
 # `npx wrangler secret put GAME_TOKEN_SECRET` (dev 는 --env dev)로 넣는다.
 # 없으면 랭킹 API(/game/*)만 503 으로 닫히고 게임 자체는 그대로 된다.
+# 로그인 코드 마감 뒤 아이디 없는 계정 자동 정리(worker/loginCodeSweep.js) 스위치.
+# 정확히 "1" 일 때만 정리가 돈다. 프로덕션(cpkg) [vars] 에만 둔다 — dev(cpkgdev)는
+# 프로덕션과 같은 D1·R2 를 쓰므로 dev 에서 정리가 돌면 실서버 계정이 지워진다.
+# 아래 [env.dev.vars] 에는 절대 넣지 않는다.
+ACCOUNT_SWEEP_ENABLED = "1"
 
 # ---- dev 브랜치 전용 배포 환경 ----
 # Cloudflare Workers Builds는 Durable Object(PRESENCE/PresenceDO)가 있는

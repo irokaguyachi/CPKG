@@ -842,6 +842,18 @@ html.theme-transitioning *:after {
 [data-theme="dark"] .settings-btn.is-danger:hover {
   background: rgba(255, 139, 139, 0.12);
 }
+[data-theme="dark"] .settings-danger-panel {
+  border-color: rgba(255, 139, 139, 0.35);
+}
+[data-theme="dark"] .settings-danger-title,
+[data-theme="dark"] .settings-danger-error {
+  color: #ff8b8b;
+}
+[data-theme="dark"] .settings-danger-input {
+  background: var(--dark-input-bg);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--dark-text);
+}
 [data-theme="dark"] .settings-code-display {
   background: var(--dark-input-bg);
   border-color: rgba(255, 255, 255, 0.2);
