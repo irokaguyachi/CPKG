@@ -1,25 +1,25 @@
 {
-  "updatedAt": "2026-10-03",
+  "updatedAt": "2026-10-17",
   "literature": {
-    "posts": 2293,
-    "authors": 236,
-    "chars": 7013790,
-    "series": 107,
-    "seriesEpisodes": 836,
+    "posts": 2404,
+    "authors": 255,
+    "chars": 7151533,
+    "series": 109,
+    "seriesEpisodes": 855,
     "contest": 83,
     "hof": 29,
     "lastPost": {
-      "id": 327776,
-      "title": "[ 달아, 달아, 밝은 달아. ]"
+      "id": 338488,
+      "title": "두 사람이 잠잘 뿐인 문학"
     }
   },
   "translation": {
-    "posts": 1256,
-    "translators": 105,
-    "chars": 923033,
+    "posts": 1291,
+    "translators": 109,
+    "chars": 944000,
     "lastPost": {
-      "id": 327915,
-      "title": "Viora) 시계가 되고 싶다"
+      "id": 338493,
+      "title": "にらたま) 「조정 미스」"
     }
   }
 }

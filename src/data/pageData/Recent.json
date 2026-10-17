@@ -1,283 +1,280 @@
 {
   "totals": {
-    "novel": 1409,
-    "series": 107
+    "novel": 1501,
+    "series": 109
   },
   "novels": [
     {
-      "name": "[ 달아, 달아, 밝은 달아. ]",
+      "name": "두 사람이 잠잘 뿐인 문학",
       "image": null,
       "tags": [
-        "슬픔",
+        "일상",
         "로맨스"
       ],
-      "charCount": "1,000자",
-      "author": "별바다를불태우리(flock4442)",
+      "charCount": "1,881자",
+      "author": "별바다를불태우리",
       "posts": [
         {
-          "id": 327776,
-          "title": "[ 달아, 달아, 밝은 달아. ]",
+          "id": 338488,
+          "title": "두 사람이 잠잘 뿐인 문학",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327776"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=338488"
         }
       ]
     },
     {
-      "name": "짧짧문학) 🎶 달 달 무슨달",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/327478_1.jpg",
-      "tags": [
-        "짧문",
-        "일상"
-      ],
-      "charCount": "255자",
-      "author": "카붕카퐁이(mortal6622)",
-      "posts": [
-        {
-          "id": 327478,
-          "title": "짧짧문학) 🎶 달 달 무슨달",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327478"
-        }
-      ]
-    },
-    {
-      "name": "낙원 — 樂園 —",
+      "name": "[로카문학] 알람",
       "image": null,
       "tags": [
-        "소설",
-        "감동",
-        "로맨스"
-      ],
-      "charCount": "13,486자",
-      "author": "솜방망이(jungle3531)",
-      "posts": [
-        {
-          "id": 327445,
-          "title": "낙원 — 樂園 —",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327445"
-        }
-      ]
-    },
-    {
-      "name": "이쯤에서 네가",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/327403_1.jpg",
-      "tags": [
-        "짧문",
-        "슬픔"
-      ],
-      "charCount": "220자",
-      "author": "로카로카(valuable9711)",
-      "posts": [
-        {
-          "id": 327403,
-          "title": "이쯤에서 네가",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327403"
-        }
-      ]
-    },
-    {
-      "name": "[초음문대]친구라고 생각했는데…",
-      "image": null,
-      "tags": [
-        "짧문",
-        "대회",
+        "일상",
         "코미디"
       ],
-      "charCount": "653자",
+      "charCount": "1,152자",
+      "author": "ㅇㅇ",
+      "posts": [
+        {
+          "id": 338408,
+          "title": "[로카문학] 알람",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=338408"
+        }
+      ]
+    },
+    {
+      "name": "개씹짧문)어느 불타던 날",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337995_1.jpg",
+      "tags": [
+        "짧문",
+        "피폐",
+        "슬픔"
+      ],
+      "charCount": "345자",
       "author": "로카로카",
       "posts": [
         {
-          "id": 327365,
-          "title": "[초음문대]친구라고 생각했는데…",
+          "id": 337995,
+          "title": "개씹짧문)어느 불타던 날",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327365"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337995"
         }
       ]
     },
     {
-      "name": "[초음문대] 이로하한테 고백할 거야",
-      "image": null,
+      "name": "악몽",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337787_1.jpg",
+      "tags": [
+        "피폐",
+        "슬픔"
+      ],
+      "charCount": "4,370자",
+      "author": "별바다를불태우리",
+      "posts": [
+        {
+          "id": 337787,
+          "title": "악몽",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337787"
+        }
+      ]
+    },
+    {
+      "name": "달동화",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337623_1.jpg",
       "tags": [
         "짧문",
-        "대회",
-        "코미디"
+        "감동"
       ],
-      "charCount": "957자",
-      "author": "첼구야",
+      "charCount": "400자",
+      "author": "Yachi6974",
       "posts": [
         {
-          "id": 327338,
-          "title": "[초음문대] 이로하한테 고백할 거야",
+          "id": 337623,
+          "title": "달동화",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327338"
-        }
-      ]
-    },
-    {
-      "name": "[ 나무 아래, 너 ]",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/327201_1.jpg",
-      "tags": [
-        "감동",
-        "로맨스"
-      ],
-      "charCount": "1,300자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 327201,
-          "title": "[ 나무 아래, 너 ]",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327201"
-        }
-      ]
-    },
-    {
-      "name": "[ 참을 수 있는 것 ]",
-      "image": null,
-      "tags": [
-        "슬픔",
-        "로맨스"
-      ],
-      "charCount": "2,456자",
-      "author": "별바다를불태우리(flock4442)",
-      "posts": [
-        {
-          "id": 327112,
-          "title": "[ 참을 수 있는 것 ]",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327112"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337623"
         }
       ]
     },
     {
       "name": "나들이",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/327088_1.jpg",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337336_1.jpg",
       "tags": [
-        "짧문",
-        "슬픔",
-        "로맨스"
+        "로맨스",
+        "일상"
       ],
-      "charCount": "905자",
-      "author": "ㅇㅇ(rokimi)",
+      "charCount": "1,759자",
+      "author": "로카로카",
       "posts": [
         {
-          "id": 327088,
+          "id": 337336,
           "title": "나들이",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=327088"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337336"
         }
       ]
     },
     {
-      "name": "오늘 밤 보름달 특보! 🌕",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/326994_1.jpg",
+      "name": "짧",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337322_1.jpg",
       "tags": [
         "짧문",
-        "피폐"
+        "일상"
       ],
-      "charCount": "324자",
-      "author": "유동닉(eoeoe2)",
+      "charCount": "403자",
+      "author": "Yachi6974",
       "posts": [
         {
-          "id": 326994,
-          "title": "오늘 밤 보름달 특보! 🌕",
+          "id": 337322,
+          "title": "짧",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326994"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337322"
         }
       ]
     },
     {
-      "name": "\"가끔 생각하곤해\"",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/326989_1.jpg",
-      "tags": [
-        "짧문",
-        "슬픔"
-      ],
-      "charCount": "146자",
-      "author": "로카로카(valuable9711)",
-      "posts": [
-        {
-          "id": 326989,
-          "title": "\"가끔 생각하곤해\"",
-          "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326989"
-        }
-      ]
-    },
-    {
-      "name": "[ 내일 ]",
+      "name": "「사인은 급성 알코올 중독입니다.」",
       "image": null,
       "tags": [
         "피폐",
-        "슬픔",
-        "로맨스"
+        "슬픔"
       ],
-      "charCount": "1,956자",
-      "author": "별바다를불태우리(flock4442)",
+      "charCount": "1,862자",
+      "author": "ㅇㅇ",
       "posts": [
         {
-          "id": 326925,
-          "title": "[ 내일 ]",
+          "id": 337255,
+          "title": "「사인은 급성 알코올 중독입니다.」",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326925"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337255"
         }
       ]
     },
     {
-      "name": "짧짧문학) 🎶 사과같은 내얼굴",
-      "image": "../assets/image/크롤링사진/문학/2026-10-03/326908_1.jpg",
+      "name": "단편:???)가면이라니..",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337243_1.jpg",
+      "tags": [
+        "짧문",
+        "코미디"
+      ],
+      "charCount": "107자",
+      "author": "이구요",
+      "posts": [
+        {
+          "id": 337243,
+          "title": "단편:???)가면이라니..",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337243"
+        }
+      ]
+    },
+    {
+      "name": "비행",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337224_1.png",
       "tags": [
         "짧문",
         "일상"
       ],
-      "charCount": "200자",
-      "author": "카붕카퐁이(mortal6622)",
+      "charCount": "292자",
+      "author": "Sushi버거",
       "posts": [
         {
-          "id": 326908,
-          "title": "짧짧문학) 🎶 사과같은 내얼굴",
+          "id": 337224,
+          "title": "비행",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326908"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337224"
         }
       ]
     },
     {
-      "name": "[ Reply ]",
+      "name": "짧문) 나와 너의 아침",
       "image": null,
       "tags": [
+        "일상",
+        "로맨스"
+      ],
+      "charCount": "1,156자",
+      "author": "ㅇㅇ",
+      "posts": [
+        {
+          "id": 337218,
+          "title": "짧문) 나와 너의 아침",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337218"
+        }
+      ]
+    },
+    {
+      "name": "출근이 싫은 사카요리 씨",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337209_1.jpg",
+      "tags": [
         "짧문",
+        "일상",
+        "코미디"
+      ],
+      "charCount": "263자",
+      "author": "Sushi버거",
+      "posts": [
+        {
+          "id": 337209,
+          "title": "출근이 싫은 사카요리 씨",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337209"
+        }
+      ]
+    },
+    {
+      "name": "구르는 야치요",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337200_1.png",
+      "tags": [
+        "짧문",
+        "일상",
+        "코미디"
+      ],
+      "charCount": "371자",
+      "author": "Sushi버거",
+      "posts": [
+        {
+          "id": 337200,
+          "title": "구르는 야치요",
+          "episode": 1,
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337200"
+        }
+      ]
+    },
+    {
+      "name": "좋은 꿈 꿔, 카구야",
+      "image": null,
+      "tags": [
         "감동",
         "로맨스"
       ],
-      "charCount": "922자",
-      "author": "별바다를불태우리(flock4442)",
+      "charCount": "3,350자",
+      "author": "별바다를불태우리",
       "posts": [
         {
-          "id": 326847,
-          "title": "[ Reply ]",
+          "id": 337130,
+          "title": "좋은 꿈 꿔, 카구야",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326847"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337130"
         }
       ]
     },
     {
-      "name": "내글구려로 폐기",
-      "image": "../assets/image/크롤링사진/문학/2026-10-01/326837_1.jpg",
+      "name": "개씹짧문)가면",
+      "image": "../assets/image/크롤링사진/문학/2026-10-17/337119_1.jpg",
       "tags": [
         "짧문",
-        "코미디",
-        "일상"
+        "피폐",
+        "슬픔"
       ],
-      "charCount": "717자",
-      "author": "ㅇㅇ(script1840)",
+      "charCount": "206자",
+      "author": "로카로카",
       "posts": [
         {
-          "id": 326837,
-          "title": "내글구려로 폐기",
+          "id": 337119,
+          "title": "개씹짧문)가면",
           "episode": 1,
-          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=326837"
+          "link": "https://gall.dcinside.com/mgallery/board/view/?id=chokaguyahime&no=337119"
         }
       ]
     }
