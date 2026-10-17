@@ -500,5 +500,10 @@
   "아이디 보기": "View ID",
   "로그아웃할까요? 다시 로그인하려면 아이디를 알고 있어야 해요.": "Log out? You will need your ID to log in again.",
   "{month}월 {day}일 {hh}:{mm}": "{month}/{day} {hh}:{mm}",
-  "다른 곳에서 아이디가 바뀌었어요. 다시 시도해 주세요.": "Your ID was changed somewhere else. Please try again."
+  "다른 곳에서 아이디가 바뀌었어요. 다시 시도해 주세요.": "Your ID was changed somewhere else. Please try again.",
+  "Lv.{n}": "Lv.{n}",
+  "본 문학 수": "Viewed",
+  "저장 수": "Saved",
+  "태그 투표 수": "Tag votes",
+  "끌올 수": "Bumps"
 }

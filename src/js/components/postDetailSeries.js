@@ -519,6 +519,10 @@
       openMatureBlocked(data);
       return;
     }
+    // 본 문학 기록 (성인 차단으로 막힌 경우는 위에서 이미 빠져나갔다)
+    if (data.favType && data.postId != null && global.ProfileStats) {
+      global.ProfileStats.noteView(data.favType, data.postId);
+    }
     var overlay = ensureOverlay();
     overlay.innerHTML = '';
     clearMatureUnlockListener();

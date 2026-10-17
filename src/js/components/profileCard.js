@@ -12,6 +12,7 @@
 (function (global) {
   var t = global.I18n.t;
   var DEFAULT_COLOR = '#607089';
+  var PROFILE_ID_RE = /^[A-Za-z0-9_-]{12}$/; // 서버가 만든 프로필 ID(worker/profileApi.js)
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -69,7 +70,53 @@
     body.appendChild(el('p', 'profile-card-name', profile ? profile.nickname : t('알 수 없는 유저')));
     if (profile && profile.bio) body.appendChild(el('p', 'profile-card-bio', profile.bio));
     node.appendChild(body);
+    // 저장 전 초안(편집기는 id: '' 로 넘긴다)에는 스탯 영역을 만들지 않고 요청도 보내지 않는다.
+    if (profile && typeof profile.id === 'string' && PROFILE_ID_RE.test(profile.id) &&
+        global.ProfileStats && global.ProfileLevel) {
+      var area = el('div', 'profile-card-stats is-loading');
+      body.appendChild(area);
+      global.ProfileStats.fetch(profile.id).then(function (stats) {
+        if (!stats) {
+          if (area.remove) area.remove();
+          return;
+        }
+        fillStats(area, stats);
+      }, function () {
+        if (area.remove) area.remove();
+      });
+    }
     return node;
+  }
+
+  var STAT_ROWS = [
+    ['viewed', '본 문학 수'],
+    ['saved', '저장 수'],
+    ['voted', '태그 투표 수'],
+    ['bumped', '끌올 수']
+  ];
+
+  function fillStats(area, stats) {
+    var lv = global.ProfileLevel.fromStats(stats);
+    var span = lv.nextStart - lv.levelStart;
+    var ratio = span > 0 ? Math.min(1, Math.max(0, (lv.xp - lv.levelStart) / span)) : 0;
+    area.appendChild(el('p', 'profile-card-level', t('Lv.{n}', { n: lv.level })));
+    var xp = el('div', 'profile-card-xp');
+    var track = el('div', 'profile-card-xp-track');
+    var fill = el('div', 'profile-card-xp-fill');
+    fill.style.width = Math.round(ratio * 10000) / 100 + '%';
+    track.appendChild(fill);
+    xp.appendChild(track);
+    xp.appendChild(el('span', 'profile-card-xp-text', lv.xp + '/' + lv.nextStart));
+    area.appendChild(xp);
+    var grid = el('div', 'profile-card-stat-grid');
+    STAT_ROWS.forEach(function (row) {
+      var cell = el('div', 'profile-card-stat');
+      cell.appendChild(el('span', 'profile-card-stat-num', String(stats[row[0]] || 0)));
+      cell.appendChild(el('span', 'profile-card-stat-name', t(row[1])));
+      grid.appendChild(cell);
+    });
+    area.appendChild(grid);
+    area.classList.remove('is-loading');
   }
 
   // 랭킹처럼 이름 칸 하나: 프로필이 있으면 칩, 없으면 원래 글자(직접 입력한 닉네임 등).

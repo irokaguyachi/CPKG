@@ -8,6 +8,7 @@
 import { json, readBody, logAction } from './adminCommon.js';
 import { nicknameKey, gameHashFor } from './profileApi.js';
 import { purgeByProfile } from './accountDelete.js';
+import { deleteActivityStatement, runUnlessNoTable } from './profileStats.js';
 
 var LIST_LIMIT = 50;
 var QUERY_MAX = 40;
@@ -99,6 +100,8 @@ async function handleDelete(request, env, ctx, session) {
   if (link) statements.push(env.TAGS_DB.prepare('DELETE FROM profile_links WHERE profile_id = ?').bind(row.profile_id));
   statements.push(await rankingRename(env, row.profile_id, '유저' + row.profile_id.slice(0, 6)));
   statements.push(logAction(env, session.actor, 'profile.delete', row.profile_id, { before: row, link: link }));
+  // 활동 기록은 통계 표가 없을 수 있어 batch 앞에 따로 지운다(실패하면 프로필이 남아 다시 시도할 수 있다).
+  await runUnlessNoTable(deleteActivityStatement(env, row.profile_id));
   await env.TAGS_DB.batch(statements);
   return json({ ok: true });
 }

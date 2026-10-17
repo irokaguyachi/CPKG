@@ -9,6 +9,7 @@
 // 프로필은 D1 profiles(worker/profile_schema.sql) 한 테이블에 둔다. 테이블이 없거나
 // D1 이 실패하면 503 'profile unavailable' 을 돌려주고 다른 기능에는 영향이 없다.
 import { cleanNickname, cleanText, bannedWordIn, RESERVED_NICKNAME_RE } from './nickname.js';
+import { deleteActivityStatement, runUnlessNoTable } from './profileStats.js';
 
 export const PROFILE_PATHS = ['/profile/me', '/profile/save', '/profile/delete', '/profiles'];
 
@@ -115,7 +116,7 @@ export async function profileIdByNicknameKey(env, key) {
 }
 
 // 2단계(투표·끌올 기록)에서 개인 코드로 프로필 ID 를 찾는다. 없거나 실패하면 null.
-export async function profileIdForCode(env, personalCode) {
+export async function profileIdForCodeOrNull(env, personalCode) {
   try {
     var row = await env.TAGS_DB.prepare('SELECT profile_id FROM profiles WHERE owner_hash = ?')
       .bind(await ownerHash(personalCode)).first();
@@ -230,6 +231,9 @@ async function handleDelete(request, env, tools) {
   var owner = await ownerHash(parsed.personalCode);
   var target = await env.TAGS_DB.prepare('SELECT profile_id FROM profiles WHERE owner_hash = ?').bind(owner).first();
   if (!target) return tools.jsonResponse(request, { error: 'profile not found' }, 404);
+  // 활동 기록(레벨 숫자)을 프로필보다 먼저 지운다 — 실패하면 프로필이 남아 다시 시도할 수 있다.
+  // 통계 표가 아직 없으면 지울 것도 없다.
+  await runUnlessNoTable(deleteActivityStatement(env, target.profile_id));
   await env.TAGS_DB.prepare('DELETE FROM profiles WHERE owner_hash = ?').bind(owner).run();
   // 연결 행을 지우면 그 사람의 활동이 다시 익명이 된다. 테이블이 없으면 지울 것도 없다.
   try {

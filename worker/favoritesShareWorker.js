@@ -4,9 +4,10 @@ import { checkDeleted, purgeByCode } from './accountDelete.js';
 import { readLibraryIndex, updateLibraryIndex } from './libraryIndex.js';
 import { readTagDefinitions } from './tagDocs.js';
 import { cleanNickname, bannedWordIn } from './nickname.js';
+import { STATS_PATHS, handleStatsRequest, itemKey, unsavedKeys, recordSaves, recordBump } from './profileStats.js';
 import { LOGIN_ID_PATHS, handleLoginIdRequest, insertLoginId, loginIdForCode } from './loginIdApi.js';
 import { LOGIN_CODE_DEADLINE, normalizeLoginId } from './loginIdConfig.js';
-import { PROFILE_PATHS, handleProfileRequest, profileIdForCode, profileLinkForCode, profileIdByNicknameKey, nicknameKey } from './profileApi.js';
+import { PROFILE_PATHS, handleProfileRequest, profileIdForCodeOrNull, profileLinkForCode, profileIdByNicknameKey, nicknameKey } from './profileApi.js';
 /**
  * ChoKaguya Favorites Share Worker
  * - 2026-08-23: 별도 Worker(chokaguya-favorites-share, 독립된
@@ -420,16 +421,42 @@ function cleanBumpId(raw) {
 // 11_build_lookup.py)를 재사용한다. 값을 못 얻으면(파일 없음/파싱 실패)
 // 존재하지 않는 것으로 취급해 신청을 막는다(허용 쪽으로 fail-open하지 않음).
 async function bumpItemExists(request, env, type, id) {
+  var lookup = await readLookup(request, env);
+  return !!(lookup && lookup[type] && lookup[type][String(id)]);
+}
+
+// Lookup.json 을 한 번 읽는다. 파일이 없거나 파싱에 실패하면 null.
+async function readLookup(request, env) {
   var assetUrl = new URL(request.url);
   assetUrl.pathname = '/data/pageData/Lookup.json';
   var res = await env.ASSETS.fetch(new Request(assetUrl, { method: 'GET' }));
-  if (!res.ok) return false;
+  if (!res.ok) return null;
   try {
-    var lookup = await res.json();
-    return !!(lookup && lookup[type] && lookup[type][String(id)]);
+    return await res.json();
   } catch (e) {
-    return false;
+    return null;
   }
+}
+
+// 스탯 기록(recordSyncedSaves·/profile/view) 전용 Lookup 캐시. Lookup.json 은 1MB 가까이 되어
+// 요청마다 받아 파싱하면 무료 플랜 CPU 한도(10ms)를 넘길 수 있으므로, 같은 isolate 에서는 파싱한
+// 값을 LOOKUP_CACHE_MS 동안 다시 쓴다(파일은 배포 때만 바뀐다). 읽기에 실패한 결과는 캐시하지 않는다.
+// 끌올 검증(bumpItemExists)은 캐시를 쓰지 않고 매번 읽는다.
+var LOOKUP_CACHE_MS = 10 * 60000;
+var lookupCache = null; // { value, at }
+
+async function cachedLookup(request, env) {
+  var now = Date.now();
+  if (lookupCache && now - lookupCache.at < LOOKUP_CACHE_MS) return lookupCache.value;
+  var value = await readLookup(request, env);
+  if (value) lookupCache = { value: value, at: now };
+  return value;
+}
+
+// /profile/view 의 작품 존재 검증(cachedLookup). 읽지 못하면 없는 작품으로 본다.
+async function cachedItemExists(request, env, type, id) {
+  var lookup = await cachedLookup(request, env);
+  return !!(lookup && lookup[type] && lookup[type][String(id)]);
 }
 
 async function bumpRequesterHash(personalCode) {
@@ -611,6 +638,7 @@ async function handleBumpRequest(request, env) {
       var inserted = results[0];
 
       if (inserted.meta && inserted.meta.changes > 0) {
+        await recordNewBump(env, parsed.personalCode, hash, now);
         return jsonResponse(request, { ok: true, startAt: startAt, endAt: null }, 201);
       }
 
@@ -641,6 +669,17 @@ async function handleBumpRequest(request, env) {
   } catch (e) {
     return jsonResponse(request, { error: 'bump failed, try again' }, 500);
   }
+}
+
+// 방금 넣은 끌올을 신청자의 끌올 수로 기록한다(profileStats.js). 쿨다운 때문에 같은 계정이
+// 같은 시각에 두 행을 넣을 수 없어 requester_hash + requested_at 으로 방금 넣은 행을 찾는다.
+// 기록이 실패해도(통계 표 없음·D1 오류) 신청 결과는 그대로다.
+async function recordNewBump(env, personalCode, requesterHash, now) {
+  try {
+    var row = await env.TAGS_DB.prepare('SELECT id FROM bumps WHERE requester_hash = ? AND requested_at = ?')
+      .bind(requesterHash, now).first();
+    if (row) await recordBump(env, personalCode, row.id, now);
+  } catch (e) {}
 }
 
 // 목록/필터용 스냅샷 — src/_worker.js의 scheduled 핸들러가 5분마다 D1을
@@ -1394,7 +1433,7 @@ async function handleLibraryCreate(request, env) {
     editTokenHash: editTokenHash,
     ownerHash: ownerHash,
     // 만든 사람의 프로필(유저 프로필 2단계). 게시할 때 프로필이 있어야 붙는다.
-    profileId: clean.personalCode ? await profileIdForCode(env, clean.personalCode) : null,
+    profileId: clean.personalCode ? await profileIdForCodeOrNull(env, clean.personalCode) : null,
     createdAt: now,
     updatedAt: now
   };
@@ -1530,7 +1569,7 @@ async function handleLibraryUpdate(code, request, env) {
   // 가진 다른 사람의 코드로는 바꾸지 않는다.
   if (clean.personalCode && record.ownerHash &&
       (await ownerHashFor(clean.personalCode, code)) === record.ownerHash) {
-    record.profileId = await profileIdForCode(env, clean.personalCode);
+    record.profileId = await profileIdForCodeOrNull(env, clean.personalCode);
   }
   record.updatedAt = Date.now();
 
@@ -1633,7 +1672,7 @@ async function handleLibraryClaimOwner(code, request, env) {
   record.ownerHash = await ownerHashFor(personalCode, code);
   // 주인이 바뀌었으니 프로필도 새 주인 것으로 맞춘다(프로필이 없으면 빠진다).
   // 옛 주인의 프로필이 남으면 그 계정을 지울 때 새 주인의 서재가 함께 지워진다.
-  record.profileId = await profileIdForCode(env, personalCode);
+  record.profileId = await profileIdForCodeOrNull(env, personalCode);
   await env.FAVORITES_BUCKET.put('library/' + code + '.json', JSON.stringify(record), {
     httpMetadata: { contentType: 'application/json' },
     customMetadata: libraryMetadata(record)
@@ -2004,7 +2043,7 @@ async function handleUserHead(request, env) {
 // 서버에 같은 로직을 하나 더 두면 두 구현이 조용히 어긋날 수 있어서다.
 // 서버는 syncVersion 비교 + etag CAS 로 "덮어써도 되는가"만 판정하고,
 // 뒤처진 요청에는 409와 함께 서버 사본을 돌려줘 클라이언트가 병합하게 한다.
-async function handleUserSync(request, env) {
+async function handleUserSync(request, env, ctx) {
   var parsed = await readUserBody(request, env, env.RL_USER_SYNC);
   if (parsed.error) return parsed.error;
   var goneSync = await deletedAccountResponse(request, env, parsed.personalCode);
@@ -2042,6 +2081,10 @@ async function handleUserSync(request, env) {
       Object.assign({ onlyIf: { etagMatches: etag } }, userStorePutOptions(next))
     );
     if (written) {
+      // 기록은 응답 뒤로 미룬다(ctx 가 없는 테스트에서는 기다린다). recordSyncedSaves 는 throw 하지 않는다.
+      var recording = recordSyncedSaves(request, env, parsed.personalCode, data, now);
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(recording);
+      else await recording;
       return jsonResponse(request, { ok: true, serverSyncVersion: next.syncVersion, updatedAt: now });
     }
     // etag 가 어긋났다 = 방금 사이에 누가 썼다. 다시 읽어서 판정한다.
@@ -2052,6 +2095,35 @@ async function handleUserSync(request, env) {
     error: 'sync version conflict',
     serverStore: latest ? await latest.json() : null
   }, 409);
+}
+
+// 동기화한 북마크의 작품을 저장한 작품으로 기록한다(profileStats.js). Lookup.json 에 있는 작품만
+// 세고, 북마크에서 지운 작품도 빼지 않는다(한 번 들어간 행은 남는다). 프로필이 없으면 아무것도
+// 하지 않는다. 응답 뒤(ctx.waitUntil)에 돌고, 실패해도 동기화 결과는 그대로다.
+// 대부분의 동기화는 새로 담은 작품이 없으므로, 아직 기록되지 않은 키를 D1 로 먼저 거르고
+// 남은 키가 있을 때만 Lookup 을 본다(cachedLookup).
+async function recordSyncedSaves(request, env, personalCode, data, now) {
+  try {
+    var keys = [];
+    data.bookmarks.forEach(function (b) {
+      b.items.forEach(function (item) {
+        var key = itemKey(item.type, item.id);
+        if (key) keys.push(key);
+      });
+    });
+    if (!keys.length) return;
+    var profileId = await profileIdForCodeOrNull(env, personalCode);
+    if (!profileId) return;
+    var fresh = await unsavedKeys(env, profileId, keys);
+    if (!fresh.length) return;
+    var lookup = await cachedLookup(request, env);
+    if (!lookup) return;
+    var known = fresh.filter(function (key) {
+      var parts = key.split(':');
+      return !!(lookup[parts[0]] && lookup[parts[0]][parts[1]]);
+    });
+    if (known.length) await recordSaves(env, profileId, known, now);
+  } catch (e) {}
 }
 
 // 계정 삭제. 계정 본체도 삭제 표식도 없으면 404, 표식만 남은 재시도는 이어서 마저 지운다.
@@ -2079,6 +2151,14 @@ var PROFILE_TOOLS = {
   deletedAccountResponse: deletedAccountResponse
 };
 
+// 프로필 활동 통계 API(profileStats.js). 작품 존재 검증은 isolate 캐시(cachedLookup)를 쓴다 —
+// 끌올(bumpItemExists)과 달리 상세 창을 열 때마다 불리기 때문이다.
+var STATS_TOOLS = {
+  jsonResponse: jsonResponse, checkLimit: checkLimit, clientIp: clientIp,
+  readJsonBody: readJsonBody, cleanPersonalCode: cleanPersonalCode,
+  itemExists: cachedItemExists
+};
+
 // 아이디 로그인 API(loginIdApi.js)도 같은 방식으로 도구를 받는다.
 var LOGIN_ID_TOOLS = {
   jsonResponse: jsonResponse, checkLimit: checkLimit, clientIp: clientIp,
@@ -2087,7 +2167,7 @@ var LOGIN_ID_TOOLS = {
 };
 
 // 라우팅 본체. 예외 처리는 아래 fetch() 가 한 겹 감싸서 담당한다.
-async function route(request, env) {
+async function route(request, env, ctx) {
   var url = new URL(request.url);
 
   if (request.method === 'OPTIONS') {
@@ -2139,7 +2219,7 @@ async function route(request, env) {
     return handleBumpRequest(request, env);
   }
   if (url.pathname === '/user/sync' && request.method === 'PUT') {
-    return handleUserSync(request, env);
+    return handleUserSync(request, env, ctx);
   }
   if (url.pathname === '/game/ranking' && request.method === 'POST') {
     return handleGameRanking(request, env);
@@ -2158,6 +2238,9 @@ async function route(request, env) {
   }
   if (url.pathname === '/pancake/add' && request.method === 'POST') {
     return handlePancakeAdd(request, env);
+  }
+  if (STATS_PATHS.indexOf(url.pathname) !== -1) {
+    return handleStatsRequest(request, env, STATS_TOOLS, ctx);
   }
   if (PROFILE_PATHS.indexOf(url.pathname) !== -1) {
     return handleProfileRequest(request, env, PROFILE_TOOLS);
@@ -2186,9 +2269,9 @@ export default {
   // 던진 예외가 그대로 런타임까지 올라가 Cloudflare 1101 흰 화면이 나가고,
   // 클라이언트(userData.js/bookmarkLibrary.js)는 JSON 을 기대하다 파싱에서
   // 또 한 번 깨진다.
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     try {
-      return await route(request, env);
+      return await route(request, env, ctx);
     } catch (e) {
       return jsonResponse(request, { error: 'internal error' }, 500);
     }

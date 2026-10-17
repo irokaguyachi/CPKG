@@ -206,12 +206,12 @@ test('public lookup returns only public fields', async () => {
   assert.deepEqual((await send('GET', '/profiles?ids=')).body, { profiles: {} });
 });
 
-test('profileIdForCode finds the id', async () => {
+test('profileIdForCodeOrNull finds the id', async () => {
   const { env, account, save, profileApi } = await setupProfiles();
   await account(CODE_A);
   const id = (await save(CODE_A)).body.profile.id;
-  assert.equal(await profileApi.profileIdForCode(env, CODE_A), id);
-  assert.equal(await profileApi.profileIdForCode(env, CODE_B), null);
+  assert.equal(await profileApi.profileIdForCodeOrNull(env, CODE_A), id);
+  assert.equal(await profileApi.profileIdForCodeOrNull(env, CODE_B), null);
 });
 
 test('missing table returns 503', async () => {

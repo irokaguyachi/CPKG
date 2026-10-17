@@ -6,11 +6,12 @@ const { load, D1, Bucket, hash, allow, request, clock, root } = require('./worke
 
 const ICONS = JSON.parse(fs.readFileSync(path.join(root, 'src/data/config/ProfileIcons.json'), 'utf8'));
 const BASE_SCHEMAS = ['game_schema.sql', 'tags_schema.sql', 'bump_schema.sql', 'admin_schema.sql', 'login_schema.sql'];
-const ALL_SCHEMAS = [...BASE_SCHEMAS, 'profile_schema.sql'];
+const ALL_SCHEMAS = [...BASE_SCHEMAS, 'profile_schema.sql', 'stats_schema.sql'];
 const code = n => 'display_code_' + String(n).padStart(6, '0');
 
-async function setupDisplay(schemas = ALL_SCHEMAS) {
-  const backend = (await load('worker/favoritesShareWorker.js')).default;
+// overrides: Worker 전역에 더할 값(엣지 캐시 caches 등). send 의 ctx 는 fetch 의 세 번째 인자다.
+async function setupDisplay(schemas = ALL_SCHEMAS, overrides = {}) {
+  const backend = (await load('worker/favoritesShareWorker.js', overrides)).default;
   const env = {
     TAGS_DB: new D1(schemas), FAVORITES_BUCKET: new Bucket(),
     RL_USER_AUTH: allow, RL_USER_SYNC: allow, RL_LIB_LIST: allow, RL_LIB_WRITE: allow,
@@ -24,8 +25,8 @@ async function setupDisplay(schemas = ALL_SCHEMAS) {
       return Response.json([{ posts: [{ id: 123 }, { id: 456 }, { id: 789 }] }]);
     } }
   };
-  const send = async (method, url, body) => {
-    const res = await backend.fetch(request(method, url, body), env);
+  const send = async (method, url, body, ctx) => {
+    const res = await backend.fetch(request(method, url, body), env, ctx);
     const text = await res.text();
     return { status: res.status, body: text ? JSON.parse(text) : null };
   };

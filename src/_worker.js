@@ -46,7 +46,7 @@ export { PresenceDO };
 var OLD_DOMAIN = 'ckpg.cloud';
 var NEW_DOMAIN = 'cpkg.cloud';
 
-var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/user/delete', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/voters', '/tags/snapshot', '/tags/official', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit', '/profile/me', '/profile/save', '/profile/delete', '/profiles', '/user/login', '/login-id/set', '/login-id/me'];
+var API_EXACT_PATHS = ['/library', '/owner/lookup', '/user/signup', '/user/get', '/user/head', '/user/sync', '/user/delete', '/pancake', '/pancake/add', '/tags/get', '/tags/vote', '/tags/voters', '/tags/snapshot', '/tags/official', '/bump/get', '/bump/request', '/game/ranking', '/game/start', '/game/end', '/game/submit', '/profile/me', '/profile/save', '/profile/delete', '/profile/view', '/profile/stats', '/profiles', '/user/login', '/login-id/set', '/login-id/me'];
 
 function isApiPath(pathname) {
   if (API_EXACT_PATHS.indexOf(pathname) !== -1) return true;

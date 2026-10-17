@@ -231,9 +231,10 @@ function libraryCost(keep) {
   return { queries: 3, digests: 1 + keep.codes.length + (keep.cache.profiles ? 0 : keep.rows.length) };
 }
 
-// 프로필 하나: 삭제 직전 확인 최대 2 + 삭제 batch 3 쿼리, 게임 해시 1 + (아직 없으면) 프로필 해시표.
+// 프로필 하나: 삭제 직전 확인 최대 2 + 삭제 batch 3 + 활동 기록 삭제 1 쿼리,
+// 게임 해시 1 + (아직 없으면) 프로필 해시표.
 function profileCost(keep) {
-  return { queries: 5, digests: 1 + (keep.cache.profiles ? 0 : keep.rows.length) };
+  return { queries: 6, digests: 1 + (keep.cache.profiles ? 0 : keep.rows.length) };
 }
 
 // 이번 틱에 지운 서재들의 공개 색인 줄과 숨김 행을 한 번에 정리한다. 실패해도 throw 하지 않는다 —

@@ -1,4 +1,5 @@
 import { json, readBody, logAction, intParam } from './adminCommon.js';
+import { deleteBumpStatement, runUnlessNoTable } from './profileStats.js';
 
 // 관리 페이지의 끌올 탭(worker/bump_schema.sql). 끌올은 줄서기 큐라서 "지금
 // 활성" = 이미 시작한 행 중 가장 늦게 시작한 행이다(favoritesShareWorker.js 의
@@ -49,6 +50,9 @@ async function handleCancel(request, env, ctx, session) {
   var target = row.item_type + ' ' + row.item_id;
 
   if (row.start_at > now) {
+    // 취소한 끌올은 신청자의 끌올 수(profile_activity)에서도 뺀다. 통계 표가 없으면 무시한다.
+    // batch 앞에 두어, 실패해도 끌올이 그대로 남아 다시 취소할 수 있게 한다.
+    await runUnlessNoTable(deleteBumpStatement(env, id));
     await env.TAGS_DB.batch([
       env.TAGS_DB.prepare('DELETE FROM bumps WHERE id = ?').bind(id),
       logAction(env, session.actor, 'bump.cancel', target, { state: 'waiting', row: row })
@@ -58,6 +62,7 @@ async function handleCancel(request, env, ctx, session) {
 
   var cancelled = await env.TAGS_DB.prepare('SELECT 1 FROM bump_cancels WHERE bump_id = ?').bind(id).first();
   if (id !== await activeId(env, now) || cancelled) return json({ error: 'not cancellable' }, 400);
+  await runUnlessNoTable(deleteBumpStatement(env, id));
   await env.TAGS_DB.batch([
     env.TAGS_DB.prepare('INSERT INTO bump_cancels (bump_id, cancelled_at) VALUES (?, ?)').bind(id, now),
     env.TAGS_DB.prepare('UPDATE bumps SET end_at = ? WHERE id = ?').bind(now, id),

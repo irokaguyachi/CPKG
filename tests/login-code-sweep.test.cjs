@@ -97,9 +97,13 @@ test('deletes only code-only accounts', withClock(async () => {
   const { sweep, config } = await loadSweep();
   const { t, K, D, anonLibrary } = await setupWorld();
   t.env.ACCOUNT_SWEEP_ENABLED = '1';
+  // 프로필 활동 기록(레벨 숫자)도 프로필과 함께 지워지는지 본다
+  for (const p of [K, D]) t.env.TAGS_DB.db.prepare("INSERT INTO profile_activity (profile_id, kind, item_key, at) VALUES (?, 'view', 'novel:123', 1)").run(p.profileId);
   await runUntilDone(sweep, t.env, config.LOGIN_CODE_DEADLINE);
 
   const objects = t.env.FAVORITES_BUCKET.objects;
+  assert.equal(rows(t, 'SELECT * FROM profile_activity WHERE profile_id = ?', K.profileId).length, 1);
+  assert.equal(rows(t, 'SELECT * FROM profile_activity WHERE profile_id = ?', D.profileId).length, 0);
   // K: 전부 남음
   assert.ok(objects.has(userKey(K.code)));
   assert.ok(objects.has(ownersKey(K.code)));

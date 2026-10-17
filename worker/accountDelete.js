@@ -5,6 +5,7 @@
 import { userStoreKey, ownerIndexKey, ownerHashFor, profileOwnerHash } from './accountKeys.js';
 import { gameHashFor } from './profileApi.js';
 import { updateLibraryIndex, readLibraryIndex } from './libraryIndex.js';
+import { deleteActivityStatement, runUnlessNoTable } from './profileStats.js';
 
 // 삭제 표식을 찾는다. 없거나(테이블 없음·D1 오류 포함) 못 읽으면 null.
 export async function checkDeleted(env, personalCode) {
@@ -64,8 +65,11 @@ async function markDeleted(env, ownerHash, by) {
 
 // 프로필·연결 행·프로필 랭킹 줄을 한 batch 로 지운다. 랭킹 줄은 프로필 ID 에서 만든 게임 해시로 찾는다.
 // 마감 뒤 자동 정리(loginCodeSweep.js)도 같은 방식으로 지운다.
+// 활동 기록(profile_activity)은 표가 없을 수 있어 batch 앞에 따로 지운다(쿼리 1개 더). 앞에 두어야
+// 활동 삭제가 실패해도 프로필이 남아 다시 시도할 때 끝까지 지울 수 있다.
 export async function deleteProfileRows(env, profileId) {
   var gameHash = await gameHashFor(profileId);
+  await runUnlessNoTable(deleteActivityStatement(env, profileId));
   await env.TAGS_DB.batch([
     env.TAGS_DB.prepare('DELETE FROM profile_links WHERE profile_id = ?').bind(profileId),
     env.TAGS_DB.prepare('DELETE FROM game_scores WHERE player_hash = ?').bind(gameHash),
