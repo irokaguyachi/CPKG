@@ -480,7 +480,7 @@
   "이미 쓰이고 있는 아이디예요.": "That ID is already taken.",
   "없는 아이디예요.": "That ID does not exist.",
   "{time} 이후에 다시 바꿀 수 있어요.": "You can change it again after {time}.",
-  "이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 10월 31일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!": "Login codes are being retired! Set your ID now! Accounts still using a login code at 11:59 PM on October 31 will be deleted!",
+  "이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 11월 30일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!": "Login codes are being retired! Set your ID now! Accounts still using a login code at 11:59 PM on November 30 will be deleted!",
   "아이디 입력창": "Enter your ID",
   "계정이 없으신가요?": "Don't have an account?",
   "새로 만들기": "Create one",

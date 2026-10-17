@@ -37,8 +37,8 @@
   var LOGIN_ID_ME_URL = WORKER_BASE + '/login-id/me';
   // 기억해 둔 로그인 아이디 { code, loginId, changeableAt } — logout() 이 지운다
   var LOGIN_ID_KEY = 'chokaguya_login_id';
-  // 서버(worker/loginIdConfig.js)와 같은 값 — 2026-11-01 00:00 KST
-  var LOGIN_CODE_DEADLINE = Date.UTC(2026, 9, 31, 15, 0, 0);
+  // 서버(worker/loginIdConfig.js)와 같은 값 — 2026-12-01 00:00 KST
+  var LOGIN_CODE_DEADLINE = Date.UTC(2026, 10, 30, 15, 0, 0);
   var LOGIN_ID_PATTERN = /^[a-z0-9_]{4,20}$/;
   // 삭제된 계정 안내 alert 을 이 탭에서 이미 띄웠는지 (탭당 한 번만)
   var DELETED_ALERT_KEY = 'chokaguya_deleted_alerted';

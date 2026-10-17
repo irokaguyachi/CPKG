@@ -60,7 +60,7 @@
   function mountNotice(container) {
     var node = el('div', 'login-id-notice auth-reason');
     node.hidden = true;
-    node.appendChild(el('p', 'login-id-notice-text', t('이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 10월 31일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!')));
+    node.appendChild(el('p', 'login-id-notice-text', t('이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 11월 30일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!')));
     var btn = el('button', 'settings-btn is-primary', t('아이디 만들기'));
     btn.type = 'button';
     btn.addEventListener('click', function () { global.LoginIdModal.open({ mode: 'create' }); });
@@ -144,7 +144,7 @@
     if (isChange) {
       if (status.loginId) card.appendChild(el('p', 'auth-desc', t('현재 아이디: {id}', { id: status.loginId })));
     } else {
-      card.appendChild(el('p', 'auth-desc', t('이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 10월 31일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!')));
+      card.appendChild(el('p', 'auth-desc', t('이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 11월 30일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!')));
     }
     card.appendChild(el('p', 'auth-desc', t('영문 소문자, 숫자, _ 로 4~20자')));
 

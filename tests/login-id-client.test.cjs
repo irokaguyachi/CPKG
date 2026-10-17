@@ -206,7 +206,7 @@ test('logout, handleAccountDeleted and deleteAccount clear the remembered id', a
 });
 
 test('isBeforeLoginCodeDeadline flips exactly at the deadline', () => {
-  const deadline = Date.UTC(2026, 9, 31, 15, 0, 0);
+  const deadline = Date.UTC(2026, 10, 30, 15, 0, 0);
   const before = load({ fetch: () => reply(200, {}), now: deadline - 1 });
   assert.equal(before.window.UserData.LOGIN_CODE_DEADLINE, deadline);
   assert.equal(before.window.UserData.isBeforeLoginCodeDeadline(), true);
@@ -227,7 +227,7 @@ test('getLoginId({ fresh: true }) bypasses the remembered value and remembers th
 });
 
 // ---- 화면(authModal.js · loginIdModal.js · auth.js) — 흉내 낸 DOM 위에서 ----
-const NOTICE = '이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 10월 31일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!';
+const NOTICE = '이제 로그인 코드는 폐지됩니다! 아이디를 변경하세요! 11월 30일 오후 11:59에 변경하지 않은 로그인 코드는 계정이 삭제됩니다!';
 
 function fakeElement(tag) {
   const classes = () => String(el.className).split(/\s+/).filter(Boolean);

@@ -17,7 +17,7 @@ test('normalizeLoginId trims, lowercases and rejects bad ids', async () => {
     assert.equal(config.normalizeLoginId(bad), null, String(bad));
   }
   assert.equal(config.LOGIN_ID_COOLDOWN_MS, DAY);
-  assert.equal(config.LOGIN_CODE_DEADLINE, Date.UTC(2026, 9, 31, 15, 0, 0));
+  assert.equal(config.LOGIN_CODE_DEADLINE, Date.UTC(2026, 10, 30, 15, 0, 0));
 });
 
 test('login returns the code for an id', async () => {
@@ -123,7 +123,7 @@ test('missing table is 503 login id unavailable', async () => {
 // ---- Task 2: 가입·조회·마감·계정 삭제 ----
 const { hash } = require('./helpers/workerHarness.cjs');
 const { setupDisplayAdmin } = require('./helpers/adminSetup.cjs');
-const DEADLINE = Date.UTC(2026, 9, 31, 15, 0, 0);
+const DEADLINE = Date.UTC(2026, 10, 30, 15, 0, 0);
 const userKey = c => 'user/' + hash('user-v2:' + c) + '.json';
 
 test('signup with an id creates account and id together', async () => {
