@@ -57,11 +57,15 @@ const LOOSE = process.argv.includes('--loose');
 // 코드 변형(포맷팅, 콘솔에서 코드 복사 등)에 스스로 반응해 멈추거나
 // 파일만 키우는 방식이라, 개인 갤러리 사이트 규모에서는 "사이트가 이상하게
 // 동작할 위험"이 "코드 읽기 어려움 조금 더 얻는 이득"보다 크다고 판단.
+// 이름은 _0x3ab7 같은 16진수 대신 a, b, c 같은 짧은 이름(mangled)을 쓴다.
+// 난독화기가 파일 최상위에 넣는 문자열 표 함수까지 a, b 가 되면 전역을
+// 공유하는 다른 파일과 이름이 겹치므로, 파일마다 고유한 앞글자
+// (identifiersPrefix, prefixMapFor 참고)를 obfuscateJsDir 에서 붙인다.
 const OBFUSCATE_OPTIONS = {
   compact: true,
   controlFlowFlattening: false,
   deadCodeInjection: false,
-  identifierNamesGenerator: 'hexadecimal',
+  identifierNamesGenerator: 'mangled',
   // 파일마다 독립적으로 난독화한다. 이 프로젝트의 js 파일들은 <script defer>로
   // 각자 로드되어 전역(window) 스코프를 공유하는 구조라, 최상위(전역) 식별자
   // 이름까지 바꾸면 다른 파일에서 그 이름을 부르는 부분이 깨진다. 기본값인
@@ -99,9 +103,82 @@ const OPTIONS_FINGERPRINT = crypto
   .digest('hex')
   .slice(0, 16);
 
-function cachePathFor(original) {
-  const hash = crypto.createHash('sha256').update(original).update(OPTIONS_FINGERPRINT).digest('hex');
+function cachePathFor(original, prefix) {
+  const hash = crypto.createHash('sha256').update(original).update(OPTIONS_FINGERPRINT).update(prefix).digest('hex');
   return path.join(CACHE_DIR, `${hash}.js`);
+}
+
+function listJsFiles(dir) {
+  const files = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...listJsFiles(full));
+    else if (entry.name.endsWith('.js')) files.push(full);
+  }
+  return files;
+}
+
+// 파일마다 3글자 앞글자(소문자 1 + 소문자·숫자 2)를 정한다. 경로 해시로 정하므로
+// 파일을 추가·삭제해도 다른 파일의 앞글자(= 캐시)는 그대로다. 길이가 모두 같아서
+// 서로 다른 앞글자로 만든 이름은 첫 세 글자부터 달라 절대 겹치지 않는다.
+// 해시가 겹치면 정렬 순서상 뒤 파일이 소금(salt)을 바꿔 다시 뽑는다.
+function prefixMapFor(relPaths) {
+  const used = new Set();
+  const map = new Map();
+  for (const relPath of [...relPaths].sort()) {
+    const key = relPath.split(path.sep).join('/');
+    for (let salt = 0; ; salt++) {
+      const digest = crypto.createHash('sha256').update(key + '#' + salt).digest();
+      const prefix =
+        String.fromCharCode(97 + (digest[0] % 26)) + (digest.readUInt16BE(1) % 1296).toString(36).padStart(2, '0');
+      if (!used.has(prefix)) {
+        used.add(prefix);
+        map.set(relPath, prefix);
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+// 스크립트 최상위에 선언된 이름(function, var/let/const, class).
+function topLevelNames(code) {
+  const acornPath = require.resolve('acorn', { paths: [path.dirname(require.resolve('javascript-obfuscator'))] });
+  const names = new Set();
+  let ast;
+  try {
+    ast = require(acornPath).parse(code, { ecmaVersion: 'latest', sourceType: 'script' });
+  } catch (err) {
+    return names; // 문법 오류 파일은 난독화 단계에서 이미 [skip] 으로 걸러진다.
+  }
+  for (const node of ast.body) {
+    if ((node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration') && node.id) names.add(node.id.name);
+    if (node.type === 'VariableDeclaration') {
+      for (const decl of node.declarations) if (decl.id.type === 'Identifier') names.add(decl.id.name);
+    }
+  }
+  return names;
+}
+
+// 난독화기가 최상위에 새로 만든 이름이 다른 파일의 최상위 이름과 겹치면, 전역을
+// 공유하는 <script> 들 사이에서 서로를 덮어써 사이트가 깨진다. 그런 이름을 돌려준다.
+function findGlobalCollisions(processed) {
+  const outputNames = new Map();
+  for (const relPath of processed) {
+    outputNames.set(relPath, topLevelNames(fs.readFileSync(path.join(DIST, relPath), 'utf8')));
+  }
+  const collisions = [];
+  for (const relPath of processed) {
+    const srcFile = path.join(SRC, relPath);
+    const sourceNames = fs.existsSync(srcFile) ? topLevelNames(fs.readFileSync(srcFile, 'utf8')) : new Set();
+    for (const name of outputNames.get(relPath)) {
+      if (sourceNames.has(name)) continue; // 원래 있던 전역 이름은 그대로 둔다(renameGlobals: false)
+      for (const [other, names] of outputNames) {
+        if (other !== relPath && names.has(name)) collisions.push(`${name}: ${relPath} ↔ ${other}`);
+      }
+    }
+  }
+  return collisions;
 }
 
 function obfuscateJsDir(dir) {
@@ -110,48 +187,48 @@ function obfuscateJsDir(dir) {
   let misses = 0;
   const skipped = [];
   const processed = [];
+  const files = listJsFiles(dir);
+  const prefixes = prefixMapFor(files.map((full) => path.relative(DIST, full)));
 
-  function walk(d) {
-    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-      const full = path.join(d, entry.name);
-      if (entry.isDirectory()) {
-        walk(full);
-        continue;
-      }
-      if (!entry.name.endsWith('.js')) continue;
+  for (const full of files) {
+    const original = fs.readFileSync(full, 'utf8');
+    const relPath = path.relative(DIST, full);
+    const prefix = prefixes.get(relPath);
+    processed.push(relPath);
+    const cachePath = cachePathFor(original, prefix);
 
-      const original = fs.readFileSync(full, 'utf8');
-      const relPath = path.relative(DIST, full);
-      processed.push(relPath);
-      const cachePath = cachePathFor(original);
+    if (fs.existsSync(cachePath)) {
+      fs.copyFileSync(cachePath, full);
+      hits++;
+      console.log(`  [cache] ${relPath}`);
+      continue;
+    }
 
-      if (fs.existsSync(cachePath)) {
-        fs.copyFileSync(cachePath, full);
-        hits++;
-        console.log(`  [cache] ${relPath}`);
-        continue;
-      }
-
-      try {
-        // 난독화 후 남는 주석도 제거한다. 원본 src/의 개발용 주석은 보존한다.
-        const obfuscated = stripJsComments(
-          JavaScriptObfuscator.obfuscate(original, OBFUSCATE_OPTIONS).getObfuscatedCode()
-        );
-        fs.writeFileSync(full, obfuscated, 'utf8');
-        fs.writeFileSync(cachePath, obfuscated, 'utf8');
-        misses++;
-        console.log(`  [ok] ${relPath}`);
-      } catch (err) {
-        // 난독화에 실패한 파일. LOOSE 모드에서는 원본을 그대로 두고 경고만
-        // 남기지만, 기본 빌드에서는 아래 최종 검사에서 빌드를 중단시킨다.
-        skipped.push(relPath);
-        console.warn(`  [skip] ${relPath}: ${err.message}`);
-      }
+    try {
+      // 난독화 후 남는 주석도 제거한다. 원본 src/의 개발용 주석은 보존한다.
+      const options = Object.assign({}, OBFUSCATE_OPTIONS, { identifiersPrefix: prefix });
+      const obfuscated = stripJsComments(JavaScriptObfuscator.obfuscate(original, options).getObfuscatedCode());
+      fs.writeFileSync(full, obfuscated, 'utf8');
+      fs.writeFileSync(cachePath, obfuscated, 'utf8');
+      misses++;
+      console.log(`  [ok] ${relPath}`);
+    } catch (err) {
+      // 난독화에 실패한 파일. LOOSE 모드에서는 원본을 그대로 두고 경고만
+      // 남기지만, 기본 빌드에서는 아래 최종 검사에서 빌드를 중단시킨다.
+      skipped.push(relPath);
+      console.warn(`  [skip] ${relPath}: ${err.message}`);
     }
   }
 
-  walk(dir);
   console.log(`[build] 난독화 캐시 적중 ${hits}개 / 신규 ${misses}개`);
+
+  // 전역 이름 충돌 검사. 겹치면 사이트가 깨지므로 LOOSE 여부와 무관하게 중단한다.
+  const collisions = findGlobalCollisions(processed);
+  if (collisions.length > 0) {
+    console.error(`\n[build] 난독화가 만든 전역 이름이 다른 파일과 겹칩니다(${collisions.length}개):`);
+    for (const line of collisions) console.error(`  - ${line}`);
+    process.exit(1);
+  }
 
   // 최종 검사: dist/js 의 각 파일이 정말로 원본(src/js)과 달라졌는가.
   // 난독화가 조용히 실패했거나(skipped), 캐시가 손상돼 원본이 그대로 남은
